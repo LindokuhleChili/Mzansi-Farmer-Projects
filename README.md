@@ -40,6 +40,8 @@ In a second terminal, from the same folder:
 npm run demo      # reading -> AI proposal -> rules -> two-step approval -> audit trail
 ```
 
+Then open **<http://localhost:3000/>** for the web interface (dashboard, plots, AI suggestions with the OpenEdge rule check, two-step approval, audit log, English / isiZulu). See [`docs/UI.md`](docs/UI.md).
+
 By default `OE_MODE=mock` and `AI_PROVIDER=mock`, so the API runs entirely in memory. This is a stand-in so that anyone can run the project. The real OpenEdge setup is described below.
 
 ## Prerequisites
@@ -171,6 +173,7 @@ Three cases are designed to fail (`FAIL01` and `E20`, the last in two modes). Th
 | Path | Content |
 |---|---|
 | `apps/api/` | Fastify API and the AI layer |
+| `apps/web/public/` | The web interface (static HTML, CSS and JavaScript, photos, fonts; served by the API at `/`) |
 | `openedge/` | Schema, seed data, ABL code, PASOE handler map |
 | `mock-pasoe/` | Node port of the ABL rules, used by `npm test` |
 | `eval/` | Test cases (`*.json`) and runners |
@@ -187,7 +190,8 @@ Three cases are designed to fail (`FAIL01` and `E20`, the last in two modes). Th
 | [`docs/API.md`](docs/API.md) | HTTP API |
 | [`docs/OE-CONTRACT.md`](docs/OE-CONTRACT.md) | Contract between the API and OpenEdge |
 | [`docs/ESP32.md`](docs/ESP32.md) | Firmware, wiring and simulator |
-| `docs/screens/` | Demo screens (design mockups) and photo credits |
+| `docs/screens/` | Approved demo screens (design mockups) and photo credits |
+| `docs/UI.md` | The web interface: pages, token handling, demo tools, isiZulu, photo credits |
 
 ## Secrets
 

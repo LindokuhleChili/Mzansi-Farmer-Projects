@@ -121,7 +121,8 @@ The API must run on the same machine as PASOE (or be given a reachable `OE_BASE_
 | ESP32 firmware | **Compiled only** (`pio run -e esp32dev` succeeds; 15 native unit tests pass). It has **not** been run on a physical board in this repo's tests |
 | ESP32 simulator | **Real** HTTP client; unit tests (33) and runs against the Node API in `npm test` |
 | Sensor values, farm, plots, user "Nomsa" | **Fictional example data** |
-| Demo screens in `docs/screens/` | Static design mockups (PNG), not a running UI. There is no web front end in this repo; the API is the product surface |
+| Demo screens in `docs/screens/` | Static design mockups (PNG) that the web UI follows |
+| Web UI (`apps/web/`, `docs/UI.md`) | **Real** page code served by the Node API at `/`; checked in a headless browser against the **mock** OpenEdge and **mock** AI. Not yet looked at against real PASOE or on a physical phone |
 
 ## 6. Test results (at the time of writing)
 

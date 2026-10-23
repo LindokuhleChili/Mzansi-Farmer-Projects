@@ -1,0 +1,30 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1, viewport-fit=cover">
+<title>Mzansi Farmer AI</title>
+<meta name="description" content="AI suggests irrigation, OpenEdge rules check it, the farmer approves. Example data only.">
+<meta name="theme-color" content="#0E3626">
+<link rel="icon" href="/favicon.svg" type="image/svg+xml">
+<link rel="stylesheet" href="/assets/css/app.css">
+</head>
+<body>
+<div class="app" id="app">
+  <aside class="side" aria-label="Main">
+    <div class="logo"><svg class="ic" width="22" height="22" viewBox="0 0 32 32" fill="none" stroke="currentColor" stroke-width="2.2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M16 27V15M16 15c0-4 3-7 8-7 0 5-3 8-8 7zM16 19c0-3-2.5-5.5-6.5-5.5 0 4 2.5 6.5 6.5 5.5z"/></svg>MZANSI FARMER</div>
+    <nav id="sidenav"></nav>
+    <div class="farmer" id="farmer-card"></div>
+  </aside>
+  <div class="main">
+    <header class="top" id="top"></header>
+    <main class="view" id="view" tabindex="-1" aria-live="polite"></main>
+  </div>
+  <nav class="tabbar" id="tabbar" aria-label="Main"></nav>
+</div>
+<div id="overlay"></div>
+<div id="toast-root" role="status" aria-live="polite"></div>
+<noscript><p style="padding:24px">This app needs JavaScript.</p></noscript>
+<script type="module" src="/assets/js/main.js"></script>
+</body>
+</html>

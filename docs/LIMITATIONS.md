@@ -14,7 +14,8 @@ This is a hackathon prototype. It shows one idea: an AI model may propose, OpenE
 | AI model | Real Gemini (`gemini-3.5-flash`) in `npm run test:gemini` and when `.env` sets `AI_PROVIDER=http`. All automated tests use a deterministic mock so results can be repeated. |
 | ESP32 firmware | Compiled and unit-tested on a host computer only. It has not been run on a physical board in this project's tests. |
 | ESP32 simulator | A real HTTP client with its own tests. It is not a sensor. |
-| Demo screens in `docs/screens/` | Static design mockups (PNG). There is no web or mobile front end in this repository. The API is the product surface. |
+| Demo screens in `docs/screens/` | Static design mockups (PNG). |
+| Web interface (`apps/web/`, `docs/UI.md`) | Real page code served by the API at `/`. Only exercised in a headless browser against the mock OpenEdge and mock AI so far; there is no native mobile app. |
 
 ## The AI layer
 
@@ -61,7 +62,7 @@ This is a hackathon prototype. It shows one idea: an AI model may propose, OpenE
 
 ## Not built
 
-- A web or mobile front end
+- A native mobile app (the web interface works in a phone browser)
 - Retrieval from farming documents (RAG)
 - Real-time actuation (the system records an approval; it does not open a valve)
 - Multi-farm or multi-user support

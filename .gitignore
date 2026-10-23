@@ -16,3 +16,6 @@ firmware/esp32/include/config.h
 .pio/
 .vscode/
 .DS_Store
+
+# web UI click-through output
+ui-shots/

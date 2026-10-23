@@ -35,6 +35,8 @@ export function loadConfig(env = process.env) {
     appToken, registry,
     logDir: env.LOG_DIR || 'logs',
     logLevel: env.LOG_LEVEL || 'warn',
+    uiEnabled: !['0', 'false', 'off', 'no'].includes(String(env.UI_ENABLED ?? '1').toLowerCase()),   // serve the web UI at / (static files + local-only /ui/api proxy)
+    uiAllowRemote: ['1', 'true', 'on', 'yes'].includes(String(env.UI_ALLOW_REMOTE ?? '0').toLowerCase()),   // let non-loopback clients use the /ui/api proxy (OFF by default)
     problems,
   };
 }

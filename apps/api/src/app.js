@@ -7,6 +7,7 @@ import { OeError } from './oe/client.js';
 import { proposeAction, computeInsight } from './ai/advise.js';
 import { CONFIRM_TTL_SECONDS, FUTURE_SKEW_MINUTES, READINGS_FOR_AI, AUDIT_TIMEOUT_MS } from './config.js';
 import { isValidIsoTimestamp } from './iso.js';
+import { registerUi } from './ui.js';
 
 const PREFIX = '/api/v1';
 const safeEqual = (a, b) => {
@@ -182,6 +183,8 @@ export function buildApp({ config, oe, provider, clock = () => new Date() }) {
     const r = await oeCall(req, 'oe.reject_suggestion', 'POST', `/farm/suggestions/${id}/decision`, { decision: 'reject', actor: 'farmer', requestId: req.id, asOf: clock().toISOString() });
     return reply.code(r.status).send(r.status < 400 ? r.body : { ...r.body, requestId: req.id });
   });
+
+  if (config.uiEnabled) registerUi(app, { config, oe, provider, clock, oeCall, fail });
 
   return app;
 }
