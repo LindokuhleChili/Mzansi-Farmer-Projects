@@ -1,0 +1,4 @@
+# Secrets: Wi-Fi credentials, device token, API URL. Copy include/config.example.h to include/config.h
+include/config.h
+.pio/
+.vscode/
