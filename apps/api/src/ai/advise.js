@@ -68,12 +68,30 @@ export async function proposeAction(provider, ctx, lang) {
     const allowed = allowedNumbers(ctx, proposal);
     const bad = numbersIn(proposal.reason).filter((n) => !allowed.has(n));
     if (bad.length) {
-      proposal = { ...proposal, reason: deterministicProposal(ctx, lang).reason };
+      proposal = { ...proposal, reason: templateReason(ctx, proposal, lang) };
       ai.reasonReplaced = true; ai.reasonReplacedBecause = `explanation contained numbers not found in OpenEdge data: ${bad.join(', ')}`;
     }
   }
   ai.note = "AI-generated suggestion. The numbers in 'facts' come from OpenEdge; the rules decide if it is allowed; the farmer approves.";
   return { proposal, ai };
+}
+
+// Explanation built only from OpenEdge numbers and the proposal's own action/litres (used when the model's wording is not trusted).
+export function templateReason(ctx, proposal, lang) {
+  const { plot, latest } = ctx;
+  const n = plot.plotName;
+  const m = latest ? latest.soilMoisturePct : null;
+  const zu = lang === 'zu';
+  if (proposal.action === 'irrigate') {
+    return zu
+      ? `Umswakama e-${n} ungu-${m}%, umkhawulo wokomisa ungu-${plot.dryThresholdPct}%. Kuphakanyiswa ukunisela ama-litha angu-${proposal.litres}. (Umbhalo wesiZulu uyidrafti, udinga ukubuyekezwa.)`
+      : `Soil moisture on ${n} is ${m}% and the dry threshold is ${plot.dryThresholdPct}%. Proposed: irrigate ${proposal.litres} L.`;
+  }
+  if (proposal.action === 'hold') {
+    return zu ? `Kuphakanyiswa ukungasiseli e-${n} okwamanje.${m === null ? '' : ` Umswakama ungu-${m}%.`}`
+              : `Proposed: hold irrigation on ${n} for now.${m === null ? '' : ` Soil moisture is ${m}%.`}`;
+  }
+  return zu ? `Kuphakanyiswa ukuthi umlimi ahlole i-${n}.` : `Proposed: the farmer should check ${n}.`;
 }
 
 function extractJson(raw) {
