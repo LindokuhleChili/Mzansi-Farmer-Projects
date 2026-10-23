@@ -1,5 +1,6 @@
 // Runs eval/device-cases.json then eval/api-cases.json against the API app, in-process (Fastify inject).
-// usage: node eval/run-api.mjs [--oe=mock|pasoe-mock]   (pasoe-mock = real HTTP PASOE client path against the mock-pasoe HTTP server)
+// usage: node eval/run-api.mjs [--oe=mock|pasoe-mock|pasoe-real]  (pasoe-real = OE_BASE_URL, a real PASOE; reseed first)
+// usage (orig): node eval/run-api.mjs [--oe=mock|pasoe-mock]   (pasoe-mock = real HTTP PASOE client path against the mock-pasoe HTTP server)
 import { readFileSync } from 'node:fs';
 import { mkdtempSync, readFileSync as rf } from 'node:fs';
 import { tmpdir } from 'node:os';
@@ -9,6 +10,7 @@ import { createOeClient } from '../apps/api/src/oe/client.js';
 import { createMockProvider } from '../apps/api/src/ai/provider.js';
 import { buildApp } from '../apps/api/src/app.js';
 import { createMockServer } from '../mock-pasoe/server.js';
+import { pathToFileURL } from 'node:url';
 import { report } from './match.mjs';
 
 export async function runApiSuites(mode = 'mock') {
@@ -20,7 +22,10 @@ export async function runApiSuites(mode = 'mock') {
     AI_PROVIDER: 'mock', LOG_LEVEL: 'silent', LOG_DIR: mkdtempSync(join(tmpdir(), 'mfo-logs-')),
   };
   let server;
-  if (mode !== 'mock') {
+  if (mode === 'pasoe-real') {
+    env.OE_BASE_URL = process.env.OE_BASE_URL || 'http://localhost:8820/web';
+    if (process.env.OE_AUTH) env.OE_AUTH = process.env.OE_AUTH;
+  } else if (mode !== 'mock') {
     server = createMockServer();
     await new Promise((r) => server.listen(0, '127.0.0.1', r));
     env.OE_BASE_URL = `http://127.0.0.1:${server.address().port}/web`;
@@ -62,7 +67,7 @@ export async function runApiSuites(mode = 'mock') {
   return out;
 }
 
-if (import.meta.url === `file://${process.argv[1]}`) {
+if (import.meta.url === pathToFileURL(process.argv[1]).href) {
   const mode = (process.argv.find((a) => a.startsWith('--oe=')) || '--oe=mock').slice(5);
   const suites = await runApiSuites(mode);
   let bad = 0;

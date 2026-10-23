@@ -12,6 +12,8 @@
     "gen-seed": "node scripts/gen-seed.mjs",
     "test": "node eval/run-all.mjs",
     "test:oe-mock": "node eval/run-oe-mock.mjs",
+    "test:oe-http": "node eval/run-oe-http.mjs",
+    "test:api-real-oe": "node eval/run-api.mjs --oe=pasoe-real",
     "demo": "node scripts/demo.mjs"
   },
   "dependencies": {
