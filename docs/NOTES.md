@@ -173,3 +173,5 @@ The API must run on the same machine as PASOE (or be given a reachable `OE_BASE_
 ## 9. Secrets
 
 `.env`, `firmware/esp32/include/config.h`, logs and build output are gitignored. Keys and tokens are only read from the environment. Nothing in the repository or its history contains an API key, Wi-Fi name or password. Run the secrets sweep before every push.
+
+> Test push via laptop git (24 Oct 2026): harmless note, no code change.
