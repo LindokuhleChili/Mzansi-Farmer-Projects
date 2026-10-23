@@ -6,7 +6,7 @@
    .\scripts\oe-run.ps1 -Action test             # reseed, then run the contract cases against the real ABL rules
 #>
 param(
-  [ValidateSet('load-schema','seed','test','start-db','stop-db')][string]$Action = 'test',
+  [ValidateSet('load-schema','scratch-schema','seed','test','start-db','stop-db')][string]$Action = 'test',
   [string]$Dlc = $(if ($env:DLC) { $env:DLC } else { 'C:\Progress\OpenEdge' }),
   [string]$DbDir = $(if ($env:FARM_DB_DIR) { $env:FARM_DB_DIR } else { 'C:\OpenEdge\WRK\farm' }),
   [int]$Port = 20000
@@ -22,7 +22,13 @@ function Invoke-Abl($prog, $param, $extra = @()) {
   try { & $pro @extra -p $prog -param $param 2>&1 } finally { Pop-Location }
 }
 switch ($Action) {
-  'start-db' { & (Join-Path $Dlc 'bin\proserve.bat') (Join-Path $DbDir 'farm') -S $Port }
+  'start-db' { Start-Process -FilePath (Join-Path $Dlc 'bin\proserve.bat') -ArgumentList 'farm','-S',"$Port" -WorkingDirectory $DbDir -WindowStyle Hidden }
+  'scratch-schema' {
+    # dry-run the .df files into a throw-away empty database (does not touch the real farm DB or stop the server)
+    $sd = Join-Path (Split-Path -Parent $DbDir) 'scratch'; Remove-Item $sd -Recurse -Force -ErrorAction SilentlyContinue; New-Item -ItemType Directory $sd | Out-Null
+    Push-Location $sd; & (Join-Path $Dlc 'bin\prodb.exe') scratch empty | Out-Null; Pop-Location
+    foreach ($df in '001-farm.df','002-farm-ops.df') { Invoke-Abl 'load-schema.p' (Join-Path $repo "openedge\schema\$df") @('-b','-db',(Join-Path $sd 'scratch'),'-1') }
+  }
   'stop-db'  { & (Join-Path $Dlc 'bin\proshut.bat') (Join-Path $DbDir 'farm') -by }
   'load-schema' {
     foreach ($df in 'openedge\schema\002-farm-ops.df') {

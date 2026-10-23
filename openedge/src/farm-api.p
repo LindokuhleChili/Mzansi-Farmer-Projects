@@ -79,7 +79,7 @@ PROCEDURE audit:
     DEFINE OUTPUT PARAMETER piId       AS INTEGER NO-UNDO.
     CREATE AuditLog.
     ASSIGN AuditLog.AuditId   = NEXT-VALUE(AuditSeq)
-           AuditLog.At        = (IF ptAt = ? THEN NOW ELSE ptAt)
+           AuditLog.LoggedAt        = (IF ptAt = ? THEN NOW ELSE ptAt)
            AuditLog.RequestId = pcRequestId
            AuditLog.Actor     = pcActor
            AuditLog.Event     = pcEvent
@@ -137,7 +137,7 @@ FUNCTION fSuggJson RETURNS JsonObject (INPUT piId AS INTEGER):
     jo:Add("litres", AiSuggestion.Litres).
     jo:Add("reason", AiSuggestion.Reason).
     jo:Add("provider", AiSuggestion.Provider).
-    jo:Add("status", AiSuggestion.Status).
+    jo:Add("status", AiSuggestion.SuggStatus).
     jo:Add("verdict", AiSuggestion.Verdict).
     IF AiSuggestion.RejectReasons > "" THEN DO:
         oParser = NEW ObjectModelParser().
@@ -160,6 +160,8 @@ PROCEDURE do-validate:
     DEFINE INPUT  PARAMETER ptAsOf   AS DATETIME-TZ NO-UNDO.
     DEFINE OUTPUT PARAMETER poResult AS JsonObject NO-UNDO.
 
+    /* explicit buffer: the caller (h-decision) may hold an exclusive lock on AiSuggestion */
+    DEFINE BUFFER bSugg FOR AiSuggestion.
     DEFINE VARIABLE joFacts   AS JsonObject NO-UNDO.
     DEFINE VARIABLE jaReasons AS JsonArray  NO-UNDO.
     DEFINE VARIABLE iAge      AS INTEGER NO-UNDO.
@@ -192,10 +194,10 @@ PROCEDURE do-validate:
     lIrrigate = (pcAction = "irrigate").
 
     /* water used in the budget window (approved suggestions only) */
-    FOR EACH AiSuggestion NO-LOCK WHERE AiSuggestion.PlotId = piPlotId
-         AND AiSuggestion.Status = "approved"
-         AND AiSuggestion.DecidedAt >= ADD-INTERVAL(ptAsOf, - {&BUDGET_WINDOW_DAYS}, "days"):
-        dUsed = dUsed + AiSuggestion.Litres.
+    FOR EACH bSugg NO-LOCK WHERE bSugg.PlotId = piPlotId
+         AND bSugg.SuggStatus = "approved"
+         AND bSugg.DecidedAt >= ADD-INTERVAL(ptAsOf, - {&BUDGET_WINDOW_DAYS}, "days"):
+        dUsed = dUsed + bSugg.Litres.
     END.
     joFacts:Add("usedLast7DaysL", dUsed).
 
@@ -291,7 +293,7 @@ PROCEDURE h-readings:
     DEFINE VARIABLE jo AS JsonObject NO-UNDO.
     DEFINE VARIABLE jr AS JsonObject NO-UNDO.
     DEFINE VARIABLE iLimit AS INTEGER NO-UNDO INITIAL 20.
-    DEFINE VARIABLE iN AS INTEGER NO-UNDO INITIAL 0.
+    DEFINE VARIABLE iCnt AS INTEGER NO-UNDO INITIAL 0.
     DEFINE VARIABLE cLim AS CHARACTER NO-UNDO.
     FIND Plot WHERE Plot.PlotId = piId NO-LOCK NO-ERROR.
     IF NOT AVAILABLE Plot THEN DO:
@@ -303,8 +305,8 @@ PROCEDURE h-readings:
     IF iLimit < 1 OR iLimit > 500 THEN iLimit = 20.
     ja = NEW JsonArray().
     FOR EACH SensorReading NO-LOCK WHERE SensorReading.PlotId = piId USE-INDEX PlotReadAt:
-        iN = iN + 1.
-        IF iN > iLimit THEN LEAVE.
+        iCnt = iCnt + 1.
+        IF iCnt > iLimit THEN LEAVE.
         jr = NEW JsonObject().
         jr:Add("readingId", SensorReading.ReadingId).
         jr:Add("deviceId", SensorReading.DeviceId).
@@ -471,7 +473,7 @@ PROCEDURE h-create-suggestion:
            AiSuggestion.Litres        = INTEGER(dLit)
            AiSuggestion.Reason        = SUBSTRING(cReason, 1, 1000)
            AiSuggestion.Provider      = cProv
-           AiSuggestion.Status        = (IF lApproved THEN "pending_approval" ELSE "rejected")
+           AiSuggestion.SuggStatus        = (IF lApproved THEN "pending_approval" ELSE "rejected")
            AiSuggestion.Verdict       = joV:GetCharacter("verdict")
            AiSuggestion.RejectReasons = SUBSTRING(STRING(cJson), 1, 2000)
            AiSuggestion.RequestId     = cReq.
@@ -490,7 +492,7 @@ PROCEDURE h-list-suggestions:
     cStatus = fQuery("status").
     ja = NEW JsonArray().
     FOR EACH AiSuggestion NO-LOCK BY AiSuggestion.SuggestionId DESC:
-        IF cStatus <> ? AND AiSuggestion.Status <> cStatus THEN NEXT.
+        IF cStatus <> ? AND AiSuggestion.SuggStatus <> cStatus THEN NEXT.
         ja:Add(fSuggJson(AiSuggestion.SuggestionId)).
     END.
     jo = NEW JsonObject().
@@ -519,6 +521,9 @@ PROCEDURE h-decision:
     DEFINE VARIABLE cJson AS LONGCHAR NO-UNDO.
     DEFINE VARIABLE iAud AS INTEGER NO-UNDO.
     DEFINE VARIABLE cEvent AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE iSPlot AS INTEGER NO-UNDO.
+    DEFINE VARIABLE cSAct AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE dSLit AS DECIMAL NO-UNDO.
 
     RUN get-str (goBody, "decision", OUTPUT cDec, OUTPUT lOk).
     IF NOT lOk OR LOOKUP(cDec, "approve,reject,delete") = 0 THEN DO:
@@ -534,50 +539,64 @@ PROCEDURE h-decision:
             RUN reply-error (400, "VALIDATION_ERROR", "asOf must be ISO 8601 UTC.", "asOf"). RETURN.
         END.
     END.
-    FIND AiSuggestion WHERE AiSuggestion.SuggestionId = piId EXCLUSIVE-LOCK NO-ERROR.
+    /* read with NO-LOCK first (the rules read other AiSuggestion rows); take the exclusive lock only to write */
+    FIND AiSuggestion WHERE AiSuggestion.SuggestionId = piId NO-LOCK NO-ERROR.
     IF NOT AVAILABLE AiSuggestion THEN DO:
         RUN reply-error (404, "SUGGESTION_NOT_FOUND", SUBSTITUTE("No suggestion with id &1.", piId), ?). RETURN.
     END.
 
     CASE cDec:
         WHEN "approve" THEN DO:
-            IF AiSuggestion.Status = "rejected" THEN DO:
+            IF AiSuggestion.SuggStatus = "rejected" THEN DO:
                 RUN reply-error (409, "NOT_APPROVABLE", "This suggestion was rejected by the rules and cannot be approved.", ?). RETURN.
             END.
-            IF AiSuggestion.Status <> "pending_approval" THEN DO:
-                RUN reply-error (409, "ALREADY_DECIDED", SUBSTITUTE("Suggestion is already &1.", AiSuggestion.Status), ?). RETURN.
+            IF AiSuggestion.SuggStatus <> "pending_approval" THEN DO:
+                RUN reply-error (409, "ALREADY_DECIDED", SUBSTITUTE("Suggestion is already &1.", AiSuggestion.SuggStatus), ?). RETURN.
             END.
             /* re-run the rules now: the data may have changed since the proposal */
-            RUN do-validate (AiSuggestion.PlotId, AiSuggestion.Action, AiSuggestion.Litres, tAsOf, OUTPUT joV).
+            ASSIGN iSPlot = AiSuggestion.PlotId cSAct = AiSuggestion.Action dSLit = AiSuggestion.Litres.
+            RUN do-validate (iSPlot, cSAct, dSLit, tAsOf, OUTPUT joV).
+            FIND CURRENT AiSuggestion EXCLUSIVE-LOCK NO-WAIT NO-ERROR.
+            IF NOT AVAILABLE AiSuggestion THEN DO:
+                RUN reply-error (409, "RECORD_LOCKED", "The suggestion is being changed by someone else. Try again.", ?). RETURN.
+            END.
             IF joV:GetCharacter("verdict") <> "approved_by_rules" THEN DO:
                 joV:GetJsonArray("rejectReasons"):Write(INPUT-OUTPUT cJson, FALSE).
-                ASSIGN AiSuggestion.Status = "rejected"
+                ASSIGN AiSuggestion.SuggStatus = "rejected"
                        AiSuggestion.Verdict = "rejected_by_rules"
                        AiSuggestion.RejectReasons = SUBSTRING(STRING(cJson), 1, 2000)
                        AiSuggestion.DecidedAt = tAsOf.
                 RUN audit (cReq, cActor, "approve_blocked_by_rules", SUBSTITUTE("suggestion &1", piId), tAsOf, OUTPUT iAud).
                 jo = fSuggJson(piId).
-                jo:Set("error", "NOT_APPROVABLE").
+                jo:Add("error", "NOT_APPROVABLE").
                 RUN reply (409, jo). RETURN.
             END.
-            ASSIGN AiSuggestion.Status = "approved" AiSuggestion.DecidedAt = tAsOf.
+            ASSIGN AiSuggestion.SuggStatus = "approved" AiSuggestion.DecidedAt = tAsOf.
             cEvent = "suggestion_approved".
         END.
         WHEN "reject" THEN DO:
-            IF AiSuggestion.Status <> "pending_approval" THEN DO:
-                RUN reply-error (409, "ALREADY_DECIDED", SUBSTITUTE("Suggestion is already &1.", AiSuggestion.Status), ?). RETURN.
+            IF AiSuggestion.SuggStatus <> "pending_approval" THEN DO:
+                RUN reply-error (409, "ALREADY_DECIDED", SUBSTITUTE("Suggestion is already &1.", AiSuggestion.SuggStatus), ?). RETURN.
             END.
-            ASSIGN AiSuggestion.Status = "declined" AiSuggestion.DecidedAt = tAsOf.
+            FIND CURRENT AiSuggestion EXCLUSIVE-LOCK NO-WAIT NO-ERROR.
+            IF NOT AVAILABLE AiSuggestion THEN DO:
+                RUN reply-error (409, "RECORD_LOCKED", "The suggestion is being changed by someone else. Try again.", ?). RETURN.
+            END.
+            ASSIGN AiSuggestion.SuggStatus = "declined" AiSuggestion.DecidedAt = tAsOf.
             cEvent = "suggestion_declined".
         END.
         WHEN "delete" THEN DO:
-            IF AiSuggestion.Status = "approved" THEN DO:
+            IF AiSuggestion.SuggStatus = "approved" THEN DO:
                 RUN reply-error (409, "CANNOT_DELETE_APPROVED", "Approved suggestions count against the water budget and cannot be deleted.", ?). RETURN.
             END.
-            IF AiSuggestion.Status = "deleted" THEN DO:
+            IF AiSuggestion.SuggStatus = "deleted" THEN DO:
                 RUN reply-error (409, "ALREADY_DECIDED", "Suggestion is already deleted.", ?). RETURN.
             END.
-            ASSIGN AiSuggestion.Status = "deleted" AiSuggestion.DecidedAt = tAsOf.
+            FIND CURRENT AiSuggestion EXCLUSIVE-LOCK NO-WAIT NO-ERROR.
+            IF NOT AVAILABLE AiSuggestion THEN DO:
+                RUN reply-error (409, "RECORD_LOCKED", "The suggestion is being changed by someone else. Try again.", ?). RETURN.
+            END.
+            ASSIGN AiSuggestion.SuggStatus = "deleted" AiSuggestion.DecidedAt = tAsOf.
             cEvent = "suggestion_deleted".
         END.
     END CASE.
@@ -616,18 +635,18 @@ PROCEDURE h-list-audit:
     DEFINE VARIABLE jo AS JsonObject NO-UNDO.
     DEFINE VARIABLE je AS JsonObject NO-UNDO.
     DEFINE VARIABLE iLimit AS INTEGER NO-UNDO INITIAL 50.
-    DEFINE VARIABLE iN AS INTEGER NO-UNDO INITIAL 0.
+    DEFINE VARIABLE iCnt AS INTEGER NO-UNDO INITIAL 0.
     DEFINE VARIABLE cLim AS CHARACTER NO-UNDO.
     cLim = fQuery("limit").
     IF cLim <> ? THEN iLimit = INTEGER(cLim) NO-ERROR.
     IF iLimit < 1 OR iLimit > 500 THEN iLimit = 50.
     ja = NEW JsonArray().
     FOR EACH AuditLog NO-LOCK BY AuditLog.AuditId DESC:
-        iN = iN + 1.
-        IF iN > iLimit THEN LEAVE.
+        iCnt = iCnt + 1.
+        IF iCnt > iLimit THEN LEAVE.
         je = NEW JsonObject().
         je:Add("auditId", AuditLog.AuditId).
-        je:Add("at", fIso(AuditLog.At)).
+        je:Add("at", fIso(AuditLog.LoggedAt)).
         je:Add("requestId", AuditLog.RequestId).
         je:Add("actor", AuditLog.Actor).
         je:Add("event", AuditLog.Event).
@@ -693,12 +712,18 @@ PROCEDURE dispatch:
 END PROCEDURE.
 
 /* ---------- main ---------- */
+DEFINE VARIABLE iMsg AS INTEGER NO-UNDO.
+DEFINE VARIABLE cErrText AS CHARACTER NO-UNDO INITIAL "".
 DO ON ERROR UNDO, LEAVE:
     RUN dispatch NO-ERROR.
     IF ERROR-STATUS:ERROR OR goResp = ? THEN DO:
+        DO iMsg = 1 TO ERROR-STATUS:NUM-MESSAGES:
+            cErrText = cErrText + (IF cErrText = "" THEN "" ELSE " | ") + ERROR-STATUS:GET-MESSAGE(iMsg).
+        END.
+        IF cErrText = "" THEN cErrText = "Unexpected error".
         goResp = NEW JsonObject().
         goResp:Add("error", "INTERNAL_ERROR").
-        goResp:Add("message", (IF ERROR-STATUS:NUM-MESSAGES > 0 THEN ERROR-STATUS:GET-MESSAGE(1) ELSE "Unexpected error")).
+        goResp:Add("message", cErrText).
         giStatus = 500.
     END.
 END.

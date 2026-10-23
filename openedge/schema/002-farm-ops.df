@@ -281,7 +281,7 @@ ADD FIELD "Provider" OF "AiSuggestion" AS character
   MAX-WIDTH 60
   ORDER 80
 
-ADD FIELD "Status" OF "AiSuggestion" AS character
+ADD FIELD "SuggStatus" OF "AiSuggestion" AS character
   FORMAT "x(20)"
   INITIAL ""
   LABEL "Status"
@@ -323,7 +323,7 @@ ADD INDEX "SuggestionId" ON "AiSuggestion"
 ADD INDEX "PlotStatus" ON "AiSuggestion"
   AREA "Schema Area"
   INDEX-FIELD "PlotId" ASCENDING
-  INDEX-FIELD "Status" ASCENDING
+  INDEX-FIELD "SuggStatus" ASCENDING
   INDEX-FIELD "DecidedAt" DESCENDING
 
 ADD TABLE "AuditLog"
@@ -340,7 +340,7 @@ ADD FIELD "AuditId" OF "AuditLog" AS integer
   ORDER 10
   MANDATORY
 
-ADD FIELD "At" OF "AuditLog" AS datetime-tz
+ADD FIELD "LoggedAt" OF "AuditLog" AS datetime-tz
   FORMAT "99/99/9999 HH:MM:SS.SSS+HH:MM"
   INITIAL "?"
   LABEL "At"

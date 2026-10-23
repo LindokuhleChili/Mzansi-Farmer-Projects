@@ -69,7 +69,7 @@ DO TRANSACTION:
                AiSuggestion.DecidedAt = fParseIso(jo:GetCharacter("decidedAt"))
                AiSuggestion.Action = jo:GetCharacter("action") AiSuggestion.Litres = jo:GetInteger("litres")
                AiSuggestion.Reason = jo:GetCharacter("reason") AiSuggestion.Provider = jo:GetCharacter("provider")
-               AiSuggestion.Status = jo:GetCharacter("status") AiSuggestion.Verdict = jo:GetCharacter("verdict")
+               AiSuggestion.SuggStatus = jo:GetCharacter("status") AiSuggestion.Verdict = jo:GetCharacter("verdict")
                AiSuggestion.RejectReasons = "[]" AiSuggestion.RequestId = "seed".
         iSugg = iSugg + 1.
     END.

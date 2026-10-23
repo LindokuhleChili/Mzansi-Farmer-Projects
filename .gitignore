@@ -7,3 +7,5 @@ eval/abl-results.json
 eval/results/
 logs/
 *.zip
+*.r
+*.e
