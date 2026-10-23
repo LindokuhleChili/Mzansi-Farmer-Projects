@@ -1,0 +1,27 @@
+{
+  "label": "EXAMPLE DATA: fictional co-op members, credit, harvest lots and buyer contracts for the hackathon demo. No real people, buyers or prices.",
+  "referenceTime": "2026-10-23T08:10:00Z",
+  "members": [
+    { "memberId": 1, "memberName": "Nomsa Dlamini (example)", "location": "Greytown, KZN (example)", "preferredLang": "zu", "creditLimit": 5000 },
+    { "memberId": 2, "memberName": "Sipho Ndlovu (example)", "location": "Bergville, KZN (example)", "preferredLang": "zu", "creditLimit": 3000 },
+    { "memberId": 3, "memberName": "Thandi Mkhize (example)", "location": "Estcourt, KZN (example)", "preferredLang": "en", "creditLimit": 4000 },
+    { "memberId": 4, "memberName": "Pieter van Wyk (example)", "location": "Vryburg, NW (example)", "preferredLang": "en", "creditLimit": 6000 }
+  ],
+  "credits": [
+    { "memberId": 1, "item": "Maize seed and fertiliser (example)", "amount": 2500, "repaidAmount": 0, "status": "approved", "createdAt": "2026-10-01T08:00:00Z", "decidedAt": "2026-10-01T08:05:00Z" },
+    { "memberId": 1, "item": "Bean seed (example)", "amount": 1350, "repaidAmount": 0, "status": "approved", "createdAt": "2026-10-05T08:00:00Z", "decidedAt": "2026-10-05T08:05:00Z" },
+    { "memberId": 3, "item": "Fertiliser (example)", "amount": 1000, "repaidAmount": 0, "status": "approved", "createdAt": "2026-10-06T08:00:00Z", "decidedAt": "2026-10-06T08:05:00Z" }
+  ],
+  "lots": [
+    { "lotCode": "HL-0042", "crop": "Maize", "contributions": [ { "memberId": 1, "kg": 1200 }, { "memberId": 2, "kg": 800 }, { "memberId": 3, "kg": 400 } ] },
+    { "lotCode": "HL-0043", "crop": "Maize", "contributions": [ { "memberId": 4, "kg": 1000 } ] },
+    { "lotCode": "HL-0044", "crop": "Beans", "contributions": [ { "memberId": 2, "kg": 300 }, { "memberId": 4, "kg": 150 } ] }
+  ],
+  "contracts": [
+    { "contractCode": "BC-0101", "buyerName": "Greytown Fresh Market (example)", "crop": "Maize", "quantityKg": 2000, "pricePerKg": 9.8, "status": "open" },
+    { "contractCode": "BC-0102", "buyerName": "Estcourt Grain Co (example)", "crop": "Maize", "quantityKg": 1000, "pricePerKg": 9.5, "status": "open" },
+    { "contractCode": "BC-0103", "buyerName": "Bergville Veg Traders (example)", "crop": "Beans", "quantityKg": 500, "pricePerKg": 22, "status": "open" },
+    { "contractCode": "BC-0104", "buyerName": "Old Mill Buyers (example)", "crop": "Maize", "quantityKg": 500, "pricePerKg": 9, "status": "closed" },
+    { "contractCode": "BC-0105", "buyerName": "Ladysmith Greens (example)", "crop": "Beans", "quantityKg": 300, "pricePerKg": 21.5, "status": "open" }
+  ]
+}

@@ -1,0 +1,654 @@
+ADD SEQUENCE "MemberSeq"
+  INITIAL 0
+  INCREMENT 1
+  CYCLE-ON-LIMIT no
+  MIN-VAL 0
+
+ADD SEQUENCE "CreditSeq"
+  INITIAL 0
+  INCREMENT 1
+  CYCLE-ON-LIMIT no
+  MIN-VAL 0
+
+ADD SEQUENCE "LotSeq"
+  INITIAL 0
+  INCREMENT 1
+  CYCLE-ON-LIMIT no
+  MIN-VAL 0
+
+ADD SEQUENCE "ContractSeq"
+  INITIAL 0
+  INCREMENT 1
+  CYCLE-ON-LIMIT no
+  MIN-VAL 0
+
+ADD SEQUENCE "AllocationSeq"
+  INITIAL 0
+  INCREMENT 1
+  CYCLE-ON-LIMIT no
+  MIN-VAL 0
+
+ADD SEQUENCE "PayoutSeq"
+  INITIAL 0
+  INCREMENT 1
+  CYCLE-ON-LIMIT no
+  MIN-VAL 0
+
+ADD TABLE "Member"
+  AREA "Schema Area"
+  DESCRIPTION "A co-op member (farmer) with a credit limit in Rand. Example data only"
+  DUMP-NAME "member"
+
+ADD FIELD "MemberId" OF "Member" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Member Id"
+  POSITION 2
+  MAX-WIDTH 4
+  ORDER 10
+  MANDATORY
+
+ADD FIELD "MemberName" OF "Member" AS character
+  FORMAT "x(60)"
+  INITIAL ""
+  LABEL "Member name"
+  POSITION 3
+  MAX-WIDTH 120
+  ORDER 20
+  MANDATORY
+
+ADD FIELD "Location" OF "Member" AS character
+  FORMAT "x(40)"
+  INITIAL ""
+  LABEL "Location"
+  POSITION 4
+  MAX-WIDTH 80
+  ORDER 30
+
+ADD FIELD "PreferredLang" OF "Member" AS character
+  FORMAT "x(5)"
+  INITIAL "en"
+  LABEL "Preferred language"
+  POSITION 5
+  MAX-WIDTH 10
+  ORDER 40
+
+ADD FIELD "CreditLimit" OF "Member" AS decimal
+  FORMAT "->>>,>>>,>>9.99"
+  INITIAL "0"
+  LABEL "Credit limit (R)"
+  POSITION 6
+  MAX-WIDTH 17
+  DECIMALS 2
+  ORDER 50
+  MANDATORY
+
+ADD FIELD "IsExample" OF "Member" AS logical
+  FORMAT "yes/no"
+  INITIAL "yes"
+  LABEL "Example data"
+  POSITION 7
+  MAX-WIDTH 1
+  ORDER 60
+
+ADD INDEX "MemberId" ON "Member"
+  AREA "Schema Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "MemberId" ASCENDING
+
+ADD TABLE "InputCredit"
+  AREA "Schema Area"
+  DESCRIPTION "An input credit order (seed, fertiliser) for a member. Rules decide if it is within the member limit. Example data only"
+  DUMP-NAME "credit"
+
+ADD FIELD "CreditId" OF "InputCredit" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Credit Id"
+  POSITION 2
+  MAX-WIDTH 4
+  ORDER 10
+  MANDATORY
+
+ADD FIELD "MemberId" OF "InputCredit" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Member Id"
+  POSITION 3
+  MAX-WIDTH 4
+  ORDER 20
+  MANDATORY
+
+ADD FIELD "Item" OF "InputCredit" AS character
+  FORMAT "x(80)"
+  INITIAL ""
+  LABEL "Item"
+  POSITION 4
+  MAX-WIDTH 160
+  ORDER 30
+
+ADD FIELD "Amount" OF "InputCredit" AS decimal
+  FORMAT "->>>,>>>,>>9.99"
+  INITIAL "0"
+  LABEL "Amount (R)"
+  POSITION 5
+  MAX-WIDTH 17
+  DECIMALS 2
+  ORDER 40
+  MANDATORY
+
+ADD FIELD "RepaidAmount" OF "InputCredit" AS decimal
+  FORMAT "->>>,>>>,>>9.99"
+  INITIAL "0"
+  LABEL "Repaid (R)"
+  POSITION 6
+  MAX-WIDTH 17
+  DECIMALS 2
+  ORDER 50
+
+ADD FIELD "CreditStatus" OF "InputCredit" AS character
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "Status"
+  POSITION 7
+  MAX-WIDTH 40
+  ORDER 60
+  MANDATORY
+
+ADD FIELD "Verdict" OF "InputCredit" AS character
+  FORMAT "x(30)"
+  INITIAL ""
+  LABEL "Rule verdict"
+  POSITION 8
+  MAX-WIDTH 60
+  ORDER 70
+
+ADD FIELD "RejectReasons" OF "InputCredit" AS character
+  FORMAT "x(2000)"
+  INITIAL ""
+  LABEL "Reject reasons (JSON)"
+  POSITION 9
+  MAX-WIDTH 4000
+  ORDER 80
+
+ADD FIELD "CreatedAt" OF "InputCredit" AS datetime-tz
+  FORMAT "99/99/9999 HH:MM:SS.SSS+HH:MM"
+  INITIAL "?"
+  LABEL "Created at"
+  POSITION 10
+  MAX-WIDTH 8
+  ORDER 90
+  MANDATORY
+
+ADD FIELD "DecidedAt" OF "InputCredit" AS datetime-tz
+  FORMAT "99/99/9999 HH:MM:SS.SSS+HH:MM"
+  INITIAL "?"
+  LABEL "Decided at"
+  POSITION 11
+  MAX-WIDTH 8
+  ORDER 100
+
+ADD FIELD "RequestId" OF "InputCredit" AS character
+  FORMAT "x(40)"
+  INITIAL ""
+  LABEL "Request Id"
+  POSITION 12
+  MAX-WIDTH 80
+  ORDER 110
+
+ADD INDEX "CreditId" ON "InputCredit"
+  AREA "Schema Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "CreditId" ASCENDING
+
+ADD INDEX "MemberStatus" ON "InputCredit"
+  AREA "Schema Area"
+  INDEX-FIELD "MemberId" ASCENDING
+  INDEX-FIELD "CreditStatus" ASCENDING
+
+ADD TABLE "HarvestLot"
+  AREA "Schema Area"
+  DESCRIPTION "A pooled harvest lot of one crop (quantity in whole kg). Example data only"
+  DUMP-NAME "lot"
+
+ADD FIELD "LotId" OF "HarvestLot" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Lot Id"
+  POSITION 2
+  MAX-WIDTH 4
+  ORDER 10
+  MANDATORY
+
+ADD FIELD "LotCode" OF "HarvestLot" AS character
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "Lot code"
+  POSITION 3
+  MAX-WIDTH 40
+  ORDER 20
+  MANDATORY
+
+ADD FIELD "Crop" OF "HarvestLot" AS character
+  FORMAT "x(30)"
+  INITIAL ""
+  LABEL "Crop"
+  POSITION 4
+  MAX-WIDTH 60
+  ORDER 30
+  MANDATORY
+
+ADD FIELD "QuantityKg" OF "HarvestLot" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Quantity (kg)"
+  POSITION 5
+  MAX-WIDTH 4
+  ORDER 40
+  MANDATORY
+
+ADD FIELD "IsExample" OF "HarvestLot" AS logical
+  FORMAT "yes/no"
+  INITIAL "yes"
+  LABEL "Example data"
+  POSITION 6
+  MAX-WIDTH 1
+  ORDER 50
+
+ADD INDEX "LotId" ON "HarvestLot"
+  AREA "Schema Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "LotId" ASCENDING
+
+ADD INDEX "LotCode" ON "HarvestLot"
+  AREA "Schema Area"
+  UNIQUE
+  INDEX-FIELD "LotCode" ASCENDING
+
+ADD TABLE "LotContribution"
+  AREA "Schema Area"
+  DESCRIPTION "How many kg each member contributed to a harvest lot (basis for the pro rata payout split). Example data only"
+  DUMP-NAME "lotcontr"
+
+ADD FIELD "LotId" OF "LotContribution" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Lot Id"
+  POSITION 2
+  MAX-WIDTH 4
+  ORDER 10
+  MANDATORY
+
+ADD FIELD "MemberId" OF "LotContribution" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Member Id"
+  POSITION 3
+  MAX-WIDTH 4
+  ORDER 20
+  MANDATORY
+
+ADD FIELD "Kg" OF "LotContribution" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Contributed (kg)"
+  POSITION 4
+  MAX-WIDTH 4
+  ORDER 30
+  MANDATORY
+
+ADD INDEX "LotMember" ON "LotContribution"
+  AREA "Schema Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "LotId" ASCENDING
+  INDEX-FIELD "MemberId" ASCENDING
+
+ADD TABLE "BuyerContract"
+  AREA "Schema Area"
+  DESCRIPTION "A buyer contract: crop, quantity in kg and price per kg in Rand. Example data only"
+  DUMP-NAME "contract"
+
+ADD FIELD "ContractId" OF "BuyerContract" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Contract Id"
+  POSITION 2
+  MAX-WIDTH 4
+  ORDER 10
+  MANDATORY
+
+ADD FIELD "ContractCode" OF "BuyerContract" AS character
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "Contract code"
+  POSITION 3
+  MAX-WIDTH 40
+  ORDER 20
+  MANDATORY
+
+ADD FIELD "BuyerName" OF "BuyerContract" AS character
+  FORMAT "x(60)"
+  INITIAL ""
+  LABEL "Buyer"
+  POSITION 4
+  MAX-WIDTH 120
+  ORDER 30
+
+ADD FIELD "Crop" OF "BuyerContract" AS character
+  FORMAT "x(30)"
+  INITIAL ""
+  LABEL "Crop"
+  POSITION 5
+  MAX-WIDTH 60
+  ORDER 40
+  MANDATORY
+
+ADD FIELD "QuantityKg" OF "BuyerContract" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Quantity (kg)"
+  POSITION 6
+  MAX-WIDTH 4
+  ORDER 50
+  MANDATORY
+
+ADD FIELD "PricePerKg" OF "BuyerContract" AS decimal
+  FORMAT "->>>,>>>,>>9.99"
+  INITIAL "0"
+  LABEL "Price per kg (R)"
+  POSITION 7
+  MAX-WIDTH 17
+  DECIMALS 2
+  ORDER 60
+  MANDATORY
+
+ADD FIELD "ContractStatus" OF "BuyerContract" AS character
+  FORMAT "x(20)"
+  INITIAL "open"
+  LABEL "Status"
+  POSITION 8
+  MAX-WIDTH 40
+  ORDER 70
+  MANDATORY
+
+ADD FIELD "IsExample" OF "BuyerContract" AS logical
+  FORMAT "yes/no"
+  INITIAL "yes"
+  LABEL "Example data"
+  POSITION 9
+  MAX-WIDTH 1
+  ORDER 80
+
+ADD INDEX "ContractId" ON "BuyerContract"
+  AREA "Schema Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "ContractId" ASCENDING
+
+ADD INDEX "ContractCode" ON "BuyerContract"
+  AREA "Schema Area"
+  UNIQUE
+  INDEX-FIELD "ContractCode" ASCENDING
+
+ADD TABLE "Allocation"
+  AREA "Schema Area"
+  DESCRIPTION "A share of a harvest lot allocated to a buyer contract (pro rata or manual), with rule verdict and farmer decision. Example data only"
+  DUMP-NAME "alloc"
+
+ADD FIELD "AllocationId" OF "Allocation" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Allocation Id"
+  POSITION 2
+  MAX-WIDTH 4
+  ORDER 10
+  MANDATORY
+
+ADD FIELD "LotId" OF "Allocation" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Lot Id"
+  POSITION 3
+  MAX-WIDTH 4
+  ORDER 20
+  MANDATORY
+
+ADD FIELD "ContractId" OF "Allocation" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Contract Id"
+  POSITION 4
+  MAX-WIDTH 4
+  ORDER 30
+  MANDATORY
+
+ADD FIELD "Kg" OF "Allocation" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Quantity (kg)"
+  POSITION 5
+  MAX-WIDTH 4
+  ORDER 40
+  MANDATORY
+
+ADD FIELD "PricePerKg" OF "Allocation" AS decimal
+  FORMAT "->>>,>>>,>>9.99"
+  INITIAL "0"
+  LABEL "Price per kg (R)"
+  POSITION 6
+  MAX-WIDTH 17
+  DECIMALS 2
+  ORDER 50
+  MANDATORY
+
+ADD FIELD "AllocStatus" OF "Allocation" AS character
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "Status"
+  POSITION 7
+  MAX-WIDTH 40
+  ORDER 60
+  MANDATORY
+
+ADD FIELD "Verdict" OF "Allocation" AS character
+  FORMAT "x(30)"
+  INITIAL ""
+  LABEL "Rule verdict"
+  POSITION 8
+  MAX-WIDTH 60
+  ORDER 70
+
+ADD FIELD "RejectReasons" OF "Allocation" AS character
+  FORMAT "x(2000)"
+  INITIAL ""
+  LABEL "Reject reasons (JSON)"
+  POSITION 9
+  MAX-WIDTH 4000
+  ORDER 80
+
+ADD FIELD "CreatedAt" OF "Allocation" AS datetime-tz
+  FORMAT "99/99/9999 HH:MM:SS.SSS+HH:MM"
+  INITIAL "?"
+  LABEL "Created at"
+  POSITION 10
+  MAX-WIDTH 8
+  ORDER 90
+  MANDATORY
+
+ADD FIELD "DecidedAt" OF "Allocation" AS datetime-tz
+  FORMAT "99/99/9999 HH:MM:SS.SSS+HH:MM"
+  INITIAL "?"
+  LABEL "Decided at"
+  POSITION 11
+  MAX-WIDTH 8
+  ORDER 100
+
+ADD FIELD "DeliveredAt" OF "Allocation" AS datetime-tz
+  FORMAT "99/99/9999 HH:MM:SS.SSS+HH:MM"
+  INITIAL "?"
+  LABEL "Delivered at"
+  POSITION 12
+  MAX-WIDTH 8
+  ORDER 110
+
+ADD FIELD "RequestId" OF "Allocation" AS character
+  FORMAT "x(40)"
+  INITIAL ""
+  LABEL "Request Id"
+  POSITION 13
+  MAX-WIDTH 80
+  ORDER 120
+
+ADD INDEX "AllocationId" ON "Allocation"
+  AREA "Schema Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "AllocationId" ASCENDING
+
+ADD INDEX "LotAlloc" ON "Allocation"
+  AREA "Schema Area"
+  INDEX-FIELD "LotId" ASCENDING
+  INDEX-FIELD "AllocStatus" ASCENDING
+
+ADD INDEX "ContractAlloc" ON "Allocation"
+  AREA "Schema Area"
+  INDEX-FIELD "ContractId" ASCENDING
+  INDEX-FIELD "AllocStatus" ASCENDING
+
+ADD TABLE "Payout"
+  AREA "Schema Area"
+  DESCRIPTION "A payout to a member for their share of a harvest lot, after credit is deducted. Needs the farmer approval step. Example data only"
+  DUMP-NAME "payout"
+
+ADD FIELD "PayoutId" OF "Payout" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Payout Id"
+  POSITION 2
+  MAX-WIDTH 4
+  ORDER 10
+  MANDATORY
+
+ADD FIELD "LotId" OF "Payout" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Lot Id"
+  POSITION 3
+  MAX-WIDTH 4
+  ORDER 20
+  MANDATORY
+
+ADD FIELD "MemberId" OF "Payout" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Member Id"
+  POSITION 4
+  MAX-WIDTH 4
+  ORDER 30
+  MANDATORY
+
+ADD FIELD "GrossAmount" OF "Payout" AS decimal
+  FORMAT "->>>,>>>,>>9.99"
+  INITIAL "0"
+  LABEL "Gross (R)"
+  POSITION 5
+  MAX-WIDTH 17
+  DECIMALS 2
+  ORDER 40
+  MANDATORY
+
+ADD FIELD "CreditDeducted" OF "Payout" AS decimal
+  FORMAT "->>>,>>>,>>9.99"
+  INITIAL "0"
+  LABEL "Credit deducted (R)"
+  POSITION 6
+  MAX-WIDTH 17
+  DECIMALS 2
+  ORDER 50
+
+ADD FIELD "NetAmount" OF "Payout" AS decimal
+  FORMAT "->>>,>>>,>>9.99"
+  INITIAL "0"
+  LABEL "Net (R)"
+  POSITION 7
+  MAX-WIDTH 17
+  DECIMALS 2
+  ORDER 60
+  MANDATORY
+
+ADD FIELD "PayoutStatus" OF "Payout" AS character
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "Status"
+  POSITION 8
+  MAX-WIDTH 40
+  ORDER 70
+  MANDATORY
+
+ADD FIELD "Verdict" OF "Payout" AS character
+  FORMAT "x(30)"
+  INITIAL ""
+  LABEL "Rule verdict"
+  POSITION 9
+  MAX-WIDTH 60
+  ORDER 80
+
+ADD FIELD "RejectReasons" OF "Payout" AS character
+  FORMAT "x(2000)"
+  INITIAL ""
+  LABEL "Reject reasons (JSON)"
+  POSITION 10
+  MAX-WIDTH 4000
+  ORDER 90
+
+ADD FIELD "CreatedAt" OF "Payout" AS datetime-tz
+  FORMAT "99/99/9999 HH:MM:SS.SSS+HH:MM"
+  INITIAL "?"
+  LABEL "Created at"
+  POSITION 11
+  MAX-WIDTH 8
+  ORDER 100
+  MANDATORY
+
+ADD FIELD "DecidedAt" OF "Payout" AS datetime-tz
+  FORMAT "99/99/9999 HH:MM:SS.SSS+HH:MM"
+  INITIAL "?"
+  LABEL "Decided at"
+  POSITION 12
+  MAX-WIDTH 8
+  ORDER 110
+
+ADD FIELD "RequestId" OF "Payout" AS character
+  FORMAT "x(40)"
+  INITIAL ""
+  LABEL "Request Id"
+  POSITION 13
+  MAX-WIDTH 80
+  ORDER 120
+
+ADD INDEX "PayoutId" ON "Payout"
+  AREA "Schema Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "PayoutId" ASCENDING
+
+ADD INDEX "LotMemberPayout" ON "Payout"
+  AREA "Schema Area"
+  INDEX-FIELD "LotId" ASCENDING
+  INDEX-FIELD "MemberId" ASCENDING
+  INDEX-FIELD "PayoutStatus" ASCENDING
+
+ADD INDEX "MemberPayout" ON "Payout"
+  AREA "Schema Area"
+  INDEX-FIELD "MemberId" ASCENDING
+  INDEX-FIELD "PayoutStatus" ASCENDING
+
+.
+PSC
+cpstream=ISO8859-1
+.
+0000000000
