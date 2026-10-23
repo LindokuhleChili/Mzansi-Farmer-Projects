@@ -1014,6 +1014,314 @@
    }
   },
   {
+   "id": "BUD01",
+   "title": "BUG-1: a 'hold' that carries 500 litres is accepted (no water checks) and stays pending",
+   "request": {
+    "method": "POST",
+    "path": "/farm/suggestions",
+    "body": {
+     "plotId": 1,
+     "action": "hold",
+     "reason": "Example reason",
+     "provider": "mock",
+     "requestId": "req_b1",
+     "asOf": "2026-10-23T08:10:00Z",
+     "litres": 500
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "suggestionId": 9,
+     "status": "pending_approval",
+     "verdict": "approved_by_rules"
+    }
+   }
+  },
+  {
+   "id": "BUD02",
+   "title": "BUG-1: approve the hold that carries 500 litres",
+   "request": {
+    "method": "POST",
+    "path": "/farm/suggestions/9/decision",
+    "body": {
+     "decision": "approve",
+     "actor": "farmer",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "status": "approved"
+    }
+   }
+  },
+  {
+   "id": "BUD03",
+   "title": "BUG-1: the approved hold used no water: budget still 1300 used, so 200 L irrigation (1300 + 200 = 1500) is allowed",
+   "request": {
+    "method": "POST",
+    "path": "/farm/validate",
+    "body": {
+     "plotId": 1,
+     "action": "irrigate",
+     "litres": 200,
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "verdict": "approved_by_rules",
+     "facts": {
+      "usedLast7DaysL": 1300
+     }
+    }
+   }
+  },
+  {
+   "id": "BUD04",
+   "title": "BUG-1: a 'notify' that carries 400 litres is accepted and stays pending",
+   "request": {
+    "method": "POST",
+    "path": "/farm/suggestions",
+    "body": {
+     "plotId": 1,
+     "action": "notify",
+     "reason": "Example reason",
+     "provider": "mock",
+     "requestId": "req_b2",
+     "asOf": "2026-10-23T08:10:00Z",
+     "litres": 400
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "suggestionId": 10,
+     "status": "pending_approval",
+     "verdict": "approved_by_rules"
+    }
+   }
+  },
+  {
+   "id": "BUD05",
+   "title": "BUG-1: approve the notify that carries 400 litres",
+   "request": {
+    "method": "POST",
+    "path": "/farm/suggestions/10/decision",
+    "body": {
+     "decision": "approve",
+     "actor": "farmer",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "status": "approved"
+    }
+   }
+  },
+  {
+   "id": "BUD06",
+   "title": "BUG-1: still 1300 used after both approvals; 201 L would exceed the budget, so the budget rule still works for irrigation",
+   "request": {
+    "method": "POST",
+    "path": "/farm/validate",
+    "body": {
+     "plotId": 1,
+     "action": "irrigate",
+     "litres": 201,
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "verdict": "rejected_by_rules",
+     "facts": {
+      "usedLast7DaysL": 1300
+     }
+    }
+   }
+  },
+  {
+   "id": "DATE01",
+   "title": "BUG-3: 31 February does not exist (no roll-over to March)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/readings",
+    "body": {
+     "deviceId": "esp32-01",
+     "plotId": 1,
+     "timestamp": "2026-02-31T08:20:00Z",
+     "soilMoisturePct": 17.0,
+     "temperatureC": 29.4,
+     "humidityPct": 41.0
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "timestamp"
+    }
+   }
+  },
+  {
+   "id": "DATE02",
+   "title": "BUG-3: 29 February 2026 does not exist (2026 is not a leap year)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/readings",
+    "body": {
+     "deviceId": "esp32-01",
+     "plotId": 1,
+     "timestamp": "2026-02-29T08:20:00Z",
+     "soilMoisturePct": 17.0,
+     "temperatureC": 29.4,
+     "humidityPct": 41.0
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "timestamp"
+    }
+   }
+  },
+  {
+   "id": "DATE03",
+   "title": "BUG-3: 31 April does not exist",
+   "request": {
+    "method": "POST",
+    "path": "/farm/readings",
+    "body": {
+     "deviceId": "esp32-01",
+     "plotId": 1,
+     "timestamp": "2026-04-31T08:20:00Z",
+     "soilMoisturePct": 17.0,
+     "temperatureC": 29.4,
+     "humidityPct": 41.0
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "timestamp"
+    }
+   }
+  },
+  {
+   "id": "DATE04",
+   "title": "BUG-3: 29 February 2100 does not exist (centuries are leap years only if divisible by 400)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/readings",
+    "body": {
+     "deviceId": "esp32-01",
+     "plotId": 1,
+     "timestamp": "2100-02-29T08:20:00Z",
+     "soilMoisturePct": 17.0,
+     "temperatureC": 29.4,
+     "humidityPct": 41.0
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "timestamp"
+    }
+   }
+  },
+  {
+   "id": "DATE05",
+   "title": "BUG-3: 29 February 2024 is a real day (leap year) and is stored",
+   "request": {
+    "method": "POST",
+    "path": "/farm/readings",
+    "body": {
+     "deviceId": "esp32-05",
+     "plotId": 5,
+     "timestamp": "2024-02-29T08:20:00Z",
+     "soilMoisturePct": 17.0,
+     "temperatureC": 29.4,
+     "humidityPct": 41.0
+    }
+   },
+   "expect": {
+    "status": 201
+   }
+  },
+  {
+   "id": "DATE06",
+   "title": "BUG-3: 29 February 2000 is a real day (divisible by 400) and is stored",
+   "request": {
+    "method": "POST",
+    "path": "/farm/readings",
+    "body": {
+     "deviceId": "esp32-05",
+     "plotId": 5,
+     "timestamp": "2000-02-29T08:20:00Z",
+     "soilMoisturePct": 17.0,
+     "temperatureC": 29.4,
+     "humidityPct": 41.0
+    }
+   },
+   "expect": {
+    "status": 201
+   }
+  },
+  {
+   "id": "DATE07",
+   "title": "BUG-3: a time zone offset of +25:00 is not valid",
+   "request": {
+    "method": "POST",
+    "path": "/farm/readings",
+    "body": {
+     "deviceId": "esp32-01",
+     "plotId": 1,
+     "timestamp": "2026-10-23T08:20:00+25:00",
+     "soilMoisturePct": 17.0,
+     "temperatureC": 29.4,
+     "humidityPct": 41.0
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "timestamp"
+    }
+   }
+  },
+  {
+   "id": "DATE08",
+   "title": "BUG-3: asOf with a day that does not exist (31 June) is refused",
+   "request": {
+    "method": "POST",
+    "path": "/farm/validate",
+    "body": {
+     "plotId": 1,
+     "action": "hold",
+     "litres": 0,
+     "asOf": "2026-06-31T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "asOf"
+    }
+   }
+  },
+  {
    "id": "FAIL01",
    "title": "INTENTIONAL FAILURE: asserts that irrigating a wet plot is approved (the rules correctly reject it, so this case must fail)",
    "intentionalFail": true,

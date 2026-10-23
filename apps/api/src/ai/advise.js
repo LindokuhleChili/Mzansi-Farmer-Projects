@@ -7,12 +7,17 @@ import { MAX_REASON_LENGTH } from '../config.js';
 
 const ajv = new Ajv({ allErrors: true });
 export const proposalSchema = {
-  type: 'object', additionalProperties: false, required: ['action', 'litres', 'reason'],
+  type: 'object', additionalProperties: false, required: ['action', 'reason'],
   properties: {
     action: { enum: ['irrigate', 'hold', 'notify'] },
     litres: { type: 'integer', minimum: 0, maximum: 1000 },
     reason: { type: 'string', minLength: 1, maxLength: MAX_REASON_LENGTH },
   },
+  // Water only belongs to irrigation: irrigate must say how many litres; hold / notify must have litres 0 or leave it out.
+  // (A hold with litres > 0 used to count against the weekly budget once approved: BUG-1. OpenEdge also ignores non-irrigate litres.)
+  if: { properties: { action: { const: 'irrigate' } }, required: ['action'] },
+  then: { required: ['litres'] },
+  else: { properties: { litres: { const: 0 } } },
 };
 const validateProposal = ajv.compile(proposalSchema);
 
@@ -55,7 +60,7 @@ export async function proposeAction(provider, ctx, lang) {
   if (fallbackReason === null) {
     try {
       const parsed = JSON.parse(extractJson(raw));
-      if (validateProposal(parsed)) proposal = parsed;
+      if (validateProposal(parsed)) proposal = { ...parsed, litres: parsed.action === 'irrigate' ? parsed.litres : 0 }; // litres absent on hold/notify -> 0
       else fallbackReason = 'schema: ' + ajv.errorsText(validateProposal.errors, { dataVar: 'proposal' });
     } catch { fallbackReason = 'invalid_json: model output was not valid JSON'; }
   }

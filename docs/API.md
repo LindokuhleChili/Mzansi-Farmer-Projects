@@ -41,7 +41,7 @@ X-Device-Token: <device token>
 |---|---|---|---|
 | `deviceId` | string | yes | must equal the device id the token maps to (`esp32-01`) |
 | `plotId` | integer | yes | must equal the plot the token maps to (demo: `esp32-01` is plot 1); cross-check, not a way to choose a plot |
-| `timestamp` | string, ISO 8601 UTC (`...Z`) | yes | not more than 5 minutes in the future |
+| `timestamp` | string, ISO 8601 UTC (`...Z`) | yes | must be a real calendar date (no 31 February, leap years respected); not more than 5 minutes in the future |
 | `soilMoisturePct` | number | yes | 0 to 100 |
 | `temperatureC` | number | yes | -20 to 60 |
 | `humidityPct` | number | yes | 0 to 100 |

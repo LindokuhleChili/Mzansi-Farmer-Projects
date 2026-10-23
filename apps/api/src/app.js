@@ -5,10 +5,10 @@ import { mkdirSync, appendFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { OeError } from './oe/client.js';
 import { proposeAction, computeInsight } from './ai/advise.js';
-import { CONFIRM_TTL_SECONDS, FUTURE_SKEW_MINUTES, READINGS_FOR_AI } from './config.js';
+import { CONFIRM_TTL_SECONDS, FUTURE_SKEW_MINUTES, READINGS_FOR_AI, AUDIT_TIMEOUT_MS } from './config.js';
+import { isValidIsoTimestamp } from './iso.js';
 
 const PREFIX = '/api/v1';
-const ISO_RE = /^\d{4}-\d{2}-\d{2}T\d{2}:\d{2}:\d{2}(\.\d+)?(Z|[+-]\d{2}:\d{2})$/;
 const safeEqual = (a, b) => {
   const x = Buffer.from(String(a)), y = Buffer.from(String(b));
   return x.length === y.length && crypto.timingSafeEqual(x, y);
@@ -37,17 +37,24 @@ export function buildApp({ config, oe, provider, clock = () => new Date() }) {
   // ---- tool-call logging: every call to OpenEdge or the AI is recorded in OpenEdge (AuditLog) and logs/tool-calls.jsonl
   async function tool(req, name, input, fn, summarize = () => undefined) {
     const t0 = Date.now();
-    let out, ok = true, errMsg;
+    let out, ok = true, errMsg, thrown;
     try { out = await fn(); return out; }
-    catch (e) { ok = false; errMsg = e.message; throw e; }
+    catch (e) { ok = false; errMsg = e.message; thrown = e; throw e; }
     finally {
       const rec = { at: clock().toISOString(), requestId: req.id, tool: name, input, ok, ms: Date.now() - t0, ...(ok ? { output: summarize(out) } : { error: errMsg }) };
+      // If OpenEdge itself just failed (timeout / unreachable), do not try to write the audit row to the same dead server:
+      // that doubled the wait (BUG-2). The record still goes to the local log file, flagged as not audited in OpenEdge.
+      const oeFailed = !ok && thrown instanceof OeError;
+      if (oeFailed) rec.auditSkipped = 'openedge_unavailable';
       if (logFile) { try { appendFileSync(logFile, JSON.stringify(rec) + '\n'); } catch { /* ignore */ } }
-      try { await oe.call('POST', '/farm/audit', { requestId: req.id, actor: 'api', event: 'tool_call', detail: { tool: name, input, ok, ms: rec.ms, output: rec.output, error: rec.error } }); } catch { /* never fail a request because logging failed */ }
+      if (!oeFailed) {
+        // short timeout so a slow audit write can never hold a request for a full OE_TIMEOUT_MS
+        try { await oe.call('POST', '/farm/audit', { requestId: req.id, actor: 'api', event: 'tool_call', detail: { tool: name, input, ok, ms: rec.ms, output: rec.output, error: rec.error } }, { timeoutMs: AUDIT_TIMEOUT_MS }); } catch { /* never fail a request because logging failed */ }
+      }
     }
   }
   const oeCall = (req, name, method, path, body, summarize) =>
-    tool(req, name, { method, path, ...(body ? { body } : {}) }, () => oe.call(method, path, body), (r) => summarize ? summarize(r) : { status: r.status });
+    tool(req, name, { method, path, ...(body ? { body } : {}) }, () => oe.call(method, path, body, { timeoutMs: config.oeTimeoutMs }), (r) => summarize ? summarize(r) : { status: r.status });
 
   // ---- auth
   const requireApp = (req, reply) => {
@@ -73,7 +80,7 @@ export function buildApp({ config, oe, provider, clock = () => new Date() }) {
     if (!b || typeof b !== 'object' || Array.isArray(b)) return bad('body', 'Body must be a JSON object.');
     if (typeof b.deviceId !== 'string' || !b.deviceId) return bad('deviceId', 'deviceId must be a non-empty string.');
     if (!Number.isInteger(b.plotId)) return bad('plotId', 'plotId must be an integer.');
-    if (typeof b.timestamp !== 'string' || !ISO_RE.test(b.timestamp) || Number.isNaN(Date.parse(b.timestamp))) return bad('timestamp', 'timestamp must be ISO 8601 UTC, e.g. 2026-10-24T08:00:00Z.');
+    if (!isValidIsoTimestamp(b.timestamp)) return bad('timestamp', 'timestamp must be ISO 8601 UTC, e.g. 2026-10-24T08:00:00Z.');
     const num = (f, lo, hi) => typeof b[f] === 'number' && Number.isFinite(b[f]) && b[f] >= lo && b[f] <= hi;
     if (!num('soilMoisturePct', 0, 100)) return bad('soilMoisturePct', 'soilMoisturePct must be a number between 0 and 100.');
     if (!num('temperatureC', -20, 60)) return bad('temperatureC', 'temperatureC must be a number between -20 and 60.');

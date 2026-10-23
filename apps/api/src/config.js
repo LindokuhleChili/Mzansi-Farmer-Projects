@@ -1,6 +1,7 @@
 // All tunables as named constants + environment variables. No secrets in code: tokens and keys come from the environment.
 export const AI_TIMEOUT_MS = 8000;          // max wait for the AI provider before the deterministic fallback is used
 export const OE_TIMEOUT_MS = 5000;          // max wait for OpenEdge (PASOE) per call; exceeded => 504 OE_TIMEOUT
+export const AUDIT_TIMEOUT_MS = 1000;       // max wait for the audit write after a tool call (never doubles an OpenEdge outage)
 export const CONFIRM_TTL_SECONDS = 120;     // lifetime of a single-use confirmation token (approve / delete)
 export const FUTURE_SKEW_MINUTES = 5;       // reading timestamps further in the future than this are rejected
 export const READINGS_FOR_AI = 12;          // how many recent readings are loaded from OpenEdge for each advice request
@@ -25,6 +26,7 @@ export function loadConfig(env = process.env) {
     host: env.HOST || '0.0.0.0',
     oeMode,
     oeBaseUrl: env.OE_BASE_URL || 'http://localhost:8820/web',
+    oeTimeoutMs: Number.isInteger(+env.OE_TIMEOUT_MS) && +env.OE_TIMEOUT_MS >= 50 ? +env.OE_TIMEOUT_MS : OE_TIMEOUT_MS,   // OE_TIMEOUT_MS env var is for tests
     oeAuth: env.OE_AUTH || '',                     // optional "user:password" for PASOE basic auth
     aiProvider: (env.AI_PROVIDER || 'mock').toLowerCase(),   // mock | http (any OpenAI-compatible chat completions API)
     aiBaseUrl: env.AI_BASE_URL || '',

@@ -4,6 +4,14 @@ FUNCTION fIso RETURNS CHARACTER (INPUT ptDt AS DATETIME-TZ):
     RETURN REPLACE(ISO-DATE(DATETIME-TZ(ptDt, 0)), "+00:00", "Z").
 END FUNCTION.
 
+/* Days in a month, leap years included (divisible by 4, except centuries unless divisible by 400). */
+FUNCTION fDaysInMonth RETURNS INTEGER (INPUT piYr AS INTEGER, INPUT piMon AS INTEGER):
+    IF piMon = 2 THEN
+        RETURN (IF (piYr MODULO 4 = 0 AND piYr MODULO 100 <> 0) OR piYr MODULO 400 = 0 THEN 29 ELSE 28).
+    IF piMon = 4 OR piMon = 6 OR piMon = 9 OR piMon = 11 THEN RETURN 30.
+    RETURN 31.
+END FUNCTION.
+
 /* Parse ISO 8601 (yyyy-mm-ddThh:mm:ss[.sss](Z|+hh:mm)). Returns ? when invalid. */
 FUNCTION fParseIso RETURNS DATETIME-TZ (INPUT pcIso AS CHARACTER):
     DEFINE VARIABLE iYr AS INTEGER NO-UNDO. DEFINE VARIABLE iMon AS INTEGER NO-UNDO.
@@ -24,7 +32,9 @@ FUNCTION fParseIso RETURNS DATETIME-TZ (INPUT pcIso AS CHARACTER):
            iMin = INTEGER(SUBSTRING(pcIso, 15, 2)) iSec  = INTEGER(SUBSTRING(pcIso, 18, 2))
            NO-ERROR.
     IF ERROR-STATUS:ERROR THEN RETURN ?.
-    IF iMon < 1 OR iMon > 12 OR iDay < 1 OR iDay > 31 OR iHr > 23 OR iMin > 59 OR iSec > 59 THEN RETURN ?.
+    IF iMon < 1 OR iMon > 12 OR iDay < 1 OR iHr > 23 OR iMin > 59 OR iSec > 59 THEN RETURN ?.
+    /* real calendar check: the day must exist in that month (leap years included) */
+    IF iDay > fDaysInMonth(iYr, iMon) THEN RETURN ?.
     cRest = SUBSTRING(pcIso, 20).
     IF SUBSTRING(cRest, 1, 1) = "." THEN DO:
         iPos = 2.
@@ -43,6 +53,7 @@ FUNCTION fParseIso RETURNS DATETIME-TZ (INPUT pcIso AS CHARACTER):
         iSign = (IF SUBSTRING(cRest, 1, 1) = "-" THEN -1 ELSE 1).
         iTz = iSign * (INTEGER(SUBSTRING(cRest, 2, 2)) * 60 + INTEGER(SUBSTRING(cRest, 5, 2))) NO-ERROR.
         IF ERROR-STATUS:ERROR THEN RETURN ?.
+        IF INTEGER(SUBSTRING(cRest, 2, 2)) > 23 OR INTEGER(SUBSTRING(cRest, 5, 2)) > 59 THEN RETURN ?.
     END.
     ELSE RETURN ?.
     dtRes = DATETIME-TZ(iMon, iDay, iYr, iHr, iMin, iSec, iMs, iTz) NO-ERROR.

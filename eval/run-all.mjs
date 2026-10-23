@@ -2,6 +2,7 @@
 //  1. OpenEdge contract/rule cases against mock-pasoe (Node port of the ABL rules)
 //  2. API eval + device cases, OE_MODE=mock (in-process)
 //  4. sim/ unit tests; 5. simulator against the Node API
+//  6. eval/fixes.test.mjs: unit/resilience tests for the QA bug fixes (litres on hold/notify, OpenEdge outage timing, calendar dates)
 //  3. API eval + device cases through the real PASOE HTTP client path, against the mock-pasoe HTTP server
 // The same contract cases run against the REAL ABL code on Windows with scripts\oe-run.ps1 -Action test (see docs/NOTES.md).
 import { readFileSync } from 'node:fs';
@@ -36,6 +37,13 @@ totals.pass += simPass; totals.fail += simFail + (sim.status === 0 ? 0 : (simFai
 console.log('\n=== 5. ESP32 simulator against the real Node API (OE_MODE=mock) ===');
 for (const r of await runSimAgainstApi()) { console.log(`  ${r.ok ? 'PASS' : 'FAIL'}  ${r.title}${r.ok ? '' : '\n      ' + r.detail}`); if (r.ok) totals.pass++; else totals.fail++; }
 console.log('  (firmware C++ unit tests need PlatformIO: cd firmware/esp32 && pio test -e native, 15 tests; see docs/NOTES.md)');
+
+console.log('\n=== 6. Bug-fix tests: litres only on irrigate, OpenEdge outage timing, calendar dates (eval/fixes.test.mjs, node:test) ===');
+const fixes = spawnSync(process.execPath, ['--test', fileURLToPath(new URL('./fixes.test.mjs', import.meta.url))], { encoding: 'utf8' });
+const fxPass = Number((/^# pass (\d+)/m.exec(fixes.stdout) || [])[1] || 0), fxFail = Number((/^# fail (\d+)/m.exec(fixes.stdout) || [])[1] || 0);
+for (const m of fixes.stdout.matchAll(/^(not ok|ok) \d+ - (.*)$/gm)) console.log(`  ${m[1] === 'ok' ? 'PASS' : 'FAIL'}  ${m[2]}`);
+console.log(`  bug-fix tests: ${fxPass} passed, ${fxFail} failed`);
+totals.pass += fxPass; totals.fail += fxFail + (fixes.status === 0 ? 0 : (fxFail ? 0 : 1));
 
 console.log(`\nTOTAL: ${totals.pass} passed, ${totals.fail} failed, ${totals.intentional} intentional failures confirmed (by design), ${totals.unexpected} unexpected passes of intentional cases`);
 process.exit(totals.fail === 0 && totals.unexpected === 0 ? 0 : 1);

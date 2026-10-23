@@ -17,7 +17,7 @@ export function validate(store, { plotId, action, litres, asOf }) {
   });
   const windowStart = asOf.getTime() - BUDGET_WINDOW_DAYS * 86400000;
   const used = store.suggestions
-    .filter((s) => s.plotId === plotId && s.status === 'approved' && s.decidedAt && s.decidedAt.getTime() >= windowStart)
+    .filter((s) => s.plotId === plotId && s.status === 'approved' && s.action === 'irrigate' && s.decidedAt && s.decidedAt.getTime() >= windowStart)
     .reduce((a, s) => a + s.litres, 0);
   facts.usedLast7DaysL = used;
   const latest = store.latestReading(plotId);

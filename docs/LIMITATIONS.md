@@ -8,8 +8,8 @@ This is a hackathon prototype. It shows one idea: an AI model may propose, OpenE
 
 | Piece | Status |
 |---|---|
-| OpenEdge database, schema, ABL rules, PASOE WebHandler | Real. Tested on OpenEdge 12.8: 47 contract cases in batch mode and over HTTP through PASOE (46 pass plus 1 case designed to fail). API suites also pass against real PASOE. The demo has been run against it. |
-| `mock-pasoe` (Node port of the ABL rules) | A stand-in. `npm test` uses it so the repository can be tested anywhere. The same 47 cases run against both and must agree. |
+| OpenEdge database, schema, ABL rules, PASOE WebHandler | Real. Tested on OpenEdge 12.8: the original 47 contract cases in batch mode and over HTTP through PASOE (46 pass plus 1 case designed to fail). API suites also passed against real PASOE. The demo has been run against it. 14 contract cases were added with the QA bug fixes (see `docs/NOTES.md` 6a): the ABL changes behind them (budget sum counts irrigation only, real calendar check) are written but **not yet run on real OpenEdge**; mock-pasoe passes all of them. |
+| `mock-pasoe` (Node port of the ABL rules) | A stand-in. `npm test` uses it so the repository can be tested anywhere. The same 61 cases run against both and must agree. |
 | Node API, confirmation steps, audit log, fallback logic | Real code, tested in-process and over HTTP. |
 | AI model | Real Gemini (`gemini-3.5-flash`) in `npm run test:gemini` and when `.env` sets `AI_PROVIDER=http`. All automated tests use a deterministic mock so results can be repeated. |
 | ESP32 firmware | Compiled and unit-tested on a host computer only. It has not been run on a physical board in this project's tests. |
@@ -50,7 +50,7 @@ This is a hackathon prototype. It shows one idea: an AI model may propose, OpenE
 ## Testing
 
 - Error handling is tested for the cases in `eval/*.json`, not for every possible network failure.
-- The count of 146 offline checks was taken at the last run and uses the mock AI and the mock OpenEdge. The real OpenEdge and real Gemini results were recorded on the team's laptop and are not repeated by `npm test`.
+- The count of 184 offline checks was taken at the last run and uses the mock AI and the mock OpenEdge. The real OpenEdge and real Gemini results were recorded on the team's laptop and are not repeated by `npm test`.
 - Three cases are designed to fail so the test runner can be seen to report failures. A run that shows "3 intentional failures confirmed" is a pass.
 
 ## Content and licence

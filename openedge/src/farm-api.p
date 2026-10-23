@@ -193,9 +193,11 @@ PROCEDURE do-validate:
 
     lIrrigate = (pcAction = "irrigate").
 
-    /* water used in the budget window (approved suggestions only) */
+    /* water used in the budget window (approved IRRIGATE suggestions only: hold/notify never use water,
+       even if a litres value was stored with them) */
     FOR EACH bSugg NO-LOCK WHERE bSugg.PlotId = piPlotId
          AND bSugg.SuggStatus = "approved"
+         AND bSugg.Action = "irrigate"
          AND bSugg.DecidedAt >= ADD-INTERVAL(ptAsOf, - {&BUDGET_WINDOW_DAYS}, "days"):
         dUsed = dUsed + bSugg.Litres.
     END.

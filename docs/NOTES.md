@@ -45,7 +45,7 @@ Every failing rule is reported, not just the first. `notify` and `hold` need no 
 
 Example plots (seed): Maize A max 500 L / dry below 35% / 1500 L per week; Beans B 300 / 40 / 900; Spinach C 200 / 45 / 600; Tomato D 250 / 40 / 400; Cabbage E 300 / 40 / 900.
 
-Other thresholds in the API (`apps/api/src/config.js`): AI timeout 8 s, OpenEdge timeout 5 s, confirmation token lifetime 120 s and single use, reading timestamp at most 5 min in the future, soil/humidity 0 to 100, temperature -20 to 60 C, model explanation may only use numbers that came from OpenEdge.
+Other thresholds in the API (`apps/api/src/config.js`): AI timeout 8 s, OpenEdge timeout 5 s (audit write after a call: 1 s, and skipped when OpenEdge itself just failed), confirmation token lifetime 120 s and single use, reading timestamp at most 5 min in the future, soil/humidity 0 to 100, temperature -20 to 60 C, model explanation may only use numbers that came from OpenEdge.
 
 Safety behaviour the tests cover: unknown/invalid input is a clear error (not an invented answer); AI timeout, non-JSON output, extra fields, forbidden action (prompt injection) and invented numbers all fall back to a deterministic proposal or template explanation; approve and delete need a confirmation step, reject does not; every tool call and decision is written to the OpenEdge audit table.
 
@@ -61,7 +61,8 @@ Safety behaviour the tests cover: unknown/invalid input is a clear error (not an
 | `DEVICE_REGISTRY` | JSON array mapping device tokens to a device and plot: `[{"deviceId":"esp32-01","plotId":1,"token":"..."}]` |
 | `AI_PROVIDER` | `mock` (default) or `http` |
 | `AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL` | for `http`; the key is read only from the environment or `.env` and is never logged |
-| `AI_MOCK_BEHAVIOUR` | mock only: `normal`, `timeout`, `bad-json`, `injection`, `extra-field`, `greedy`, `invented-number` |
+| `AI_MOCK_BEHAVIOUR` | mock only: `normal`, `timeout`, `bad-json`, `injection`, `extra-field`, `greedy`, `invented-number`, `hold-with-litres`, `notify-no-litres` |
+| `OE_TIMEOUT_MS` | optional, default 5000; only meant for tests (minimum 50) |
 | `LOG_DIR`, `LOG_LEVEL` | tool-call log (`logs/tool-calls.jsonl`, gitignored) and Fastify log level |
 
 Real environment variables win over `.env`.
@@ -83,7 +84,7 @@ Optional checks:
 | Command | What it does |
 |---|---|
 | `npm run test:gemini` | one live call to the real model (English and isiZulu). **Skipped** (exit 0) unless `AI_PROVIDER=http` and the three AI variables are set |
-| `npm run test:oe-http` | the 47 OpenEdge contract cases over HTTP against a running PASOE (`OE_BASE_URL`); reseed first |
+| `npm run test:oe-http` | the 61 OpenEdge contract cases over HTTP against a running PASOE (`OE_BASE_URL`); reseed first |
 | `npm run test:api-real-oe` | the API suites (device + api cases) against real PASOE |
 | `node mock-pasoe/server.js` | mock PASOE as a standalone HTTP server on :8820 |
 | `node sim/esp32-sim.js --scenario drought --url http://localhost:3000` | feed the API like the ESP32 (needs `DEVICE_TOKEN`, see `docs/ESP32.md`) |
@@ -97,10 +98,10 @@ Details and the exact configuration are in `openedge/pasoe/README.md`. Short ver
 ```powershell
 .\scripts\oe-run.ps1 -Action start-db      # farm database server on port 20000 (once; database already loaded)
 .\scripts\oe-run.ps1 -Action seed          # reset to the example data (do this before each test run and before the demo)
-.\scripts\oe-run.ps1 -Action test          # 47 contract cases against the real ABL code in batch mode
+.\scripts\oe-run.ps1 -Action test          # 61 contract cases against the real ABL code in batch mode
 # PASOE instance `farmops` must be running (tcman.bat start); then:
 $env:OE_BASE_URL = 'http://localhost:8820/web'
-npm run test:oe-http                       # same 47 cases over HTTP through FarmHandler.cls
+npm run test:oe-http                       # same 61 cases over HTTP through FarmHandler.cls
 $env:OE_MODE = 'pasoe'; npm start          # API on :3000 backed by the real database
 npm run demo
 ```
@@ -113,8 +114,8 @@ The API must run on the same machine as PASOE (or be given a reachable `OE_BASE_
 
 | Piece | Status |
 |---|---|
-| OpenEdge database, schema, ABL rules, PASOE WebHandler | **Real.** Tested on OpenEdge 12.8: 47 contract cases pass in batch mode and over HTTP through PASOE; API suites (32 cases) pass against real PASOE; `npm run demo` completed against it |
-| `mock-pasoe` (Node port of the ABL rules) | **Mock** stand-in used by `npm test` so the repo is testable anywhere. The same 47 cases run against both and must agree (`eval/compare-oe.mjs`) |
+| OpenEdge database, schema, ABL rules, PASOE WebHandler | **Real.** Tested on OpenEdge 12.8: the original 47 contract cases passed in batch mode and over HTTP through PASOE and the API suites (32 cases) passed against real PASOE; `npm run demo` completed against it. The 14 contract cases and 7 API cases added with the bug fixes (section 6a) are verified on mock-pasoe; see 6a for the real-OpenEdge status |
+| `mock-pasoe` (Node port of the ABL rules) | **Mock** stand-in used by `npm test` so the repo is testable anywhere. The same 61 cases run against both and must agree (`eval/compare-oe.mjs`) |
 | Node API, confirmation gates, audit, fallback logic | **Real** code; tested in-process and over HTTP |
 | AI model | **Real** Gemini (`gemini-3.5-flash`) in `npm run test:gemini` and when `.env` says `AI_PROVIDER=http`. **Mock** (deterministic) in all automated tests so results are repeatable |
 | ESP32 firmware | **Compiled only** (`pio run -e esp32dev` succeeds; 15 native unit tests pass). It has **not** been run on a physical board in this repo's tests |
@@ -124,8 +125,15 @@ The API must run on the same machine as PASOE (or be given a reachable `OE_BASE_
 
 ## 6. Test results (at the time of writing)
 
-- `npm test` (offline): **146 passed, 0 failed, 3 intentional failures confirmed**, 0 unexpected passes. Breakdown: OpenEdge contract on mock-pasoe 46, API suites on `OE_MODE=mock` 31, same over the PASOE HTTP client path 31, simulator unit tests 33, simulator against API 5. Each of the three suites with an intentional failure contains exactly one case that is *designed to fail* (OE `FAIL01`, API `E20` in two modes) to show the checker reports failures honestly.
-- Real OpenEdge over HTTP: 46 passed + 1 intentional failure. API suites vs real PASOE: 31 passed + 1 intentional failure.
+- `npm test` (offline): **184 passed, 0 failed, 3 intentional failures confirmed**, 0 unexpected passes. Breakdown: OpenEdge contract on mock-pasoe 60, API suites on `OE_MODE=mock` 38, same over the PASOE HTTP client path 38, simulator unit tests 33, simulator against API 5, bug-fix tests (`eval/fixes.test.mjs`) 10. (Before the bug fixes it was 146: 46 + 31 + 31 + 33 + 5.) Each of the three suites with an intentional failure contains exactly one case that is *designed to fail* (OE `FAIL01`, API `E20` in two modes) to show the checker reports failures honestly.
+- Real OpenEdge over HTTP, before the bug fixes: 46 passed + 1 intentional failure. API suites vs real PASOE: 31 passed + 1 intentional failure. After the fixes: see 6a.
+
+### 6a. QA bug fixes (2026-10-23)
+
+- **BUG-1 litres only count for irrigation.** The AI schema (`apps/api/src/ai/advise.js`) now allows `litres` only as 0 (or absent, stored as 0) on `hold` and `notify`; a model that sends litres there falls back to the deterministic proposal. The 7-day budget sum in `farm-api.p` and `mock-pasoe/rules.js` counts `irrigate` suggestions only, so even a stored hold with litres uses no water. Cases: contract BUD01-06, API E21-E22.
+- **BUG-2 outage no longer doubles the wait.** If a call to OpenEdge fails (timeout or unreachable) the API skips the audit write to the same server and logs the call locally (`auditSkipped: openedge_unavailable` in `logs/tool-calls.jsonl`). A normal audit write has its own 1 s limit. The 504 now arrives after about one `OE_TIMEOUT_MS`. Tests: `eval/fixes.test.mjs`.
+- **BUG-3 real calendar dates.** Timestamps are checked against a real calendar (month lengths, leap years, century rule, time zone offset up to +/-23:59) in the API (`apps/api/src/iso.js`), `mock-pasoe/time.js` and `openedge/src/iso.i`. Cases: contract DATE01-08, API DEV13-17.
+- **Real OpenEdge status of these fixes:** **PENDING.** The ABL changes (`farm-api.p` budget filter, `iso.i` calendar check) have not yet been compiled or run on real OpenEdge. Before relying on them, copy the repo to the laptop and run `.\scripts\oe-run.ps1 -Action seed`, then `-Action test`, then `npm run test:oe-http` and `npm run test:api-real-oe`.
 - `npm run test:gemini`: passed (English and isiZulu, real model used, no fallback).
 - Firmware native tests: 15 passed. Firmware compiles for `esp32dev`.
 - Required case types covered: a case that must fail (`FAIL01`, `E20`), and a case that needs human approval (`E05`, `E07`, `E17`, `E18`).

@@ -387,6 +387,55 @@
    }
   },
   {
+   "id": "E21",
+   "title": "BUG-1: model says 'hold' but attaches 500 litres: schema refuses it, safe fallback with 0 litres is used",
+   "request": {
+    "method": "POST",
+    "path": "/api/v1/plots/2/advise",
+    "auth": "app",
+    "body": {}
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "proposal": {
+      "action": "hold",
+      "litres": 0
+     },
+     "ai": {
+      "usedFallback": true,
+      "fallbackReason": {
+       "$startsWith": "schema:"
+      }
+     }
+    }
+   },
+   "aiBehaviour": "hold-with-litres"
+  },
+  {
+   "id": "E22",
+   "title": "BUG-1: model says 'notify' and leaves litres out: accepted, stored with 0 litres, no fallback",
+   "request": {
+    "method": "POST",
+    "path": "/api/v1/plots/5/advise",
+    "auth": "app",
+    "body": {}
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "proposal": {
+      "action": "notify",
+      "litres": 0
+     },
+     "ai": {
+      "usedFallback": false
+     }
+    }
+   },
+   "aiBehaviour": "notify-no-litres"
+  },
+  {
    "id": "E19",
    "title": "Every action left an audit trail in OpenEdge (approval + tool calls)",
    "request": {

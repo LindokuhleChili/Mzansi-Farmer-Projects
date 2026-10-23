@@ -263,6 +263,126 @@
      ]
     }
    }
+  },
+  {
+   "id": "DEV13",
+   "title": "BUG-3: 31 February is refused (it used to be stored on 3 March)",
+   "request": {
+    "method": "POST",
+    "path": "/api/v1/readings",
+    "auth": "device",
+    "body": {
+     "deviceId": "esp32-01",
+     "plotId": 1,
+     "timestamp": "2026-02-31T08:20:00Z",
+     "soilMoisturePct": 17.0,
+     "temperatureC": 29.4,
+     "humidityPct": 41.0
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "timestamp"
+    }
+   }
+  },
+  {
+   "id": "DEV14",
+   "title": "BUG-3: 29 February 2026 is refused (not a leap year)",
+   "request": {
+    "method": "POST",
+    "path": "/api/v1/readings",
+    "auth": "device",
+    "body": {
+     "deviceId": "esp32-01",
+     "plotId": 1,
+     "timestamp": "2026-02-29T08:20:00Z",
+     "soilMoisturePct": 17.0,
+     "temperatureC": 29.4,
+     "humidityPct": 41.0
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "timestamp"
+    }
+   }
+  },
+  {
+   "id": "DEV15",
+   "title": "BUG-3: 29 February 2100 is refused (century, not divisible by 400)",
+   "request": {
+    "method": "POST",
+    "path": "/api/v1/readings",
+    "auth": "device",
+    "body": {
+     "deviceId": "esp32-01",
+     "plotId": 1,
+     "timestamp": "2100-02-29T08:20:00Z",
+     "soilMoisturePct": 17.0,
+     "temperatureC": 29.4,
+     "humidityPct": 41.0
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "timestamp"
+    }
+   }
+  },
+  {
+   "id": "DEV16",
+   "title": "BUG-3: 31 April is refused",
+   "request": {
+    "method": "POST",
+    "path": "/api/v1/readings",
+    "auth": "device",
+    "body": {
+     "deviceId": "esp32-01",
+     "plotId": 1,
+     "timestamp": "2026-04-31T08:20:00Z",
+     "soilMoisturePct": 17.0,
+     "temperatureC": 29.4,
+     "humidityPct": 41.0
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "timestamp"
+    }
+   }
+  },
+  {
+   "id": "DEV17",
+   "title": "BUG-3: time zone offset +25:00 is refused",
+   "request": {
+    "method": "POST",
+    "path": "/api/v1/readings",
+    "auth": "device",
+    "body": {
+     "deviceId": "esp32-01",
+     "plotId": 1,
+     "timestamp": "2026-10-23T08:20:00+25:00",
+     "soilMoisturePct": 17.0,
+     "temperatureC": 29.4,
+     "humidityPct": 41.0
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "timestamp"
+    }
+   }
   }
  ]
 }

@@ -5,10 +5,10 @@ Prepared 2026-10-23 (Africa/Johannesburg) by the QA review. Fictional data only.
 **Required types.** Intentional failure: **TC-02** (marked `INTENTIONAL FAILURE`). Human approval: **TC-04** (marked `HUMAN APPROVAL`). TC-19 also covers the two-step confirmation.
 
 **Status key** (only what was actually verified on 2026-10-23, offline, mock AI, `mock-pasoe` standing in for OpenEdge):
-- `Pass (npm test)`: the mapped eval case passed in `npm test` (146 passed, 0 failed, 3 intentional failures confirmed, exit 0).
+- `Pass (npm test)`: the mapped eval case passed in `npm test` (184 passed, 0 failed, 3 intentional failures confirmed, exit 0, after the BUG-1/2/3 fixes; the report below was written at 146).
 - `Pass (probe)`: checked by a throw-away script (`/tmp/qa/probe.mjs`, `/tmp/qa/probe2.mjs` on the box, outside the repo) that drives `buildApp()` in-process with `OE_MODE=mock`. Not part of `npm test`.
 - `Fail`: the system behaves differently from the expected result: a bug (see BUG ids at the bottom).
-- `Not run`: not executed. **Nothing was run against real OpenEdge/PASOE or real Gemini**, so ABL behaviour is only known by code reading and from NOTES.md's claim that the 47 contract cases agree on both.
+- `Not run`: not executed. **Nothing was run against real OpenEdge/PASOE or real Gemini by QA**, so ABL behaviour is only known by code reading and from NOTES.md's claim that the original 47 contract cases agree on both. The 14 contract cases added with the bug fixes (BUD01-06, DATE01-08) must still be run on real OpenEdge (see docs/NOTES.md section 6).
 
 Eval ids: `OE` contract suite = `eval/oe-contract-cases.json` (OE/RULE/READ/SUG/AUD/MISC/FAIL), `DEV` = `eval/device-cases.json`, `E` = `eval/api-cases.json`.
 
@@ -25,13 +25,13 @@ Eval ids: `OE` contract suite = `eval/oe-contract-cases.json` (OE/RULE/READ/SUG/
 | TC-07 | Reading goes stale or changes between advice and approval | Stale data | SUG12 (budget only), none for stale/wet | Pass (probe) |
 | TC-08 | Out-of-range sensor values | Out-of-range | DEV06, READ03 | Pass (npm test + probe) |
 | TC-09 | Malformed or missing fields, wrong types, wrong units | Malformed | DEV07, DEV11, READ04, READ05 | Pass (probe) |
-| TC-10 | Impossible calendar date (31 Feb) is rejected | Malformed | none, gap | **Fail** (BUG-3) |
+| TC-10 | Impossible calendar date (31 Feb) is rejected | Malformed | DATE01-08, DEV13-17, `eval/fixes.test.mjs` | Pass after fix (BUG-3) |
 | TC-11 | Duplicate deviceId + timestamp gives 409 | Duplicate | DEV05, READ02 | Pass (npm test + probe) |
 | TC-12 | Bad model output (non-JSON, empty, null, fenced, trailing text) | Bad model output | E13 | Pass (npm test + probe) |
 | TC-13 | Unknown/forbidden action, extra fields, hallucinated plot id | Bad model output | E14, RULE09, RULE11, E11 | Pass (npm test + probe) |
-| TC-14 | hold/notify with non-zero litres must not be approvable or spend water budget | Bad model output | none, gap | **Fail** (BUG-1) |
+| TC-14 | hold/notify with non-zero litres must not be approvable or spend water budget | Bad model output | BUD01-06, E21, E22, `eval/fixes.test.mjs` | Pass after fix (BUG-1) |
 | TC-15 | AI timeout falls back, rules still decide | Timeout | E12 (simulated only) | Pass (npm test + probe, real 8 s hang) |
-| TC-16 | OpenEdge timeout/outage gives a clear error, within the documented 5 s | Timeout | none, gap | **Fail** (BUG-2: error codes right, latency 10 s) |
+| TC-16 | OpenEdge timeout/outage gives a clear error, within the documented 5 s | Timeout | `eval/fixes.test.mjs` | Pass after fix (BUG-2) |
 | TC-17 | Empty results (no readings, no matches, unknown plot) | Empty results | E11, SUG16 | Pass (npm test + probe) |
 | TC-18 | Unapproved delete is blocked; approved suggestion cannot be deleted | Unapproved delete | E17, E18, SUG14, SUG15 | Pass (npm test + probe) |
 | TC-19 | Confirmation token misuse (wrong, expired, reused, other action/id, null) | Human approval / security | E06, E08 | Pass (npm test + probe) |
@@ -118,9 +118,9 @@ Count: 20 cases. 16 map to existing eval cases; TC-07 maps only partly (SUG12, b
 - **Preconditions:** valid device token.
 - **Steps / input:** `POST /api/v1/readings` with `timestamp: "2026-02-31T08:20:00Z"` (also `2026-04-31`).
 - **Expected:** 400 `VALIDATION_ERROR`, field `timestamp`.
-- **Actual:** 201 (stored). JavaScript rolls 31 Feb over to 3 March 2026, so the reading is silently stored with a different date than the one sent.
-- **Mapped eval:** none, gap
-- **Status:** **Fail** (BUG-3)
+- **Actual (before the fix):** 201 (stored). JavaScript rolled 31 Feb over to 3 March 2026, so the reading was silently stored with a different date than the one sent. **Now:** 400 `VALIDATION_ERROR`, field `timestamp`; leap years are handled (2024-02-29 valid, 2026-02-29 and 2100-02-29 refused).
+- **Mapped eval:** DATE01-08 (contract), DEV13-17 (API), `eval/fixes.test.mjs`
+- **Status:** Pass after fix (BUG-3). Fixed in the API, mock-pasoe and `openedge/src/iso.i`.
 
 ## TC-11 Duplicate deviceId + timestamp gives 409
 - **Category:** Duplicate / malformed
@@ -151,9 +151,9 @@ Count: 20 cases. 16 map to existing eval cases; TC-07 maps only partly (SUG12, b
 - **Preconditions:** a provider that returns `{"action":"hold","litres":500,"reason":"x"}` (or `notify` with 900).
 - **Steps / input:** `POST /api/v1/plots/1/advise`; then (OpenEdge layer) approve that suggestion and read `usedLast7DaysL`.
 - **Expected:** the proposal is rejected by the schema or normalised to 0 L, because only `irrigate` may carry litres (system prompt: "litres is 0 unless action is irrigate"). Approving a hold must not add to the weekly water use.
-- **Actual:** advise returns 200 `pending_approval`, `proposal: hold 500 L`, `verdict: approved_by_rules`. Approving it at the OpenEdge layer changed `usedLast7DaysL` from 1000 to 1500, i.e. a "hold" consumes 500 L of the weekly budget (every approved suggestion's litres are summed regardless of action).
-- **Mapped eval:** none, gap
-- **Status:** **Fail** (BUG-1). End-to-end approve through the API was not exercised; the budget effect was checked against `mock-pasoe`, and the same sum is in `openedge/src/farm-api.p` lines 196-201 (not run on real OpenEdge).
+- **Actual (before the fix):** advise returned 200 `pending_approval`, `proposal: hold 500 L`. Approving it at the OpenEdge layer changed `usedLast7DaysL` from 1000 to 1500 (every approved suggestion's litres were summed regardless of action). **Now:** the schema refuses litres other than 0 on hold/notify (fallback with 0 L), and the 7-day sum in both `mock-pasoe/rules.js` and `openedge/src/farm-api.p` counts `irrigate` only.
+- **Mapped eval:** BUD01-06 (contract, hold/notify carrying litres at the OpenEdge layer), E21, E22 (API), `eval/fixes.test.mjs`
+- **Status:** Pass after fix (BUG-1) on mock-pasoe; ABL change pending a real-OpenEdge run.
 
 ## TC-15 AI timeout falls back, rules still decide
 - **Category:** Timeout (AI)
@@ -168,9 +168,9 @@ Count: 20 cases. 16 map to existing eval cases; TC-07 maps only partly (SUG12, b
 - **Preconditions:** `OE_MODE=pasoe` pointed at a loopback server that (a) never answers, (b) refuses connections, (c) returns HTML, (d) returns 500 JSON.
 - **Steps / input:** `POST /api/v1/plots/1/advise` and `POST /api/v1/readings`.
 - **Expected:** (a) 504 `OE_TIMEOUT` after about 5 s (`OE_TIMEOUT_MS`); (b) and (c) 502 `OE_UNAVAILABLE`; (d) the error is passed through; never a hang, a crash or an invented answer.
-- **Actual:** the codes are as expected (a: 504 `OE_TIMEOUT`, b/c: 502 `OE_UNAVAILABLE`, d: 500 with the OpenEdge body). Latency for (a) is about **10 s** for both endpoints (10009 ms and 10004 ms), twice the documented limit.
-- **Mapped eval:** none, gap (no eval case covers OpenEdge failures; NOTES.md section 7 admits network failures are only partly tested)
-- **Status:** **Fail** (BUG-2: latency). Error codes themselves: Pass (probe).
+- **Actual (before the fix):** the codes were as expected (a: 504 `OE_TIMEOUT`, b/c: 502 `OE_UNAVAILABLE`, d: 500 with the OpenEdge body) but latency for (a) was about **10 s** (twice the limit). **Now:** about one timeout; after an OpenEdge failure the API skips the audit write and logs locally (`auditSkipped` in `logs/tool-calls.jsonl`); a slow audit write waits at most 1 s.
+- **Mapped eval:** `eval/fixes.test.mjs` (hung server, refused connection, slow audit; the timeout is set with `OE_TIMEOUT_MS` in the test)
+- **Status:** Pass after fix (BUG-2).
 
 ## TC-17 Empty results
 - **Category:** Empty results
@@ -210,15 +210,17 @@ Count: 20 cases. 16 map to existing eval cases; TC-07 maps only partly (SUG12, b
 
 | ID | Severity | Finding | Repro | Where |
 |---|---|---|---|---|
-| BUG-1 | Medium | Non-irrigate actions can carry litres and those litres count toward the weekly water budget once approved. The proposal schema allows `litres` 0 to 1000 for every action, the ABL and Node rules only check litres for `irrigate`, and the budget sum adds all approved rows. | Provider returns `{"action":"hold","litres":500,"reason":"x"}` for plot 1: advise gives `pending_approval`; approving moves `usedLast7DaysL` 1000 to 1500 (mock-pasoe). | `apps/api/src/ai/advise.js` 227-234; `mock-pasoe/rules.js` 19-21; `openedge/src/farm-api.p` 196-201 |
-| BUG-2 | Low-Medium | During an OpenEdge outage a request takes about 2 x `OE_TIMEOUT_MS` (10 s): the failing call times out, then the `finally` in `tool()` awaits an audit write to the same unreachable OpenEdge, which times out too. | `OE_MODE=pasoe`, `OE_BASE_URL` to a server that never answers; `POST /api/v1/plots/1/advise` returns 504 after about 10 s. | `apps/api/src/app.js` 38-48 (line 46 awaits `oe.call('/farm/audit')`) |
-| BUG-3 | Low | Impossible calendar dates (`2026-02-31`, `2026-04-31`) are accepted and stored on a rolled-over date. The same day <= 31 check exists in the ABL parser. | `POST /api/v1/readings` with `timestamp: "2026-02-31T08:20:00Z"` returns 201. | `apps/api/src/app.js` 11 and 76; `mock-pasoe/time.js` 8; `openedge/src/iso.i` 27 |
+| BUG-1 (fixed) | Medium | Non-irrigate actions can carry litres and those litres count toward the weekly water budget once approved. The proposal schema allows `litres` 0 to 1000 for every action, the ABL and Node rules only check litres for `irrigate`, and the budget sum adds all approved rows. | Provider returns `{"action":"hold","litres":500,"reason":"x"}` for plot 1: advise gives `pending_approval`; approving moves `usedLast7DaysL` 1000 to 1500 (mock-pasoe). | `apps/api/src/ai/advise.js` 227-234; `mock-pasoe/rules.js` 19-21; `openedge/src/farm-api.p` 196-201 |
+| BUG-2 (fixed) | Low-Medium | During an OpenEdge outage a request takes about 2 x `OE_TIMEOUT_MS` (10 s): the failing call times out, then the `finally` in `tool()` awaits an audit write to the same unreachable OpenEdge, which times out too. | `OE_MODE=pasoe`, `OE_BASE_URL` to a server that never answers; `POST /api/v1/plots/1/advise` returns 504 after about 10 s. | `apps/api/src/app.js` 38-48 (line 46 awaits `oe.call('/farm/audit')`) |
+| BUG-3 (fixed) | Low | Impossible calendar dates (`2026-02-31`, `2026-04-31`) are accepted and stored on a rolled-over date. The same day <= 31 check exists in the ABL parser. | `POST /api/v1/readings` with `timestamp: "2026-02-31T08:20:00Z"` returns 201. | `apps/api/src/app.js` 11 and 76; `mock-pasoe/time.js` 8; `openedge/src/iso.i` 27 |
 | GAP-1 | Info | No eval case for rule `NO_SENSOR_DATA` (listed in NOTES.md section 2). Behaviour verified only by probe. | Validate `irrigate` on a plot with no readings. | `eval/oe-contract-cases.json` |
 | GAP-2 | Info | AI timeout case E12 is simulated (mock throws immediately); the real 8 s abort and every OpenEdge failure mode have no automated test. | See TC-15 and TC-16. | `eval/api-cases.json`, `apps/api/src/ai/provider.js` |
 | GAP-3 | Info | Mock behaviour `extra-field` and `greedy` on a dry plot, stale-at-approval, wet-at-approval, expired token and boundary values are not in the eval files. | See TC-07, TC-08, TC-19. | `eval/*.json` |
 | GAP-4 | Info | Denied attempts (401, 403 `CONFIRMATION_INVALID`) are not audited; the raw model output is not stored (only the fallback reason). | See TC-20. | `apps/api/src/app.js` |
 
 ## What was not verified
+
+- Fixes for BUG-1/2/3 were made after this report (see `docs/NOTES.md` section 6a). Line numbers in the bug table refer to the code before the fixes.
 
 - Real OpenEdge/PASOE and the ABL code (`farm-api.p`, `FarmHandler.cls`) were not run on this Linux box; the Windows-only suites (`test:oe-http`, `test:api-real-oe`, `oe-run.ps1 -Action test`) and the real Gemini test (`test:gemini`) were not run. Statuses above are for `mock-pasoe` and the mock AI.
 - Firmware tests (`pio test -e native`) and the physical ESP32 were not run. The simulator tests (33 unit, 5 against the API) passed inside `npm test`.
