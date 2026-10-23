@@ -2,6 +2,7 @@
 // handle(store, method, pathWithQuery, body, clock) -> { status, body }
 import { validate } from './rules.js';
 import { parseIso, iso } from './time.js';
+import { handleCoop } from './coop-handler.js';
 
 const err = (status, error, message, field) => ({ status, body: { error, message, ...(field ? { field } : {}) } });
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
@@ -46,6 +47,8 @@ export function handle(store, method, pathWithQuery, body = {}, clock = () => ne
   if (segs[0] === 'farm') segs = segs.slice(1);
   const n = segs.length;
   const idOf = (s) => (/^-?\d+$/.test(s) ? parseInt(s, 10) : NaN);
+  const coop = handleCoop(store, method, segs, q, body, clock);   // members, credits, lots, contracts, allocations, payouts
+  if (coop) return coop;
 
   if (method === 'GET') {
     if (n === 1 && segs[0] === 'plots') return { status: 200, body: { plots: [...store.plots].sort((a, b) => a.plotId - b.plotId).map(plotJson) } };
