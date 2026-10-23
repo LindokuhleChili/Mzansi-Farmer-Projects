@@ -1,0 +1,400 @@
+ADD SEQUENCE "ReadingSeq"
+  INITIAL 1000
+  INCREMENT 1
+  CYCLE-ON-LIMIT no
+  MIN-VAL 0
+
+ADD SEQUENCE "SuggestionSeq"
+  INITIAL 0
+  INCREMENT 1
+  CYCLE-ON-LIMIT no
+  MIN-VAL 0
+
+ADD SEQUENCE "AuditSeq"
+  INITIAL 0
+  INCREMENT 1
+  CYCLE-ON-LIMIT no
+  MIN-VAL 0
+
+ADD TABLE "Plot"
+  AREA "Schema Area"
+  DESCRIPTION "A plot (field or bed) on a farm. Example data only"
+  DUMP-NAME "plot"
+
+ADD FIELD "PlotId" OF "Plot" AS integer
+  FORMAT ">>>>9"
+  INITIAL "0"
+  LABEL "Plot Id"
+  POSITION 2
+  MAX-WIDTH 4
+  ORDER 10
+  MANDATORY
+
+ADD FIELD "FarmId" OF "Plot" AS integer
+  FORMAT ">>>>9"
+  INITIAL "0"
+  LABEL "Farm Id"
+  POSITION 3
+  MAX-WIDTH 4
+  ORDER 20
+  MANDATORY
+
+ADD FIELD "PlotName" OF "Plot" AS character
+  FORMAT "x(40)"
+  INITIAL ""
+  LABEL "Plot Name"
+  POSITION 4
+  MAX-WIDTH 80
+  ORDER 30
+  MANDATORY
+
+ADD FIELD "Crop" OF "Plot" AS character
+  FORMAT "x(30)"
+  INITIAL ""
+  LABEL "Crop"
+  POSITION 5
+  MAX-WIDTH 60
+  ORDER 40
+
+ADD FIELD "AreaHa" OF "Plot" AS decimal
+  FORMAT ">>9.99"
+  INITIAL "0"
+  LABEL "Area (ha)"
+  POSITION 6
+  MAX-WIDTH 17
+  DECIMALS 2
+  ORDER 50
+
+ADD FIELD "MaxIrrigationLitres" OF "Plot" AS integer
+  FORMAT ">>>,>>9"
+  INITIAL "0"
+  LABEL "Max irrigation (L)"
+  POSITION 7
+  MAX-WIDTH 4
+  ORDER 60
+  MANDATORY
+
+ADD FIELD "DryThresholdPct" OF "Plot" AS decimal
+  FORMAT ">>9.9"
+  INITIAL "0"
+  LABEL "Dry threshold (%)"
+  POSITION 8
+  MAX-WIDTH 17
+  DECIMALS 1
+  ORDER 70
+  MANDATORY
+
+ADD FIELD "WeeklyWaterBudgetL" OF "Plot" AS integer
+  FORMAT ">>>,>>9"
+  INITIAL "0"
+  LABEL "Weekly water budget (L)"
+  POSITION 9
+  MAX-WIDTH 4
+  ORDER 80
+  MANDATORY
+
+ADD FIELD "IsExample" OF "Plot" AS logical
+  FORMAT "yes/no"
+  INITIAL "yes"
+  LABEL "Example data"
+  POSITION 10
+  MAX-WIDTH 1
+  ORDER 90
+
+ADD INDEX "PlotId" ON "Plot"
+  AREA "Schema Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "PlotId" ASCENDING
+
+ADD INDEX "FarmId" ON "Plot"
+  AREA "Schema Area"
+  INDEX-FIELD "FarmId" ASCENDING
+  INDEX-FIELD "PlotId" ASCENDING
+
+ADD TABLE "SensorReading"
+  AREA "Schema Area"
+  DESCRIPTION "One reading from a field sensor device (ESP32). Example data only"
+  DUMP-NAME "sensrdg"
+
+ADD FIELD "ReadingId" OF "SensorReading" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Reading Id"
+  POSITION 2
+  MAX-WIDTH 4
+  ORDER 10
+  MANDATORY
+
+ADD FIELD "PlotId" OF "SensorReading" AS integer
+  FORMAT ">>>>9"
+  INITIAL "0"
+  LABEL "Plot Id"
+  POSITION 3
+  MAX-WIDTH 4
+  ORDER 20
+  MANDATORY
+
+ADD FIELD "DeviceId" OF "SensorReading" AS character
+  FORMAT "x(40)"
+  INITIAL ""
+  LABEL "Device Id"
+  POSITION 4
+  MAX-WIDTH 80
+  ORDER 30
+  MANDATORY
+
+ADD FIELD "ReadAt" OF "SensorReading" AS datetime-tz
+  FORMAT "99/99/9999 HH:MM:SS.SSS+HH:MM"
+  INITIAL "?"
+  LABEL "Read at"
+  POSITION 5
+  MAX-WIDTH 8
+  ORDER 40
+  MANDATORY
+
+ADD FIELD "SoilMoisturePct" OF "SensorReading" AS decimal
+  FORMAT ">>9.9"
+  INITIAL "0"
+  LABEL "Soil moisture (%)"
+  POSITION 6
+  MAX-WIDTH 17
+  DECIMALS 1
+  ORDER 50
+  MANDATORY
+
+ADD FIELD "TemperatureC" OF "SensorReading" AS decimal
+  FORMAT "->>9.9"
+  INITIAL "0"
+  LABEL "Temperature (C)"
+  POSITION 7
+  MAX-WIDTH 17
+  DECIMALS 1
+  ORDER 60
+  MANDATORY
+
+ADD FIELD "HumidityPct" OF "SensorReading" AS decimal
+  FORMAT ">>9.9"
+  INITIAL "0"
+  LABEL "Humidity (%)"
+  POSITION 8
+  MAX-WIDTH 17
+  DECIMALS 1
+  ORDER 70
+  MANDATORY
+
+ADD FIELD "Raining" OF "SensorReading" AS logical
+  FORMAT "yes/no"
+  INITIAL "no"
+  LABEL "Raining"
+  POSITION 9
+  MAX-WIDTH 1
+  ORDER 80
+
+ADD INDEX "ReadingId" ON "SensorReading"
+  AREA "Schema Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "ReadingId" ASCENDING
+
+ADD INDEX "PlotReadAt" ON "SensorReading"
+  AREA "Schema Area"
+  INDEX-FIELD "PlotId" ASCENDING
+  INDEX-FIELD "ReadAt" DESCENDING
+
+ADD INDEX "DeviceReadAt" ON "SensorReading"
+  AREA "Schema Area"
+  UNIQUE
+  INDEX-FIELD "DeviceId" ASCENDING
+  INDEX-FIELD "ReadAt" ASCENDING
+
+ADD TABLE "AiSuggestion"
+  AREA "Schema Area"
+  DESCRIPTION "An AI proposal and the ABL rule verdict and farmer decision. Example data only"
+  DUMP-NAME "aisugg"
+
+ADD FIELD "SuggestionId" OF "AiSuggestion" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Suggestion Id"
+  POSITION 2
+  MAX-WIDTH 4
+  ORDER 10
+  MANDATORY
+
+ADD FIELD "PlotId" OF "AiSuggestion" AS integer
+  FORMAT ">>>>9"
+  INITIAL "0"
+  LABEL "Plot Id"
+  POSITION 3
+  MAX-WIDTH 4
+  ORDER 20
+  MANDATORY
+
+ADD FIELD "CreatedAt" OF "AiSuggestion" AS datetime-tz
+  FORMAT "99/99/9999 HH:MM:SS.SSS+HH:MM"
+  INITIAL "?"
+  LABEL "Created at"
+  POSITION 4
+  MAX-WIDTH 8
+  ORDER 30
+  MANDATORY
+
+ADD FIELD "DecidedAt" OF "AiSuggestion" AS datetime-tz
+  FORMAT "99/99/9999 HH:MM:SS.SSS+HH:MM"
+  INITIAL "?"
+  LABEL "Decided at"
+  POSITION 5
+  MAX-WIDTH 8
+  ORDER 40
+
+ADD FIELD "Action" OF "AiSuggestion" AS character
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "Action"
+  POSITION 6
+  MAX-WIDTH 40
+  ORDER 50
+  MANDATORY
+
+ADD FIELD "Litres" OF "AiSuggestion" AS integer
+  FORMAT ">>>,>>9"
+  INITIAL "0"
+  LABEL "Litres"
+  POSITION 7
+  MAX-WIDTH 4
+  ORDER 60
+
+ADD FIELD "Reason" OF "AiSuggestion" AS character
+  FORMAT "x(1000)"
+  INITIAL ""
+  LABEL "Reason"
+  POSITION 8
+  MAX-WIDTH 2000
+  ORDER 70
+
+ADD FIELD "Provider" OF "AiSuggestion" AS character
+  FORMAT "x(30)"
+  INITIAL ""
+  LABEL "AI provider"
+  POSITION 9
+  MAX-WIDTH 60
+  ORDER 80
+
+ADD FIELD "Status" OF "AiSuggestion" AS character
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "Status"
+  POSITION 10
+  MAX-WIDTH 40
+  ORDER 90
+  MANDATORY
+
+ADD FIELD "Verdict" OF "AiSuggestion" AS character
+  FORMAT "x(30)"
+  INITIAL ""
+  LABEL "Rule verdict"
+  POSITION 11
+  MAX-WIDTH 60
+  ORDER 100
+
+ADD FIELD "RejectReasons" OF "AiSuggestion" AS character
+  FORMAT "x(2000)"
+  INITIAL ""
+  LABEL "Reject reasons (JSON)"
+  POSITION 12
+  MAX-WIDTH 4000
+  ORDER 110
+
+ADD FIELD "RequestId" OF "AiSuggestion" AS character
+  FORMAT "x(40)"
+  INITIAL ""
+  LABEL "Request Id"
+  POSITION 13
+  MAX-WIDTH 80
+  ORDER 120
+
+ADD INDEX "SuggestionId" ON "AiSuggestion"
+  AREA "Schema Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "SuggestionId" ASCENDING
+
+ADD INDEX "PlotStatus" ON "AiSuggestion"
+  AREA "Schema Area"
+  INDEX-FIELD "PlotId" ASCENDING
+  INDEX-FIELD "Status" ASCENDING
+  INDEX-FIELD "DecidedAt" DESCENDING
+
+ADD TABLE "AuditLog"
+  AREA "Schema Area"
+  DESCRIPTION "Audit trail: tool calls, rule checks and farmer decisions. Example data only"
+  DUMP-NAME "auditlog"
+
+ADD FIELD "AuditId" OF "AuditLog" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Audit Id"
+  POSITION 2
+  MAX-WIDTH 4
+  ORDER 10
+  MANDATORY
+
+ADD FIELD "At" OF "AuditLog" AS datetime-tz
+  FORMAT "99/99/9999 HH:MM:SS.SSS+HH:MM"
+  INITIAL "?"
+  LABEL "At"
+  POSITION 3
+  MAX-WIDTH 8
+  ORDER 20
+  MANDATORY
+
+ADD FIELD "RequestId" OF "AuditLog" AS character
+  FORMAT "x(40)"
+  INITIAL ""
+  LABEL "Request Id"
+  POSITION 4
+  MAX-WIDTH 80
+  ORDER 30
+
+ADD FIELD "Actor" OF "AuditLog" AS character
+  FORMAT "x(40)"
+  INITIAL ""
+  LABEL "Actor"
+  POSITION 5
+  MAX-WIDTH 80
+  ORDER 40
+
+ADD FIELD "Event" OF "AuditLog" AS character
+  FORMAT "x(60)"
+  INITIAL ""
+  LABEL "Event"
+  POSITION 6
+  MAX-WIDTH 120
+  ORDER 50
+  MANDATORY
+
+ADD FIELD "Detail" OF "AuditLog" AS character
+  FORMAT "x(4000)"
+  INITIAL ""
+  LABEL "Detail (JSON)"
+  POSITION 7
+  MAX-WIDTH 8000
+  ORDER 60
+
+ADD INDEX "AuditId" ON "AuditLog"
+  AREA "Schema Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "AuditId" ASCENDING
+
+ADD INDEX "RequestId" ON "AuditLog"
+  AREA "Schema Area"
+  INDEX-FIELD "RequestId" ASCENDING
+  INDEX-FIELD "AuditId" ASCENDING
+
+.
+PSC
+cpstream=ISO8859-1
+.
+0000000000

@@ -1,0 +1,1038 @@
+{
+ "description": "Shared OpenEdge contract cases. Run in order after a reseed (they are stateful). Same file runs against mock-pasoe (node) and the real ABL farm-api.p (laptop). Example data only.",
+ "referenceTime": "2026-10-23T08:10:00Z",
+ "cases": [
+  {
+   "id": "OE01",
+   "title": "List plots returns the five example plots",
+   "request": {
+    "method": "GET",
+    "path": "/farm/plots"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "plots": {
+      "$length": 5
+     }
+    }
+   }
+  },
+  {
+   "id": "OE02",
+   "title": "Get one plot",
+   "request": {
+    "method": "GET",
+    "path": "/farm/plots/1"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "plotId": 1,
+     "plotName": "Maize Plot A (example)",
+     "maxIrrigationLitres": 500,
+     "dryThresholdPct": 35
+    }
+   }
+  },
+  {
+   "id": "OE03",
+   "title": "Unknown plot id gives 404 PLOT_NOT_FOUND",
+   "request": {
+    "method": "GET",
+    "path": "/farm/plots/99"
+   },
+   "expect": {
+    "status": 404,
+    "body": {
+     "error": "PLOT_NOT_FOUND"
+    }
+   }
+  },
+  {
+   "id": "OE04",
+   "title": "Readings are newest first and respect limit",
+   "request": {
+    "method": "GET",
+    "path": "/farm/plots/1/readings?limit=2"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "plotId": 1,
+     "readings": [
+      {
+       "soilMoisturePct": 18.5,
+       "readAt": "2026-10-23T08:06:00.000Z"
+      },
+      {
+       "soilMoisturePct": 19.8
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "RULE01",
+   "title": "Dry, fresh plot: 300 L irrigation is approved (facts come from OpenEdge)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/validate",
+    "body": {
+     "plotId": 1,
+     "action": "irrigate",
+     "litres": 300,
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "verdict": "approved_by_rules",
+     "rejectReasons": [],
+     "facts": {
+      "soilMoisturePct": 18.5,
+      "readingAgeMinutes": 4,
+      "usedLast7DaysL": 1000,
+      "weeklyWaterBudgetL": 1500,
+      "raining": false,
+      "dryThresholdPct": 35
+     }
+    }
+   }
+  },
+  {
+   "id": "RULE02",
+   "title": "Boundary: used 1000 + 500 = budget 1500 is allowed",
+   "request": {
+    "method": "POST",
+    "path": "/farm/validate",
+    "body": {
+     "plotId": 1,
+     "action": "irrigate",
+     "litres": 500,
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "verdict": "approved_by_rules"
+    }
+   }
+  },
+  {
+   "id": "RULE03",
+   "title": "501 L is over the plot limit AND over the weekly budget: both reasons returned",
+   "request": {
+    "method": "POST",
+    "path": "/farm/validate",
+    "body": {
+     "plotId": 1,
+     "action": "irrigate",
+     "litres": 501,
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "verdict": "rejected_by_rules",
+     "rejectReasons": [
+      {
+       "code": "LITRES_OUT_OF_RANGE",
+       "message": "Litres must be between 1 and 500 for this plot."
+      },
+      {
+       "code": "WATER_BUDGET_EXCEEDED",
+       "message": "Used 1000 L in the last 7 days; adding 501 L would exceed the weekly budget of 1500 L."
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "RULE04",
+   "title": "Wet soil (62%) is not irrigated",
+   "request": {
+    "method": "POST",
+    "path": "/farm/validate",
+    "body": {
+     "plotId": 2,
+     "action": "irrigate",
+     "litres": 100,
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "verdict": "rejected_by_rules",
+     "rejectReasons": [
+      {
+       "code": "SOIL_NOT_DRY",
+       "message": "Soil moisture 62% is not below the dry threshold 40%."
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "RULE05",
+   "title": "Stale sensor data (2 days old) blocks any irrigation",
+   "request": {
+    "method": "POST",
+    "path": "/farm/validate",
+    "body": {
+     "plotId": 3,
+     "action": "irrigate",
+     "litres": 100,
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "verdict": "rejected_by_rules",
+     "rejectReasons": [
+      {
+       "code": "SENSOR_STALE",
+       "message": "Latest reading is 2890 min old (limit 15)."
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "RULE06",
+   "title": "Water budget exceeded (350 used + 100 > 400)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/validate",
+    "body": {
+     "plotId": 4,
+     "action": "irrigate",
+     "litres": 100,
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "verdict": "rejected_by_rules",
+     "rejectReasons": [
+      {
+       "code": "WATER_BUDGET_EXCEEDED",
+       "message": "Used 350 L in the last 7 days; adding 100 L would exceed the weekly budget of 400 L."
+      }
+     ],
+     "facts": {
+      "usedLast7DaysL": 350
+     }
+    }
+   }
+  },
+  {
+   "id": "RULE07",
+   "title": "Budget boundary: 350 + 50 = 400 is allowed",
+   "request": {
+    "method": "POST",
+    "path": "/farm/validate",
+    "body": {
+     "plotId": 4,
+     "action": "irrigate",
+     "litres": 50,
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "verdict": "approved_by_rules"
+    }
+   }
+  },
+  {
+   "id": "RULE08",
+   "title": "Rain detected blocks irrigation",
+   "request": {
+    "method": "POST",
+    "path": "/farm/validate",
+    "body": {
+     "plotId": 5,
+     "action": "irrigate",
+     "litres": 100,
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "verdict": "rejected_by_rules",
+     "rejectReasons": [
+      {
+       "code": "RAIN_DETECTED",
+       "message": "Rain is being detected on this plot."
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "RULE09",
+   "title": "Prompt-injection style action (apply_pesticide) is not an allowed action",
+   "request": {
+    "method": "POST",
+    "path": "/farm/validate",
+    "body": {
+     "plotId": 1,
+     "action": "apply_pesticide",
+     "litres": 0,
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "verdict": "rejected_by_rules",
+     "rejectReasons": [
+      {
+       "code": "ACTION_NOT_ALLOWED",
+       "message": "Action 'apply_pesticide' is not allowed. Allowed: irrigate, hold, notify."
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "RULE10",
+   "title": "Notify needs no water checks",
+   "request": {
+    "method": "POST",
+    "path": "/farm/validate",
+    "body": {
+     "plotId": 1,
+     "action": "notify",
+     "litres": 0,
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "verdict": "approved_by_rules"
+    }
+   }
+  },
+  {
+   "id": "RULE11",
+   "title": "Unknown plot is rejected with PLOT_NOT_FOUND",
+   "request": {
+    "method": "POST",
+    "path": "/farm/validate",
+    "body": {
+     "plotId": 99,
+     "action": "irrigate",
+     "litres": 100,
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "verdict": "rejected_by_rules",
+     "rejectReasons": [
+      {
+       "code": "PLOT_NOT_FOUND"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "RULE12",
+   "title": "Zero litres is out of range",
+   "request": {
+    "method": "POST",
+    "path": "/farm/validate",
+    "body": {
+     "plotId": 1,
+     "action": "irrigate",
+     "litres": 0,
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "verdict": "rejected_by_rules",
+     "rejectReasons": [
+      {
+       "code": "LITRES_OUT_OF_RANGE"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "RULE13",
+   "title": "Reading 54 min old is stale at 09:00",
+   "request": {
+    "method": "POST",
+    "path": "/farm/validate",
+    "body": {
+     "plotId": 1,
+     "action": "irrigate",
+     "litres": 100,
+     "asOf": "2026-10-23T09:00:00Z"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "verdict": "rejected_by_rules",
+     "rejectReasons": [
+      {
+       "code": "SENSOR_STALE",
+       "message": "Latest reading is 54 min old (limit 15)."
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "RULE14",
+   "title": "Water used more than 7 days ago no longer counts",
+   "request": {
+    "method": "POST",
+    "path": "/farm/validate",
+    "body": {
+     "plotId": 1,
+     "action": "irrigate",
+     "litres": 100,
+     "asOf": "2026-10-29T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "facts": {
+      "usedLast7DaysL": 0
+     }
+    }
+   }
+  },
+  {
+   "id": "READ01",
+   "title": "Store a valid reading",
+   "request": {
+    "method": "POST",
+    "path": "/farm/readings",
+    "body": {
+     "deviceId": "esp32-01",
+     "plotId": 1,
+     "timestamp": "2026-10-23T08:09:00Z",
+     "soilMoisturePct": 17.0,
+     "temperatureC": 29.4,
+     "humidityPct": 41.0
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "id": 1027
+    }
+   }
+  },
+  {
+   "id": "READ02",
+   "title": "Same deviceId + timestamp again is a duplicate",
+   "request": {
+    "method": "POST",
+    "path": "/farm/readings",
+    "body": {
+     "deviceId": "esp32-01",
+     "plotId": 1,
+     "timestamp": "2026-10-23T08:09:00Z",
+     "soilMoisturePct": 17.0,
+     "temperatureC": 29.4,
+     "humidityPct": 41.0
+    }
+   },
+   "expect": {
+    "status": 409,
+    "body": {
+     "error": "DUPLICATE_READING",
+     "field": "timestamp"
+    }
+   }
+  },
+  {
+   "id": "READ03",
+   "title": "Soil moisture 140 is out of range",
+   "request": {
+    "method": "POST",
+    "path": "/farm/readings",
+    "body": {
+     "deviceId": "esp32-01",
+     "plotId": 1,
+     "timestamp": "2026-10-23T08:11:00Z",
+     "soilMoisturePct": 140,
+     "temperatureC": 29.4,
+     "humidityPct": 41.0
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "soilMoisturePct"
+    }
+   }
+  },
+  {
+   "id": "READ04",
+   "title": "Missing timestamp is rejected",
+   "request": {
+    "method": "POST",
+    "path": "/farm/readings",
+    "body": {
+     "deviceId": "esp32-01",
+     "plotId": 1,
+     "soilMoisturePct": 17.0,
+     "temperatureC": 29.4,
+     "humidityPct": 41.0
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "timestamp"
+    }
+   }
+  },
+  {
+   "id": "READ05",
+   "title": "Unparseable timestamp is rejected",
+   "request": {
+    "method": "POST",
+    "path": "/farm/readings",
+    "body": {
+     "deviceId": "esp32-01",
+     "plotId": 1,
+     "timestamp": "yesterday",
+     "soilMoisturePct": 17.0,
+     "temperatureC": 29.4,
+     "humidityPct": 41.0
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "timestamp"
+    }
+   }
+  },
+  {
+   "id": "READ06",
+   "title": "Reading for unknown plot is 404",
+   "request": {
+    "method": "POST",
+    "path": "/farm/readings",
+    "body": {
+     "deviceId": "esp32-01",
+     "plotId": 99,
+     "timestamp": "2026-10-23T08:12:00Z",
+     "soilMoisturePct": 17.0,
+     "temperatureC": 29.4,
+     "humidityPct": 41.0
+    }
+   },
+   "expect": {
+    "status": 404,
+    "body": {
+     "error": "PLOT_NOT_FOUND"
+    }
+   }
+  },
+  {
+   "id": "READ07",
+   "title": "Newest reading is now the one just stored",
+   "request": {
+    "method": "GET",
+    "path": "/farm/plots/1/readings?limit=1"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "readings": [
+      {
+       "readingId": 1027,
+       "soilMoisturePct": 17
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "SUG01",
+   "title": "Create a valid suggestion: pending approval",
+   "request": {
+    "method": "POST",
+    "path": "/farm/suggestions",
+    "body": {
+     "plotId": 1,
+     "action": "irrigate",
+     "litres": 300,
+     "reason": "Example reason",
+     "provider": "mock",
+     "requestId": "req_t25",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "suggestionId": 4,
+     "status": "pending_approval",
+     "verdict": "approved_by_rules",
+     "rejectReasons": []
+    }
+   }
+  },
+  {
+   "id": "SUG02",
+   "title": "Rule-rejected suggestion is stored as rejected with reasons",
+   "request": {
+    "method": "POST",
+    "path": "/farm/suggestions",
+    "body": {
+     "plotId": 2,
+     "action": "irrigate",
+     "litres": 100,
+     "reason": "Example reason",
+     "provider": "mock",
+     "requestId": "req_t26",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "suggestionId": 5,
+     "status": "rejected",
+     "rejectReasons": [
+      {
+       "code": "SOIL_NOT_DRY"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "SUG03",
+   "title": "A rejected suggestion cannot be approved",
+   "request": {
+    "method": "POST",
+    "path": "/farm/suggestions/5/decision",
+    "body": {
+     "decision": "approve",
+     "actor": "farmer",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 409,
+    "body": {
+     "error": "NOT_APPROVABLE"
+    }
+   }
+  },
+  {
+   "id": "SUG04",
+   "title": "Approve a pending suggestion (rules re-run, passes)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/suggestions/4/decision",
+    "body": {
+     "decision": "approve",
+     "actor": "farmer",
+     "requestId": "req_ap",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "suggestionId": 4,
+     "status": "approved"
+    }
+   }
+  },
+  {
+   "id": "SUG05",
+   "title": "Approving twice is refused",
+   "request": {
+    "method": "POST",
+    "path": "/farm/suggestions/4/decision",
+    "body": {
+     "decision": "approve",
+     "actor": "farmer",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 409,
+    "body": {
+     "error": "ALREADY_DECIDED"
+    }
+   }
+  },
+  {
+   "id": "SUG06",
+   "title": "Approved water now counts against the budget (1000 + 300 + 500 > 1500)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/validate",
+    "body": {
+     "plotId": 1,
+     "action": "irrigate",
+     "litres": 500,
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "verdict": "rejected_by_rules",
+     "rejectReasons": [
+      {
+       "code": "WATER_BUDGET_EXCEEDED"
+      }
+     ],
+     "facts": {
+      "usedLast7DaysL": 1300
+     }
+    }
+   }
+  },
+  {
+   "id": "SUG07",
+   "title": "Create second suggestion 200 L (1300 + 200 = 1500 ok)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/suggestions",
+    "body": {
+     "plotId": 1,
+     "action": "irrigate",
+     "litres": 200,
+     "reason": "Example reason",
+     "provider": "mock",
+     "requestId": "req_t31",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "suggestionId": 6,
+     "status": "pending_approval"
+    }
+   }
+  },
+  {
+   "id": "SUG08",
+   "title": "Reject (decline) a pending suggestion",
+   "request": {
+    "method": "POST",
+    "path": "/farm/suggestions/6/decision",
+    "body": {
+     "decision": "reject",
+     "actor": "farmer",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "status": "declined"
+    }
+   }
+  },
+  {
+   "id": "SUG09",
+   "title": "Two pending suggestions for plot 4 (50 L each)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/suggestions",
+    "body": {
+     "plotId": 4,
+     "action": "irrigate",
+     "litres": 50,
+     "reason": "Example reason",
+     "provider": "mock",
+     "requestId": "req_t33",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "suggestionId": 7,
+     "status": "pending_approval"
+    }
+   }
+  },
+  {
+   "id": "SUG10",
+   "title": "Second pending suggestion for plot 4",
+   "request": {
+    "method": "POST",
+    "path": "/farm/suggestions",
+    "body": {
+     "plotId": 4,
+     "action": "irrigate",
+     "litres": 50,
+     "reason": "Example reason",
+     "provider": "mock",
+     "requestId": "req_t34",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "suggestionId": 8,
+     "status": "pending_approval"
+    }
+   }
+  },
+  {
+   "id": "SUG11",
+   "title": "Approve first one",
+   "request": {
+    "method": "POST",
+    "path": "/farm/suggestions/7/decision",
+    "body": {
+     "decision": "approve",
+     "actor": "farmer",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "status": "approved"
+    }
+   }
+  },
+  {
+   "id": "SUG12",
+   "title": "Approve second: rules re-run at approval time and now refuse (budget used up)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/suggestions/8/decision",
+    "body": {
+     "decision": "approve",
+     "actor": "farmer",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 409,
+    "body": {
+     "error": "NOT_APPROVABLE",
+     "status": "rejected",
+     "rejectReasons": [
+      {
+       "code": "WATER_BUDGET_EXCEEDED"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "SUG13",
+   "title": "Delete a non-approved suggestion",
+   "request": {
+    "method": "POST",
+    "path": "/farm/suggestions/8/decision",
+    "body": {
+     "decision": "delete",
+     "actor": "farmer",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "status": "deleted"
+    }
+   }
+  },
+  {
+   "id": "SUG14",
+   "title": "Deleting twice is refused",
+   "request": {
+    "method": "POST",
+    "path": "/farm/suggestions/8/decision",
+    "body": {
+     "decision": "delete",
+     "actor": "farmer",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 409,
+    "body": {
+     "error": "ALREADY_DECIDED"
+    }
+   }
+  },
+  {
+   "id": "SUG15",
+   "title": "Approved suggestions cannot be deleted",
+   "request": {
+    "method": "POST",
+    "path": "/farm/suggestions/4/decision",
+    "body": {
+     "decision": "delete",
+     "actor": "farmer",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 409,
+    "body": {
+     "error": "CANNOT_DELETE_APPROVED"
+    }
+   }
+  },
+  {
+   "id": "SUG16",
+   "title": "List filtered by status",
+   "request": {
+    "method": "GET",
+    "path": "/farm/suggestions?status=deleted"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "suggestions": [
+      {
+       "suggestionId": 8,
+       "status": "deleted"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "SUG17",
+   "title": "Invalid decision value is a 400",
+   "request": {
+    "method": "POST",
+    "path": "/farm/suggestions/4/decision",
+    "body": {
+     "decision": "explode"
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "decision"
+    }
+   }
+  },
+  {
+   "id": "SUG18",
+   "title": "Unknown suggestion id is 404",
+   "request": {
+    "method": "GET",
+    "path": "/farm/suggestions/99"
+   },
+   "expect": {
+    "status": 404,
+    "body": {
+     "error": "SUGGESTION_NOT_FOUND"
+    }
+   }
+  },
+  {
+   "id": "AUD01",
+   "title": "Write an audit event",
+   "request": {
+    "method": "POST",
+    "path": "/farm/audit",
+    "body": {
+     "requestId": "req_a1",
+     "actor": "api",
+     "event": "tool_call",
+     "detail": {
+      "tool": "get_readings"
+     }
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "id": "$num"
+    }
+   }
+  },
+  {
+   "id": "AUD02",
+   "title": "Audit list is newest first and limited",
+   "request": {
+    "method": "GET",
+    "path": "/farm/audit?limit=3"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "events": {
+      "$length": 3
+     }
+    }
+   }
+  },
+  {
+   "id": "MISC01",
+   "title": "Unknown route is 404",
+   "request": {
+    "method": "GET",
+    "path": "/farm/nothing-here"
+   },
+   "expect": {
+    "status": 404,
+    "body": {
+     "error": "NOT_FOUND"
+    }
+   }
+  },
+  {
+   "id": "FAIL01",
+   "title": "INTENTIONAL FAILURE: asserts that irrigating a wet plot is approved (the rules correctly reject it, so this case must fail)",
+   "intentionalFail": true,
+   "request": {
+    "method": "POST",
+    "path": "/farm/validate",
+    "body": {
+     "plotId": 2,
+     "action": "irrigate",
+     "litres": 100,
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "verdict": "approved_by_rules"
+    }
+   }
+  }
+ ]
+}

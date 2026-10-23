@@ -1,0 +1,335 @@
+{
+  "label": "EXAMPLE DATA: fictional farm, plots and readings for the hackathon demo",
+  "referenceTime": "2026-10-23T08:10:00Z",
+  "farms": [
+    {
+      "farmId": 1,
+      "farmName": "Ubuntu Co-op Demo Farm (EXAMPLE DATA)",
+      "location": "Greytown, KZN (example)",
+      "acreage": 12.5
+    }
+  ],
+  "plots": [
+    {
+      "plotId": 1,
+      "farmId": 1,
+      "plotName": "Maize Plot A (example)",
+      "crop": "Maize",
+      "areaHa": 1.2,
+      "maxIrrigationLitres": 500,
+      "dryThresholdPct": 35,
+      "weeklyWaterBudgetL": 1500
+    },
+    {
+      "plotId": 2,
+      "farmId": 1,
+      "plotName": "Beans Plot B (example)",
+      "crop": "Beans",
+      "areaHa": 0.8,
+      "maxIrrigationLitres": 300,
+      "dryThresholdPct": 40,
+      "weeklyWaterBudgetL": 900
+    },
+    {
+      "plotId": 3,
+      "farmId": 1,
+      "plotName": "Spinach Plot C (example)",
+      "crop": "Spinach",
+      "areaHa": 0.4,
+      "maxIrrigationLitres": 200,
+      "dryThresholdPct": 45,
+      "weeklyWaterBudgetL": 600
+    },
+    {
+      "plotId": 4,
+      "farmId": 1,
+      "plotName": "Tomato Plot D (example)",
+      "crop": "Tomato",
+      "areaHa": 0.5,
+      "maxIrrigationLitres": 250,
+      "dryThresholdPct": 40,
+      "weeklyWaterBudgetL": 400
+    },
+    {
+      "plotId": 5,
+      "farmId": 1,
+      "plotName": "Cabbage Plot E (example)",
+      "crop": "Cabbage",
+      "areaHa": 0.6,
+      "maxIrrigationLitres": 300,
+      "dryThresholdPct": 40,
+      "weeklyWaterBudgetL": 900
+    }
+  ],
+  "readings": [
+    {
+      "plotId": 1,
+      "deviceId": "esp32-01",
+      "timestamp": "2026-10-23T07:16:00Z",
+      "soilMoisturePct": 27,
+      "temperatureC": 29,
+      "humidityPct": 41,
+      "raining": false
+    },
+    {
+      "plotId": 1,
+      "deviceId": "esp32-01",
+      "timestamp": "2026-10-23T07:26:00Z",
+      "soilMoisturePct": 25.1,
+      "temperatureC": 29.3,
+      "humidityPct": 40,
+      "raining": false
+    },
+    {
+      "plotId": 1,
+      "deviceId": "esp32-01",
+      "timestamp": "2026-10-23T07:36:00Z",
+      "soilMoisturePct": 23.4,
+      "temperatureC": 29.6,
+      "humidityPct": 41,
+      "raining": false
+    },
+    {
+      "plotId": 1,
+      "deviceId": "esp32-01",
+      "timestamp": "2026-10-23T07:46:00Z",
+      "soilMoisturePct": 21,
+      "temperatureC": 29,
+      "humidityPct": 40,
+      "raining": false
+    },
+    {
+      "plotId": 1,
+      "deviceId": "esp32-01",
+      "timestamp": "2026-10-23T07:56:00Z",
+      "soilMoisturePct": 19.8,
+      "temperatureC": 29.3,
+      "humidityPct": 41,
+      "raining": false
+    },
+    {
+      "plotId": 1,
+      "deviceId": "esp32-01",
+      "timestamp": "2026-10-23T08:06:00Z",
+      "soilMoisturePct": 18.5,
+      "temperatureC": 29.6,
+      "humidityPct": 40,
+      "raining": false
+    },
+    {
+      "plotId": 2,
+      "deviceId": "seed-sim-02",
+      "timestamp": "2026-10-23T07:25:00Z",
+      "soilMoisturePct": 60,
+      "temperatureC": 24,
+      "humidityPct": 55,
+      "raining": false
+    },
+    {
+      "plotId": 2,
+      "deviceId": "seed-sim-02",
+      "timestamp": "2026-10-23T07:35:00Z",
+      "soilMoisturePct": 60.5,
+      "temperatureC": 24.3,
+      "humidityPct": 54,
+      "raining": false
+    },
+    {
+      "plotId": 2,
+      "deviceId": "seed-sim-02",
+      "timestamp": "2026-10-23T07:45:00Z",
+      "soilMoisturePct": 61.2,
+      "temperatureC": 24.6,
+      "humidityPct": 55,
+      "raining": false
+    },
+    {
+      "plotId": 2,
+      "deviceId": "seed-sim-02",
+      "timestamp": "2026-10-23T07:55:00Z",
+      "soilMoisturePct": 61.8,
+      "temperatureC": 24,
+      "humidityPct": 54,
+      "raining": false
+    },
+    {
+      "plotId": 2,
+      "deviceId": "seed-sim-02",
+      "timestamp": "2026-10-23T08:05:00Z",
+      "soilMoisturePct": 62,
+      "temperatureC": 24.3,
+      "humidityPct": 55,
+      "raining": false
+    },
+    {
+      "plotId": 3,
+      "deviceId": "seed-sim-03",
+      "timestamp": "2026-10-21T07:20:00Z",
+      "soilMoisturePct": 34,
+      "temperatureC": 26,
+      "humidityPct": 48,
+      "raining": false
+    },
+    {
+      "plotId": 3,
+      "deviceId": "seed-sim-03",
+      "timestamp": "2026-10-21T07:30:00Z",
+      "soilMoisturePct": 33,
+      "temperatureC": 26.3,
+      "humidityPct": 47,
+      "raining": false
+    },
+    {
+      "plotId": 3,
+      "deviceId": "seed-sim-03",
+      "timestamp": "2026-10-21T07:40:00Z",
+      "soilMoisturePct": 32.1,
+      "temperatureC": 26.6,
+      "humidityPct": 48,
+      "raining": false
+    },
+    {
+      "plotId": 3,
+      "deviceId": "seed-sim-03",
+      "timestamp": "2026-10-21T07:50:00Z",
+      "soilMoisturePct": 31,
+      "temperatureC": 26,
+      "humidityPct": 47,
+      "raining": false
+    },
+    {
+      "plotId": 3,
+      "deviceId": "seed-sim-03",
+      "timestamp": "2026-10-21T08:00:00Z",
+      "soilMoisturePct": 30,
+      "temperatureC": 26.3,
+      "humidityPct": 48,
+      "raining": false
+    },
+    {
+      "plotId": 4,
+      "deviceId": "seed-sim-04",
+      "timestamp": "2026-10-23T07:28:00Z",
+      "soilMoisturePct": 30,
+      "temperatureC": 30,
+      "humidityPct": 38,
+      "raining": false
+    },
+    {
+      "plotId": 4,
+      "deviceId": "seed-sim-04",
+      "timestamp": "2026-10-23T07:38:00Z",
+      "soilMoisturePct": 28,
+      "temperatureC": 30.3,
+      "humidityPct": 37,
+      "raining": false
+    },
+    {
+      "plotId": 4,
+      "deviceId": "seed-sim-04",
+      "timestamp": "2026-10-23T07:48:00Z",
+      "soilMoisturePct": 26.5,
+      "temperatureC": 30.6,
+      "humidityPct": 38,
+      "raining": false
+    },
+    {
+      "plotId": 4,
+      "deviceId": "seed-sim-04",
+      "timestamp": "2026-10-23T07:58:00Z",
+      "soilMoisturePct": 24,
+      "temperatureC": 30,
+      "humidityPct": 37,
+      "raining": false
+    },
+    {
+      "plotId": 4,
+      "deviceId": "seed-sim-04",
+      "timestamp": "2026-10-23T08:08:00Z",
+      "soilMoisturePct": 22,
+      "temperatureC": 30.3,
+      "humidityPct": 38,
+      "raining": false
+    },
+    {
+      "plotId": 5,
+      "deviceId": "seed-sim-05",
+      "timestamp": "2026-10-23T07:27:00Z",
+      "soilMoisturePct": 33,
+      "temperatureC": 21,
+      "humidityPct": 80,
+      "raining": false
+    },
+    {
+      "plotId": 5,
+      "deviceId": "seed-sim-05",
+      "timestamp": "2026-10-23T07:37:00Z",
+      "soilMoisturePct": 31,
+      "temperatureC": 21.3,
+      "humidityPct": 79,
+      "raining": false
+    },
+    {
+      "plotId": 5,
+      "deviceId": "seed-sim-05",
+      "timestamp": "2026-10-23T07:47:00Z",
+      "soilMoisturePct": 29,
+      "temperatureC": 21.6,
+      "humidityPct": 80,
+      "raining": false
+    },
+    {
+      "plotId": 5,
+      "deviceId": "seed-sim-05",
+      "timestamp": "2026-10-23T07:57:00Z",
+      "soilMoisturePct": 27,
+      "temperatureC": 21,
+      "humidityPct": 79,
+      "raining": false
+    },
+    {
+      "plotId": 5,
+      "deviceId": "seed-sim-05",
+      "timestamp": "2026-10-23T08:07:00Z",
+      "soilMoisturePct": 25,
+      "temperatureC": 21.3,
+      "humidityPct": 80,
+      "raining": true
+    }
+  ],
+  "suggestions": [
+    {
+      "plotId": 1,
+      "createdAt": "2026-10-21T06:00:00Z",
+      "decidedAt": "2026-10-21T06:05:00Z",
+      "action": "irrigate",
+      "litres": 1000,
+      "reason": "Example history: irrigate Plot A",
+      "provider": "seed",
+      "status": "approved",
+      "verdict": "approved_by_rules"
+    },
+    {
+      "plotId": 1,
+      "createdAt": "2026-10-10T06:00:00Z",
+      "decidedAt": "2026-10-10T06:05:00Z",
+      "action": "irrigate",
+      "litres": 800,
+      "reason": "Example history older than 7 days (must NOT count)",
+      "provider": "seed",
+      "status": "approved",
+      "verdict": "approved_by_rules"
+    },
+    {
+      "plotId": 4,
+      "createdAt": "2026-10-20T06:00:00Z",
+      "decidedAt": "2026-10-20T06:04:00Z",
+      "action": "irrigate",
+      "litres": 350,
+      "reason": "Example history: irrigate Plot D",
+      "provider": "seed",
+      "status": "approved",
+      "verdict": "approved_by_rules"
+    }
+  ]
+}
