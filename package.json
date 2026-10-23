@@ -14,6 +14,7 @@
     "test:oe-mock": "node eval/run-oe-mock.mjs",
     "test:oe-http": "node eval/run-oe-http.mjs",
     "test:api-real-oe": "node eval/run-api.mjs --oe=pasoe-real",
+    "test:gemini": "node eval/run-gemini.mjs",
     "demo": "node scripts/demo.mjs"
   },
   "dependencies": {
