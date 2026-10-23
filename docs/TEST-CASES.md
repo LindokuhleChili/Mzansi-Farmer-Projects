@@ -8,7 +8,7 @@ Prepared 2026-10-23 (Africa/Johannesburg) by the QA review. Fictional data only.
 - `Pass (npm test)`: the mapped eval case passed in `npm test` (184 passed, 0 failed, 3 intentional failures confirmed, exit 0, after the BUG-1/2/3 fixes; the report below was written at 146).
 - `Pass (probe)`: checked by a throw-away script (`/tmp/qa/probe.mjs`, `/tmp/qa/probe2.mjs` on the box, outside the repo) that drives `buildApp()` in-process with `OE_MODE=mock`. Not part of `npm test`.
 - `Fail`: the system behaves differently from the expected result: a bug (see BUG ids at the bottom).
-- `Not run`: not executed. **Nothing was run against real OpenEdge/PASOE or real Gemini by QA**, so ABL behaviour is only known by code reading and from NOTES.md's claim that the original 47 contract cases agree on both. The 14 contract cases added with the bug fixes (BUD01-06, DATE01-08) must still be run on real OpenEdge (see docs/NOTES.md section 6).
+- `Not run`: not executed. **Nothing was run against real OpenEdge/PASOE or real Gemini by QA**, so ABL behaviour is only known by code reading and from NOTES.md's claim that the original 47 contract cases agree on both. The 14 contract cases added with the bug fixes (BUD01-06, DATE01-08) were run on real OpenEdge 12.8 on the laptop after the report and passed (see docs/NOTES.md section 6a).
 
 Eval ids: `OE` contract suite = `eval/oe-contract-cases.json` (OE/RULE/READ/SUG/AUD/MISC/FAIL), `DEV` = `eval/device-cases.json`, `E` = `eval/api-cases.json`.
 
@@ -153,7 +153,7 @@ Count: 20 cases. 16 map to existing eval cases; TC-07 maps only partly (SUG12, b
 - **Expected:** the proposal is rejected by the schema or normalised to 0 L, because only `irrigate` may carry litres (system prompt: "litres is 0 unless action is irrigate"). Approving a hold must not add to the weekly water use.
 - **Actual (before the fix):** advise returned 200 `pending_approval`, `proposal: hold 500 L`. Approving it at the OpenEdge layer changed `usedLast7DaysL` from 1000 to 1500 (every approved suggestion's litres were summed regardless of action). **Now:** the schema refuses litres other than 0 on hold/notify (fallback with 0 L), and the 7-day sum in both `mock-pasoe/rules.js` and `openedge/src/farm-api.p` counts `irrigate` only.
 - **Mapped eval:** BUD01-06 (contract, hold/notify carrying litres at the OpenEdge layer), E21, E22 (API), `eval/fixes.test.mjs`
-- **Status:** Pass after fix (BUG-1) on mock-pasoe; ABL change pending a real-OpenEdge run.
+- **Status:** Pass after fix (BUG-1) on mock-pasoe and on real OpenEdge 12.8 (laptop run, 23 Oct).
 
 ## TC-15 AI timeout falls back, rules still decide
 - **Category:** Timeout (AI)

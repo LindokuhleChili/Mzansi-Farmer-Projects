@@ -29,7 +29,7 @@ for (const mode of ['mock', 'pasoe-mock']) {
   for (const s of await runApiSuites(mode)) add(report(`${s.file} [oe=${mode}]`, s.cases, s.results));
 }
 console.log('\n=== 4. ESP32 feed: simulator unit tests (sim/, node:test) ===');
-const sim = spawnSync(process.execPath, ['--test'], { cwd: fileURLToPath(new URL('../sim', import.meta.url)), encoding: 'utf8' });
+const sim = spawnSync(process.execPath, ['--test', '--test-reporter=tap'], { cwd: fileURLToPath(new URL('../sim', import.meta.url)), encoding: 'utf8' });
 const simPass = Number((/^# pass (\d+)/m.exec(sim.stdout) || [])[1] || 0), simFail = Number((/^# fail (\d+)/m.exec(sim.stdout) || [])[1] || 0);
 console.log(`  sim unit tests: ${simPass} passed, ${simFail} failed`);
 totals.pass += simPass; totals.fail += simFail + (sim.status === 0 ? 0 : (simFail ? 0 : 1));
@@ -39,7 +39,7 @@ for (const r of await runSimAgainstApi()) { console.log(`  ${r.ok ? 'PASS' : 'FA
 console.log('  (firmware C++ unit tests need PlatformIO: cd firmware/esp32 && pio test -e native, 15 tests; see docs/NOTES.md)');
 
 console.log('\n=== 6. Bug-fix tests: litres only on irrigate, OpenEdge outage timing, calendar dates (eval/fixes.test.mjs, node:test) ===');
-const fixes = spawnSync(process.execPath, ['--test', fileURLToPath(new URL('./fixes.test.mjs', import.meta.url))], { encoding: 'utf8' });
+const fixes = spawnSync(process.execPath, ['--test', '--test-reporter=tap', fileURLToPath(new URL('./fixes.test.mjs', import.meta.url))], { encoding: 'utf8' });
 const fxPass = Number((/^# pass (\d+)/m.exec(fixes.stdout) || [])[1] || 0), fxFail = Number((/^# fail (\d+)/m.exec(fixes.stdout) || [])[1] || 0);
 for (const m of fixes.stdout.matchAll(/^(not ok|ok) \d+ - (.*)$/gm)) console.log(`  ${m[1] === 'ok' ? 'PASS' : 'FAIL'}  ${m[2]}`);
 console.log(`  bug-fix tests: ${fxPass} passed, ${fxFail} failed`);
