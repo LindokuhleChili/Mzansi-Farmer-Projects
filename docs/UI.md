@@ -10,8 +10,9 @@ All data is fictional example data. The AI suggests, OpenEdge rules check it, th
 
 | Address | What it shows |
 |---|---|
-| `/#/` Dashboard | "N live plots have dry soil", one card per plot (photo, status, soil moisture with the dry-limit tick, temperature, humidity, rain, reading age, **Ask AI for advice**), a soil chart with the dry limit and the last readings for the chosen plot, and "Waiting for you" (suggestions that wait for a decision plus recent rule rejections). Refreshes every 30 s. |
-| `/#/plots` | All plots with their limits (dry limit, max litres per irrigation, weekly budget). |
+| `/#/` Dashboard | Desktop: "N of M plots have dry soil", **three plot cards in one row** (photo, status, soil moisture with the dry-limit tick, temperature, humidity, rain, reading age; the whole card opens the plot), the soil chart with the dry limit and the last readings, and "Waiting for you" (suggestions that wait for a decision plus recent rule rejections), all visible without scrolling at 1440 x 900. Phone: full-bleed photo hero with the big "2 of 3" numeral, location pill, ZU/EN switch, avatar and status chips, then a white sheet with "Your plots". **Ask AI for advice** is on each plot page (and on the dashboard when nothing is waiting). Refreshes every 30 s. |
+| `/#/settings` | Language, what the app talks to (stand-in or real OpenEdge, AI), session. |
+| `/#/plots` | All plots (the dashboard shows three of them) with their limits (dry limit, max litres per irrigation, weekly budget). |
 | `/#/plots/{id}` | One plot: latest readings, soil chart, 20-reading history, **Ask AI for advice**, and the demo tools below. |
 | `/#/suggestions` | Every suggestion, newest first, with filters (waiting, approved, blocked by rules, declined). |
 | `/#/suggestions/{id}` | **Review**: the suggestion written by the AI, the OpenEdge rule check (six rows with the rule codes, pass or fail, and the numbers), the numbers used, **Decline** and **Approve**. **Approve** opens the **confirm** sheet (single-use token, 2 minute countdown, "the rules run again when you confirm"). The same page shows the **rejected** view (red banner per failing rule with the plain-language reason and the server's message, "what you can do"), and the approved / declined result. |
@@ -64,7 +65,7 @@ Everything else (menus, labels, buttons, rule names) stays in English, because n
 
 ## Design
 
-* Colour tokens, radii, type (Plus Jakarta Sans for headings, Inter for text, bundled as subset WOFF2, SIL Open Font License), card layout and the rule-check rows are taken from the approved screens. Mobile first: one column and a bottom navigation bar under 900 px; a sidebar, wider cards and a two-column review from 900 px.
+* Colour tokens, radii, type (Plus Jakarta Sans for headings, Inter for text, bundled as subset WOFF2, SIL Open Font License), card layout and the rule-check rows are taken from the approved screens. Mobile first: one column, a full-bleed photo hero and a floating pill navigation (Home, map, suggestions, audit log, more) under 900 px; a 176 px sidebar (with Settings, Log out and the suggestions badge), a top bar with search and bell, wider cards and a two-column review from 900 px.
 * **Real photographs only**, no illustrations, and **no glowing or "AI highlight" outlines**: borders are plain 1 px lines, shadows are small and neutral, the focus ring is a plain 2 px outline.
 * Status is never colour only: every status has text and an icon.
 
@@ -87,7 +88,7 @@ All photos are **Pexels License** (free to use and modify, attribution not requi
 ## Tests
 
 * `npm test` section 7 (`eval/ui.test.mjs`, no browser needed): static routes and path traversal, the local-only proxy (loopback, Host, header, never a token in any response), `UI_ENABLED=0`, the whole loop through the proxy (simulate reading, ask AI, two-step approve, audit), the rejected and declined paths, the demo tools' limits, the field names of every API response the UI reads, and front-end file checks (modules parse, assets exist, only the approved isiZulu table, every photo credited, no glow effects, no keys in the web files).
-* Click-through (headless Chrome with Playwright, both languages, phone 390 x 844 and desktop 1280 x 800): `python3 scripts/ui-click-through.py mobile|desktop [--video]` drives dashboard, plot page, simulated reading, ask AI, review, language switch, confirm, approve, audit, the rain / over-eager rejection, the budget rejection and decline. It needs `pip install playwright` and a Chrome or Chromium (set `CHROME_PATH` if it is not in the default place) and is **not** part of `npm test`, so the repo stays dependency-light.
+* Click-through (headless Chrome with Playwright, both languages, phone 390 x 844 and desktop 1280 x 800): `python3 scripts/ui-click-through.py mobile|desktop [--video]` drives dashboard (3 plots, all 5 on `/#/plots`), plot page, simulated reading, ask AI, review, language switch, confirm, approve, audit, the rain / over-eager rejection, the budget rejection and decline; `python3 scripts/ui-compare.py OUT_DIR` captures the four approved screens (dashboard, review, confirm, rejected) at 1440 x 900 and 390 x 844 and writes side-by-side images next to the mockups in `mzansi-demo-screens/`. It needs `pip install playwright` and a Chrome or Chromium (set `CHROME_PATH` if it is not in the default place) and is **not** part of `npm test`, so the repo stays dependency-light.
 
 ## Limits
 
