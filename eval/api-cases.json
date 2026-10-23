@@ -1,0 +1,426 @@
+{
+ "description": "Evaluation set (20 cases): typical advice, unanswerable/invalid id, AI failures, injection, human approval, one intentional failure. Stateful; run in order after device-cases.json.",
+ "referenceTime": "2026-10-23T08:10:00Z",
+ "cases": [
+  {
+   "id": "E01",
+   "title": "Protected route without a token is refused",
+   "request": {
+    "method": "GET",
+    "path": "/api/v1/plots",
+    "auth": "none"
+   },
+   "expect": {
+    "status": 401,
+    "body": {
+     "error": "UNAUTHORIZED"
+    }
+   }
+  },
+  {
+   "id": "E02",
+   "title": "List plots with the app token (data from OpenEdge)",
+   "request": {
+    "method": "GET",
+    "path": "/api/v1/plots",
+    "auth": "app"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "plots": {
+      "$length": 5
+     }
+    }
+   }
+  },
+  {
+   "id": "E03",
+   "title": "Dry plot: AI proposes irrigation, rules approve, status pending (numbers from OpenEdge)",
+   "request": {
+    "method": "POST",
+    "path": "/api/v1/plots/1/advise",
+    "auth": "app",
+    "body": {
+     "lang": "en"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "suggestionId": 4,
+     "status": "pending_approval",
+     "verdict": "approved_by_rules",
+     "proposal": {
+      "action": "irrigate",
+      "litres": 270
+     },
+     "facts": {
+      "soilMoisturePct": 17,
+      "readingAgeMinutes": 1,
+      "usedLast7DaysL": 1000,
+      "trendPctPerHour": -11.3
+     },
+     "ai": {
+      "provider": "mock",
+      "usedFallback": false
+     }
+    }
+   }
+  },
+  {
+   "id": "E04",
+   "title": "Greedy AI on a WET plot: ABL rules reject it with a reason",
+   "request": {
+    "method": "POST",
+    "path": "/api/v1/plots/2/advise",
+    "auth": "app",
+    "body": {
+     "lang": "en"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "suggestionId": 5,
+     "status": "rejected",
+     "verdict": "rejected_by_rules",
+     "rejectReasons": [
+      {
+       "code": "SOIL_NOT_DRY"
+      }
+     ]
+    }
+   },
+   "aiBehaviour": "greedy"
+  },
+  {
+   "id": "E05",
+   "title": "Approve step 1: no confirmation token yet -> 202 and a token (human approval required)",
+   "request": {
+    "method": "POST",
+    "path": "/api/v1/suggestions/4/approve",
+    "auth": "app",
+    "body": {}
+   },
+   "expect": {
+    "status": 202,
+    "body": {
+     "error": "CONFIRMATION_REQUIRED",
+     "confirmToken": {
+      "$startsWith": "cfm_"
+     },
+     "summary": "Irrigate Maize Plot A (example) with 270 L"
+    }
+   },
+   "capture": {
+    "tok": "confirmToken"
+   }
+  },
+  {
+   "id": "E06",
+   "title": "Approve with a wrong token is refused",
+   "request": {
+    "method": "POST",
+    "path": "/api/v1/suggestions/4/approve",
+    "auth": "app",
+    "body": {
+     "confirmToken": "cfm_wrong"
+    }
+   },
+   "expect": {
+    "status": 403,
+    "body": {
+     "error": "CONFIRMATION_INVALID"
+    }
+   }
+  },
+  {
+   "id": "E07",
+   "title": "Approve step 2 with the real token: rules re-run, then approved",
+   "request": {
+    "method": "POST",
+    "path": "/api/v1/suggestions/4/approve",
+    "auth": "app",
+    "body": {
+     "confirmToken": "${tok}"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "suggestionId": 4,
+     "status": "approved"
+    }
+   }
+  },
+  {
+   "id": "E08",
+   "title": "The token is single use",
+   "request": {
+    "method": "POST",
+    "path": "/api/v1/suggestions/4/approve",
+    "auth": "app",
+    "body": {
+     "confirmToken": "${tok}"
+    }
+   },
+   "expect": {
+    "status": 403,
+    "body": {
+     "error": "CONFIRMATION_INVALID"
+    }
+   }
+  },
+  {
+   "id": "E09",
+   "title": "A rule-rejected suggestion cannot be approved at all",
+   "request": {
+    "method": "POST",
+    "path": "/api/v1/suggestions/5/approve",
+    "auth": "app",
+    "body": {}
+   },
+   "expect": {
+    "status": 409,
+    "body": {
+     "error": "NOT_APPROVABLE"
+    }
+   }
+  },
+  {
+   "id": "E10",
+   "title": "Stale sensor: AI is told the data is old and proposes to check the sensor, not to irrigate",
+   "request": {
+    "method": "POST",
+    "path": "/api/v1/plots/3/advise",
+    "auth": "app",
+    "body": {
+     "lang": "en"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "suggestionId": 6,
+     "status": "pending_approval",
+     "proposal": {
+      "action": "notify",
+      "litres": 0
+     },
+     "facts": {
+      "readingAgeMinutes": 2890
+     }
+    }
+   }
+  },
+  {
+   "id": "E11",
+   "title": "Question the data cannot answer: unknown plot is a clear 404, not an invented answer",
+   "request": {
+    "method": "POST",
+    "path": "/api/v1/plots/99/advise",
+    "auth": "app",
+    "body": {}
+   },
+   "expect": {
+    "status": 404,
+    "body": {
+     "error": "PLOT_NOT_FOUND"
+    }
+   }
+  },
+  {
+   "id": "E12",
+   "title": "AI timeout: fallback proposal is used, rules still decide (budget exceeded)",
+   "request": {
+    "method": "POST",
+    "path": "/api/v1/plots/4/advise",
+    "auth": "app",
+    "body": {}
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "suggestionId": 7,
+     "status": "rejected",
+     "rejectReasons": [
+      {
+       "code": "WATER_BUDGET_EXCEEDED"
+      }
+     ],
+     "ai": {
+      "usedFallback": true,
+      "fallbackReason": {
+       "$startsWith": "timeout:"
+      }
+     }
+    }
+   },
+   "aiBehaviour": "timeout"
+  },
+  {
+   "id": "E13",
+   "title": "AI returns text instead of JSON: fallback, no crash",
+   "request": {
+    "method": "POST",
+    "path": "/api/v1/plots/5/advise",
+    "auth": "app",
+    "body": {}
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "suggestionId": 8,
+     "proposal": {
+      "action": "hold"
+     },
+     "ai": {
+      "usedFallback": true,
+      "fallbackReason": {
+       "$startsWith": "invalid_json:"
+      }
+     }
+    }
+   },
+   "aiBehaviour": "bad-json"
+  },
+  {
+   "id": "E14",
+   "title": "Prompt injection: model output with a forbidden action fails the schema, fallback is used",
+   "request": {
+    "method": "POST",
+    "path": "/api/v1/plots/2/advise",
+    "auth": "app",
+    "body": {}
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "suggestionId": 9,
+     "proposal": {
+      "action": "hold"
+     },
+     "ai": {
+      "usedFallback": true,
+      "fallbackReason": {
+       "$startsWith": "schema:"
+      }
+     }
+    }
+   },
+   "aiBehaviour": "injection"
+  },
+  {
+   "id": "E15",
+   "title": "Model invents numbers in its explanation: explanation is replaced by a template using OpenEdge numbers",
+   "request": {
+    "method": "POST",
+    "path": "/api/v1/plots/1/advise",
+    "auth": "app",
+    "body": {}
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "suggestionId": 10,
+     "ai": {
+      "reasonReplaced": true
+     }
+    }
+   },
+   "aiBehaviour": "invented-number"
+  },
+  {
+   "id": "E16",
+   "title": "Reject (decline) needs no confirmation",
+   "request": {
+    "method": "POST",
+    "path": "/api/v1/suggestions/6/reject",
+    "auth": "app",
+    "body": {}
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "status": "declined"
+    }
+   }
+  },
+  {
+   "id": "E17",
+   "title": "Delete step 1: confirmation required",
+   "request": {
+    "method": "DELETE",
+    "path": "/api/v1/suggestions/7",
+    "auth": "app"
+   },
+   "expect": {
+    "status": 202,
+    "body": {
+     "error": "CONFIRMATION_REQUIRED",
+     "confirmToken": {
+      "$startsWith": "cfm_"
+     }
+    }
+   },
+   "capture": {
+    "dtok": "confirmToken"
+   }
+  },
+  {
+   "id": "E18",
+   "title": "Delete step 2 with the token deletes it",
+   "request": {
+    "method": "DELETE",
+    "path": "/api/v1/suggestions/7",
+    "auth": "app",
+    "body": {
+     "confirmToken": "${dtok}"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "status": "deleted"
+    }
+   }
+  },
+  {
+   "id": "E19",
+   "title": "Every action left an audit trail in OpenEdge (approval + tool calls)",
+   "request": {
+    "method": "GET",
+    "path": "/api/v1/audit?limit=500",
+    "auth": "app"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "events": {
+      "$contains": {
+       "event": "suggestion_approved"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "E20",
+   "title": "INTENTIONAL FAILURE: asserts approval works with no confirmation (it must return 202, so this case fails by design)",
+   "request": {
+    "method": "POST",
+    "path": "/api/v1/suggestions/8/approve",
+    "auth": "app",
+    "body": {}
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "status": "approved"
+    }
+   },
+   "intentionalFail": true
+  }
+ ]
+}

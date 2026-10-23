@@ -1,0 +1,38 @@
+// All tunables as named constants + environment variables. No secrets in code: tokens and keys come from the environment.
+export const AI_TIMEOUT_MS = 8000;          // max wait for the AI provider before the deterministic fallback is used
+export const OE_TIMEOUT_MS = 5000;          // max wait for OpenEdge (PASOE) per call; exceeded => 504 OE_TIMEOUT
+export const CONFIRM_TTL_SECONDS = 120;     // lifetime of a single-use confirmation token (approve / delete)
+export const FUTURE_SKEW_MINUTES = 5;       // reading timestamps further in the future than this are rejected
+export const READINGS_FOR_AI = 12;          // how many recent readings are loaded from OpenEdge for each advice request
+export const LITRES_PER_PCT_DEFICIT = 15;   // deterministic sizing: litres per percentage point below the dry threshold
+export const MAX_REASON_LENGTH = 400;
+
+export function loadConfig(env = process.env) {
+  const oeMode = (env.OE_MODE || 'mock').toLowerCase();
+  if (!['mock', 'pasoe'].includes(oeMode)) throw new Error(`OE_MODE must be mock or pasoe (got "${env.OE_MODE}")`);
+  const appToken = env.APP_TOKEN || '';
+  let registry = [];
+  try { registry = JSON.parse(env.DEVICE_REGISTRY || '[]'); } catch { throw new Error('DEVICE_REGISTRY must be valid JSON'); }
+  if (!Array.isArray(registry)) throw new Error('DEVICE_REGISTRY must be a JSON array');
+  const problems = [];
+  if (!appToken || appToken.startsWith('replace-')) problems.push('APP_TOKEN is not set (run `npm run setup` to create a .env with random tokens)');
+  if (registry.length === 0) problems.push('DEVICE_REGISTRY is empty (run `npm run setup`)');
+  for (const d of registry) {
+    if (!d.deviceId || !Number.isInteger(d.plotId) || !d.token || String(d.token).startsWith('replace-')) problems.push(`DEVICE_REGISTRY entry invalid: ${JSON.stringify({ deviceId: d.deviceId, plotId: d.plotId })}`);
+  }
+  return {
+    port: parseInt(env.PORT || '3000', 10),
+    host: env.HOST || '0.0.0.0',
+    oeMode,
+    oeBaseUrl: env.OE_BASE_URL || 'http://localhost:8820/web',
+    oeAuth: env.OE_AUTH || '',                     // optional "user:password" for PASOE basic auth
+    aiProvider: (env.AI_PROVIDER || 'mock').toLowerCase(),   // mock | http (any OpenAI-compatible chat completions API)
+    aiBaseUrl: env.AI_BASE_URL || '',
+    aiApiKey: env.AI_API_KEY || '',
+    aiModel: env.AI_MODEL || '',
+    appToken, registry,
+    logDir: env.LOG_DIR || 'logs',
+    logLevel: env.LOG_LEVEL || 'warn',
+    problems,
+  };
+}

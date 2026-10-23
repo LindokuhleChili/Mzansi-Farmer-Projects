@@ -1,0 +1,268 @@
+{
+ "description": "Device ingestion contract tests (API level). Run before api-cases.json.",
+ "cases": [
+  {
+   "id": "DEV01",
+   "title": "Health needs no token",
+   "request": {
+    "method": "GET",
+    "path": "/health",
+    "auth": "none"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "status": "ok"
+    }
+   }
+  },
+  {
+   "id": "DEV02",
+   "title": "Reading without device token is 401",
+   "request": {
+    "method": "POST",
+    "path": "/api/v1/readings",
+    "auth": "none",
+    "body": {
+     "deviceId": "esp32-01",
+     "plotId": 1,
+     "timestamp": "2026-10-23T08:09:00Z",
+     "soilMoisturePct": 17.0,
+     "temperatureC": 29.4,
+     "humidityPct": 41.0
+    }
+   },
+   "expect": {
+    "status": 401,
+    "body": {
+     "error": "UNAUTHORIZED"
+    }
+   }
+  },
+  {
+   "id": "DEV03",
+   "title": "Reading with a wrong device token is 401",
+   "request": {
+    "method": "POST",
+    "path": "/api/v1/readings",
+    "auth": "badtoken",
+    "body": {
+     "deviceId": "esp32-01",
+     "plotId": 1,
+     "timestamp": "2026-10-23T08:09:00Z",
+     "soilMoisturePct": 17.0,
+     "temperatureC": 29.4,
+     "humidityPct": 41.0
+    }
+   },
+   "expect": {
+    "status": 401,
+    "body": {
+     "error": "UNAUTHORIZED"
+    }
+   }
+  },
+  {
+   "id": "DEV04",
+   "title": "Valid reading is stored in OpenEdge and returns its id",
+   "request": {
+    "method": "POST",
+    "path": "/api/v1/readings",
+    "auth": "device",
+    "body": {
+     "deviceId": "esp32-01",
+     "plotId": 1,
+     "timestamp": "2026-10-23T08:09:00Z",
+     "soilMoisturePct": 17.0,
+     "temperatureC": 29.4,
+     "humidityPct": 41.0
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "id": 1027
+    }
+   }
+  },
+  {
+   "id": "DEV05",
+   "title": "Same deviceId + timestamp again is 409",
+   "request": {
+    "method": "POST",
+    "path": "/api/v1/readings",
+    "auth": "device",
+    "body": {
+     "deviceId": "esp32-01",
+     "plotId": 1,
+     "timestamp": "2026-10-23T08:09:00Z",
+     "soilMoisturePct": 17.0,
+     "temperatureC": 29.4,
+     "humidityPct": 41.0
+    }
+   },
+   "expect": {
+    "status": 409,
+    "body": {
+     "error": "DUPLICATE_READING",
+     "field": "timestamp"
+    }
+   }
+  },
+  {
+   "id": "DEV06",
+   "title": "Soil moisture 101 is 400 with the field named",
+   "request": {
+    "method": "POST",
+    "path": "/api/v1/readings",
+    "auth": "device",
+    "body": {
+     "deviceId": "esp32-01",
+     "plotId": 1,
+     "timestamp": "2026-10-23T08:10:00Z",
+     "soilMoisturePct": 101,
+     "temperatureC": 29.4,
+     "humidityPct": 41.0
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "soilMoisturePct"
+    }
+   }
+  },
+  {
+   "id": "DEV07",
+   "title": "Missing humidityPct is 400",
+   "request": {
+    "method": "POST",
+    "path": "/api/v1/readings",
+    "auth": "device",
+    "body": {
+     "deviceId": "esp32-01",
+     "plotId": 1,
+     "timestamp": "2026-10-23T08:10:00Z",
+     "soilMoisturePct": 17.0,
+     "temperatureC": 29.4
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "humidityPct"
+    }
+   }
+  },
+  {
+   "id": "DEV08",
+   "title": "Body deviceId that does not match the token is 400",
+   "request": {
+    "method": "POST",
+    "path": "/api/v1/readings",
+    "auth": "device",
+    "body": {
+     "deviceId": "esp32-99",
+     "plotId": 1,
+     "timestamp": "2026-10-23T08:10:00Z",
+     "soilMoisturePct": 17.0,
+     "temperatureC": 29.4,
+     "humidityPct": 41.0
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "DEVICE_MISMATCH",
+     "field": "deviceId"
+    }
+   }
+  },
+  {
+   "id": "DEV09",
+   "title": "Body plotId that does not match the token is 400",
+   "request": {
+    "method": "POST",
+    "path": "/api/v1/readings",
+    "auth": "device",
+    "body": {
+     "deviceId": "esp32-01",
+     "plotId": 2,
+     "timestamp": "2026-10-23T08:10:00Z",
+     "soilMoisturePct": 17.0,
+     "temperatureC": 29.4,
+     "humidityPct": 41.0
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "DEVICE_MISMATCH",
+     "field": "plotId"
+    }
+   }
+  },
+  {
+   "id": "DEV10",
+   "title": "Timestamp more than 5 minutes in the future is 400",
+   "request": {
+    "method": "POST",
+    "path": "/api/v1/readings",
+    "auth": "device",
+    "body": {
+     "deviceId": "esp32-01",
+     "plotId": 1,
+     "timestamp": "2026-10-23T08:25:00Z",
+     "soilMoisturePct": 17.0,
+     "temperatureC": 29.4,
+     "humidityPct": 41.0
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "timestamp"
+    }
+   }
+  },
+  {
+   "id": "DEV11",
+   "title": "Broken JSON is 400 INVALID_JSON",
+   "request": {
+    "method": "POST",
+    "path": "/api/v1/readings",
+    "auth": "device",
+    "rawBody": "{bad json"
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "INVALID_JSON"
+    }
+   }
+  },
+  {
+   "id": "DEV12",
+   "title": "The stored reading is readable with the app token",
+   "request": {
+    "method": "GET",
+    "path": "/api/v1/plots/1/readings?limit=1",
+    "auth": "app"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "readings": [
+      {
+       "readingId": 1027,
+       "soilMoisturePct": 17
+      }
+     ]
+    }
+   }
+  }
+ ]
+}

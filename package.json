@@ -1,0 +1,21 @@
+{
+  "name": "mzansi-farmer-ops",
+  "version": "0.1.0",
+  "private": true,
+  "description": "Mzansi Farmer Ops: OpenEdge-backed farm advisor. AI proposes, ABL rules validate, the farmer approves. Example data only.",
+  "type": "module",
+  "engines": { "node": ">=20" },
+  "scripts": {
+    "setup": "node scripts/setup-env.mjs",
+    "start": "node apps/api/src/index.js",
+    "mock-pasoe": "node mock-pasoe/server.js",
+    "gen-seed": "node scripts/gen-seed.mjs",
+    "test": "node eval/run-all.mjs",
+    "test:oe-mock": "node eval/run-oe-mock.mjs",
+    "demo": "node scripts/demo.mjs"
+  },
+  "dependencies": {
+    "ajv": "^8.17.1",
+    "fastify": "^5.2.0"
+  }
+}

@@ -1,12 +1,20 @@
 // Subset matcher shared by the eval scripts.
 // expected object  -> every expected key must match in actual (extra keys in actual are fine)
 // expected array   -> same length, element-wise subset match
+// {"$startsWith": "x"} string prefix, {"$contains": {...}} some array element matches
 // "$any" matches anything, "$num" any number, {"$length": n} an array of length n
 export function match(expected, actual, path = '$') {
   if (expected === '$any') return [];
   if (expected === '$num') return typeof actual === 'number' ? [] : [`${path}: expected a number, got ${JSON.stringify(actual)}`];
   if (expected && typeof expected === 'object' && !Array.isArray(expected) && '$length' in expected) {
     return Array.isArray(actual) && actual.length === expected.$length ? [] : [`${path}: expected array of length ${expected.$length}, got ${Array.isArray(actual) ? actual.length : JSON.stringify(actual)}`];
+  }
+  if (expected && typeof expected === 'object' && !Array.isArray(expected) && '$startsWith' in expected) {
+    return typeof actual === 'string' && actual.startsWith(expected.$startsWith) ? [] : [`${path}: expected a string starting with ${JSON.stringify(expected.$startsWith)}, got ${JSON.stringify(actual)}`];
+  }
+  if (expected && typeof expected === 'object' && !Array.isArray(expected) && '$contains' in expected) {
+    if (!Array.isArray(actual)) return [`${path}: expected array, got ${JSON.stringify(actual)}`];
+    return actual.some((a) => match(expected.$contains, a, path).length === 0) ? [] : [`${path}: no array element matches ${JSON.stringify(expected.$contains)}`];
   }
   if (Array.isArray(expected)) {
     if (!Array.isArray(actual)) return [`${path}: expected array, got ${JSON.stringify(actual)}`];
