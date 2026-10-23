@@ -1,0 +1,8 @@
+{
+  "version": "2.0",
+  "serviceName": "",
+  "handlers": [
+    { "uri": "/farm/{*}", "class": "web.FarmHandler", "enabled": true },
+    { "uri": "/farm", "class": "web.FarmHandler", "enabled": true }
+  ]
+}

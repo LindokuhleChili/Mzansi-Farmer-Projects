@@ -1,7 +1,7 @@
 /*------------------------------------------------------------------------
   web/FarmHandler.cls - PASOE WEB-transport handler. Thin wrapper: every request is passed to farm-api.p,
   which holds all business rules and data access. Mapped to /web/farm/ ... (see docs/OE-CONTRACT.md).
-  STATUS: written to the PASOE WebHandler pattern; see docs/NOTES.md for whether it has been deployed and run.
+  STATUS: compiled and run on PASOE 12.8 (see docs/NOTES.md).
 ------------------------------------------------------------------------*/
 USING OpenEdge.Web.WebHandler.
 USING OpenEdge.Web.IWebRequest.
@@ -23,6 +23,18 @@ CLASS web.FarmHandler INHERITS WebHandler:
         RETURN Dispatch(poRequest, "POST").
     END METHOD.
 
+    METHOD OVERRIDE PROTECTED INTEGER HandleDelete(INPUT poRequest AS IWebRequest):
+        RETURN Dispatch(poRequest, "DELETE").
+    END METHOD.
+
+    METHOD OVERRIDE PROTECTED INTEGER HandleNotAllowedMethod(INPUT poRequest AS IWebRequest):
+        RETURN Dispatch(poRequest, poRequest:Method).
+    END METHOD.
+
+    METHOD OVERRIDE PROTECTED INTEGER HandleNotImplemented(INPUT poRequest AS IWebRequest):
+        RETURN Dispatch(poRequest, poRequest:Method).
+    END METHOD.
+
     METHOD PRIVATE INTEGER Dispatch(INPUT poRequest AS IWebRequest, INPUT pcMethod AS CHARACTER):
         DEFINE VARIABLE oResponse AS WebResponse NO-UNDO.
         DEFINE VARIABLE oWriter   AS WebResponseWriter NO-UNDO.
@@ -30,9 +42,14 @@ CLASS web.FarmHandler INHERITS WebHandler:
         DEFINE VARIABLE lcResp    AS LONGCHAR NO-UNDO.
         DEFINE VARIABLE cPath     AS CHARACTER NO-UNDO.
         DEFINE VARIABLE iStatus   AS INTEGER NO-UNDO.
+        DEFINE VARIABLE cNames    AS CHARACTER EXTENT NO-UNDO.
+        DEFINE VARIABLE iQ        AS INTEGER NO-UNDO.
 
         cPath = poRequest:URI:Path.
-        IF poRequest:URI:Query > "" THEN cPath = cPath + "?" + poRequest:URI:Query.
+        poRequest:URI:GetQueryNames(OUTPUT cNames).
+        IF EXTENT(cNames) <> ? THEN DO iQ = 1 TO EXTENT(cNames):
+            cPath = cPath + (IF iQ = 1 THEN "?" ELSE "&") + cNames[iQ] + "=" + poRequest:URI:GetQueryValue(cNames[iQ]).
+        END.
 
         IF VALID-OBJECT(poRequest:Entity) THEN DO:
             IF TYPE-OF(poRequest:Entity, JsonObject) THEN
@@ -54,3 +71,6 @@ CLASS web.FarmHandler INHERITS WebHandler:
     END METHOD.
 
 END CLASS.
+
+
+

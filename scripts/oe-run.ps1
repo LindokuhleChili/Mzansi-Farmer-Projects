@@ -22,7 +22,8 @@ function Invoke-Abl($prog, $param, $extra = @()) {
   try { & $pro @extra -p $prog -param $param 2>&1 } finally { Pop-Location }
 }
 switch ($Action) {
-  'start-db' { Start-Process -FilePath (Join-Path $Dlc 'bin\proserve.bat') -ArgumentList 'farm','-S',"$Port" -WorkingDirectory $DbDir -WindowStyle Hidden }
+  'start-db' { # -minport/-maxport keep the DB's server ports away from 3000, which the Node API uses
+    Start-Process -FilePath (Join-Path $Dlc 'bin\proserve.bat') -ArgumentList 'farm','-S',"$Port",'-minport','3100','-maxport','3199' -WorkingDirectory $DbDir -WindowStyle Hidden }
   'scratch-schema' {
     # dry-run the .df files into a throw-away empty database (does not touch the real farm DB or stop the server)
     $sd = Join-Path (Split-Path -Parent $DbDir) 'scratch'; Remove-Item $sd -Recurse -Force -ErrorAction SilentlyContinue; New-Item -ItemType Directory $sd | Out-Null
