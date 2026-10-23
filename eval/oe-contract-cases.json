@@ -1322,6 +1322,1679 @@
    }
   },
   {
+   "id": "CO01",
+   "title": "Co-op: list members returns the four example members",
+   "request": {
+    "method": "GET",
+    "path": "/farm/members"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "members": {
+      "$length": 4
+     }
+    }
+   }
+  },
+  {
+   "id": "CO02",
+   "title": "Co-op: member 1 has limit R5 000, R3 850 outstanding and R1 150 available",
+   "request": {
+    "method": "GET",
+    "path": "/farm/members/1"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "memberId": 1,
+     "preferredLang": "zu",
+     "creditLimit": 5000,
+     "outstandingCredit": 3850,
+     "availableCredit": 1150
+    }
+   }
+  },
+  {
+   "id": "CO03",
+   "title": "Co-op: unknown member gives 404 MEMBER_NOT_FOUND",
+   "request": {
+    "method": "GET",
+    "path": "/farm/members/99"
+   },
+   "expect": {
+    "status": 404,
+    "body": {
+     "error": "MEMBER_NOT_FOUND"
+    }
+   }
+  },
+  {
+   "id": "CO04",
+   "title": "Credit R1 600 is above the limit: rejected with CREDIT_LIMIT_EXCEEDED and a suggested valid amount of R1 150",
+   "request": {
+    "method": "POST",
+    "path": "/farm/credits",
+    "body": {
+     "memberId": 1,
+     "item": "Seed",
+     "amount": 1600,
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "creditId": 4,
+     "status": "rejected",
+     "verdict": "rejected_by_rules",
+     "rejectReasons": [
+      {
+       "code": "CREDIT_LIMIT_EXCEEDED",
+       "suggestedAmount": 1150
+      }
+     ],
+     "facts": {
+      "creditLimit": 5000,
+      "outstandingCredit": 3850,
+      "availableCredit": 1150
+     }
+    }
+   }
+  },
+  {
+   "id": "CO05",
+   "title": "Boundary: credit R1 150 makes the total exactly R5 000 (the limit), so it is allowed",
+   "request": {
+    "method": "POST",
+    "path": "/farm/credits",
+    "body": {
+     "memberId": 1,
+     "item": "Seed",
+     "amount": 1150,
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "creditId": 5,
+     "status": "pending_approval",
+     "verdict": "approved_by_rules",
+     "rejectReasons": []
+    }
+   }
+  },
+  {
+   "id": "CO06",
+   "title": "A pending credit order counts: one more Rand is rejected, suggested amount 0",
+   "request": {
+    "method": "POST",
+    "path": "/farm/credits",
+    "body": {
+     "memberId": 1,
+     "amount": 1,
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "creditId": 6,
+     "status": "rejected",
+     "rejectReasons": [
+      {
+       "code": "CREDIT_LIMIT_EXCEEDED",
+       "suggestedAmount": 0
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "CO07",
+   "title": "Approving the pending credit order re-runs the rules and approves it",
+   "request": {
+    "method": "POST",
+    "path": "/farm/credits/5/decision",
+    "body": {
+     "decision": "approve",
+     "actor": "farmer",
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:20:00Z"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "creditId": 5,
+     "status": "approved",
+     "decidedAt": "2026-10-23T08:20:00.000Z"
+    }
+   }
+  },
+  {
+   "id": "CO08",
+   "title": "Boundary: credit R3 000 for a member with a R3 000 limit and nothing outstanding is allowed",
+   "request": {
+    "method": "POST",
+    "path": "/farm/credits",
+    "body": {
+     "memberId": 2,
+     "amount": 3000,
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "creditId": 7,
+     "status": "pending_approval"
+    }
+   }
+  },
+  {
+   "id": "CO09",
+   "title": "Declining a pending credit order frees the limit again",
+   "request": {
+    "method": "POST",
+    "path": "/farm/credits/7/decision",
+    "body": {
+     "decision": "reject",
+     "actor": "farmer",
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:20:00Z"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "creditId": 7,
+     "status": "declined"
+    }
+   }
+  },
+  {
+   "id": "CO10",
+   "title": "After the decline, R3 001 is rejected with suggested amount R3 000 (declined orders do not count)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/credits",
+    "body": {
+     "memberId": 2,
+     "amount": 3001,
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "creditId": 8,
+     "status": "rejected",
+     "rejectReasons": [
+      {
+       "code": "CREDIT_LIMIT_EXCEEDED",
+       "suggestedAmount": 3000
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "CO11",
+   "title": "Credit amount 0 is a 400 VALIDATION_ERROR on amount",
+   "request": {
+    "method": "POST",
+    "path": "/farm/credits",
+    "body": {
+     "memberId": 1,
+     "amount": 0
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "amount"
+    }
+   }
+  },
+  {
+   "id": "CO12",
+   "title": "Credit amount with three decimals is a 400 VALIDATION_ERROR on amount",
+   "request": {
+    "method": "POST",
+    "path": "/farm/credits",
+    "body": {
+     "memberId": 1,
+     "amount": 10.005
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "amount"
+    }
+   }
+  },
+  {
+   "id": "CO13",
+   "title": "Credit for an unknown member is 404 MEMBER_NOT_FOUND",
+   "request": {
+    "method": "POST",
+    "path": "/farm/credits",
+    "body": {
+     "memberId": 99,
+     "amount": 10
+    }
+   },
+   "expect": {
+    "status": 404,
+    "body": {
+     "error": "MEMBER_NOT_FOUND"
+    }
+   }
+  },
+  {
+   "id": "CO14",
+   "title": "Approving an approved credit order again is 409 ALREADY_DECIDED",
+   "request": {
+    "method": "POST",
+    "path": "/farm/credits/5/decision",
+    "body": {
+     "decision": "approve",
+     "actor": "farmer",
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:20:00Z"
+    }
+   },
+   "expect": {
+    "status": 409,
+    "body": {
+     "error": "ALREADY_DECIDED"
+    }
+   }
+  },
+  {
+   "id": "CO15",
+   "title": "A credit order rejected by the rules cannot be approved (409 NOT_APPROVABLE)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/credits/4/decision",
+    "body": {
+     "decision": "approve",
+     "actor": "farmer",
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:20:00Z"
+    }
+   },
+   "expect": {
+    "status": 409,
+    "body": {
+     "error": "NOT_APPROVABLE"
+    }
+   }
+  },
+  {
+   "id": "CO16",
+   "title": "Unknown credit decision is a 400 VALIDATION_ERROR",
+   "request": {
+    "method": "POST",
+    "path": "/farm/credits/5/decision",
+    "body": {
+     "decision": "maybe",
+     "actor": "farmer",
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:20:00Z"
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "decision"
+    }
+   }
+  },
+  {
+   "id": "CO17",
+   "title": "Credit orders can be listed per member (member 1 has five)",
+   "request": {
+    "method": "GET",
+    "path": "/farm/credits?memberId=1"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "credits": {
+      "$length": 5
+     }
+    }
+   }
+  },
+  {
+   "id": "CO18",
+   "title": "Audit: the blocked credit order wrote a credit_rule_check row",
+   "request": {
+    "method": "GET",
+    "path": "/farm/audit?limit=500"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "events": {
+      "$contains": {
+       "event": "credit_rule_check",
+       "actor": "abl-rules",
+       "detail": {
+        "$startsWith": "credit 4 member 1 R1600.00 => rejected_by_rules"
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "CO19",
+   "title": "Audit: the farmer approval wrote a credit_approved row",
+   "request": {
+    "method": "GET",
+    "path": "/farm/audit?limit=500"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "events": {
+      "$contains": {
+       "event": "credit_approved",
+       "actor": "farmer",
+       "detail": "credit 5"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "CO20",
+   "title": "Audit: the decline wrote a credit_declined row",
+   "request": {
+    "method": "GET",
+    "path": "/farm/audit?limit=500"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "events": {
+      "$contains": {
+       "event": "credit_declined",
+       "actor": "farmer",
+       "detail": "credit 7"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "CO21",
+   "title": "Co-op: list harvest lots returns the three example lots",
+   "request": {
+    "method": "GET",
+    "path": "/farm/lots"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "lots": {
+      "$length": 3
+     }
+    }
+   }
+  },
+  {
+   "id": "CO22",
+   "title": "Lot 1 (HL-0042) is 2 400 kg from three members and nothing is allocated yet",
+   "request": {
+    "method": "GET",
+    "path": "/farm/lots/1"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "lotCode": "HL-0042",
+     "quantityKg": 2400,
+     "allocatedKg": 0,
+     "availableKg": 2400,
+     "deliveredKg": 0,
+     "contributions": {
+      "$length": 3
+     }
+    }
+   }
+  },
+  {
+   "id": "CO23",
+   "title": "Unknown lot gives 404 LOT_NOT_FOUND",
+   "request": {
+    "method": "GET",
+    "path": "/farm/lots/99"
+   },
+   "expect": {
+    "status": 404,
+    "body": {
+     "error": "LOT_NOT_FOUND"
+    }
+   }
+  },
+  {
+   "id": "CO24",
+   "title": "Co-op: list contracts returns the five example contracts",
+   "request": {
+    "method": "GET",
+    "path": "/farm/contracts"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "contracts": {
+      "$length": 5
+     }
+    }
+   }
+  },
+  {
+   "id": "CO25",
+   "title": "Contract 1 is 2 000 kg of maize at R9.80 per kg, all still open",
+   "request": {
+    "method": "GET",
+    "path": "/farm/contracts/1"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "contractCode": "BC-0101",
+     "quantityKg": 2000,
+     "pricePerKg": 9.8,
+     "remainingKg": 2000,
+     "status": "open"
+    }
+   }
+  },
+  {
+   "id": "CO26",
+   "title": "Allocating 2 400 kg to a 2 000 kg contract is rejected with LOT_EXCEEDS_CONTRACT and a suggested valid quantity of 2 000 kg",
+   "request": {
+    "method": "POST",
+    "path": "/farm/allocations",
+    "body": {
+     "lotId": 1,
+     "contractId": 1,
+     "kg": 2400,
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "allocationId": 1,
+     "status": "rejected",
+     "rejectReasons": [
+      {
+       "code": "LOT_EXCEEDS_CONTRACT",
+       "suggestedKg": 2000
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "CO27",
+   "title": "Boundary: allocating exactly the contract quantity (2 000 kg) is allowed",
+   "request": {
+    "method": "POST",
+    "path": "/farm/allocations",
+    "body": {
+     "lotId": 1,
+     "contractId": 1,
+     "kg": 2000,
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "allocationId": 2,
+     "status": "pending_approval",
+     "verdict": "approved_by_rules",
+     "rejectReasons": [],
+     "pricePerKg": 9.8,
+     "value": 19600
+    }
+   }
+  },
+  {
+   "id": "CO28",
+   "title": "A pending allocation counts: one more kg to the same contract is rejected, suggested 0 kg",
+   "request": {
+    "method": "POST",
+    "path": "/farm/allocations",
+    "body": {
+     "lotId": 1,
+     "contractId": 1,
+     "kg": 1,
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "allocationId": 3,
+     "status": "rejected",
+     "rejectReasons": [
+      {
+       "code": "LOT_EXCEEDS_CONTRACT",
+       "suggestedKg": 0
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "CO29",
+   "title": "500 kg to contract 2 when only 400 kg of the lot is left is rejected with LOT_STOCK_EXCEEDED, suggested 400 kg",
+   "request": {
+    "method": "POST",
+    "path": "/farm/allocations",
+    "body": {
+     "lotId": 1,
+     "contractId": 2,
+     "kg": 500,
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "allocationId": 4,
+     "status": "rejected",
+     "rejectReasons": [
+      {
+       "code": "LOT_STOCK_EXCEEDED",
+       "suggestedKg": 400
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "CO30",
+   "title": "Boundary: allocating exactly the 400 kg left in the lot is allowed",
+   "request": {
+    "method": "POST",
+    "path": "/farm/allocations",
+    "body": {
+     "lotId": 1,
+     "contractId": 2,
+     "kg": 400,
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "allocationId": 5,
+     "status": "pending_approval"
+    }
+   }
+  },
+  {
+   "id": "CO31",
+   "title": "A beans lot cannot be allocated to a maize contract (CROP_MISMATCH)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/allocations",
+    "body": {
+     "lotId": 3,
+     "contractId": 2,
+     "kg": 10,
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "allocationId": 6,
+     "status": "rejected",
+     "rejectReasons": [
+      {
+       "code": "CROP_MISMATCH"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "CO32",
+   "title": "A closed contract cannot take an allocation (CONTRACT_CLOSED)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/allocations",
+    "body": {
+     "lotId": 2,
+     "contractId": 4,
+     "kg": 10,
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "allocationId": 7,
+     "status": "rejected",
+     "rejectReasons": [
+      {
+       "code": "CONTRACT_CLOSED"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "CO33",
+   "title": "Allocation of 0 kg is a 400 VALIDATION_ERROR on kg",
+   "request": {
+    "method": "POST",
+    "path": "/farm/allocations",
+    "body": {
+     "lotId": 1,
+     "contractId": 1,
+     "kg": 0
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "kg"
+    }
+   }
+  },
+  {
+   "id": "CO34",
+   "title": "Allocation of 1.5 kg is a 400 VALIDATION_ERROR on kg (whole kg only)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/allocations",
+    "body": {
+     "lotId": 1,
+     "contractId": 1,
+     "kg": 1.5
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "kg"
+    }
+   }
+  },
+  {
+   "id": "CO35",
+   "title": "Allocation from an unknown lot is 404 LOT_NOT_FOUND",
+   "request": {
+    "method": "POST",
+    "path": "/farm/allocations",
+    "body": {
+     "lotId": 99,
+     "contractId": 1,
+     "kg": 5
+    }
+   },
+   "expect": {
+    "status": 404,
+    "body": {
+     "error": "LOT_NOT_FOUND"
+    }
+   }
+  },
+  {
+   "id": "CO36",
+   "title": "Allocation to an unknown contract is 404 CONTRACT_NOT_FOUND",
+   "request": {
+    "method": "POST",
+    "path": "/farm/allocations",
+    "body": {
+     "lotId": 1,
+     "contractId": 99,
+     "kg": 5
+    }
+   },
+   "expect": {
+    "status": 404,
+    "body": {
+     "error": "CONTRACT_NOT_FOUND"
+    }
+   }
+  },
+  {
+   "id": "CO37",
+   "title": "Audit: the blocked allocation wrote an allocation_rule_check row",
+   "request": {
+    "method": "GET",
+    "path": "/farm/audit?limit=500"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "events": {
+      "$contains": {
+       "event": "allocation_rule_check",
+       "actor": "abl-rules",
+       "detail": {
+        "$startsWith": "allocation 1 lot 1 contract 1 2400 kg => rejected_by_rules"
+       }
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "CO38",
+   "title": "Payout before anything is delivered is rejected (PAYOUT_NOT_DELIVERED)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/payouts",
+    "body": {
+     "lotId": 1,
+     "memberId": 1,
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "payoutId": 1,
+     "status": "rejected",
+     "rejectReasons": [
+      {
+       "code": "PAYOUT_NOT_DELIVERED"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "CO39",
+   "title": "Approving allocation 2 (2 000 kg to contract 1) is allowed",
+   "request": {
+    "method": "POST",
+    "path": "/farm/allocations/2/decision",
+    "body": {
+     "decision": "approve",
+     "actor": "farmer",
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:20:00Z"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "allocationId": 2,
+     "status": "approved"
+    }
+   }
+  },
+  {
+   "id": "CO40",
+   "title": "An approved but not yet delivered allocation does not allow a payout",
+   "request": {
+    "method": "POST",
+    "path": "/farm/payouts",
+    "body": {
+     "lotId": 1,
+     "memberId": 1,
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "payoutId": 2,
+     "status": "rejected",
+     "rejectReasons": [
+      {
+       "code": "PAYOUT_NOT_DELIVERED"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "CO41",
+   "title": "A pending allocation cannot be marked delivered (409 NOT_DELIVERABLE)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/allocations/5/decision",
+    "body": {
+     "decision": "deliver",
+     "actor": "farmer",
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:20:00Z"
+    }
+   },
+   "expect": {
+    "status": 409,
+    "body": {
+     "error": "NOT_DELIVERABLE"
+    }
+   }
+  },
+  {
+   "id": "CO42",
+   "title": "Marking the approved allocation delivered works",
+   "request": {
+    "method": "POST",
+    "path": "/farm/allocations/2/decision",
+    "body": {
+     "decision": "deliver",
+     "actor": "farmer",
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:20:00Z"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "allocationId": 2,
+     "status": "delivered",
+     "deliveredAt": "2026-10-23T08:20:00.000Z"
+    }
+   }
+  },
+  {
+   "id": "CO43",
+   "title": "Delivering twice is 409 ALREADY_DECIDED",
+   "request": {
+    "method": "POST",
+    "path": "/farm/allocations/2/decision",
+    "body": {
+     "decision": "deliver",
+     "actor": "farmer",
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:20:00Z"
+    }
+   },
+   "expect": {
+    "status": 409,
+    "body": {
+     "error": "ALREADY_DECIDED"
+    }
+   }
+  },
+  {
+   "id": "CO44",
+   "title": "Lot 1 now shows delivered 2 000 kg worth R19 600 split pro rata by contribution 1200/800/400 with the largest-remainder cent going to member 3 (9 800.00 + 6 533.33 + 3 266.67)",
+   "request": {
+    "method": "GET",
+    "path": "/farm/lots/1"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "deliveredKg": 2000,
+     "deliveredValue": 19600,
+     "allocatedKg": 2400,
+     "availableKg": 0,
+     "contributions": [
+      {
+       "memberId": 1,
+       "kg": 1200,
+       "share": 9800
+      },
+      {
+       "memberId": 2,
+       "kg": 800,
+       "share": 6533.33
+      },
+      {
+       "memberId": 3,
+       "kg": 400,
+       "share": 3266.67
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "CO45",
+   "title": "Default payout for member 1: gross = full share R9 800, the R5 000 open credit is deducted first, net R4 800",
+   "request": {
+    "method": "POST",
+    "path": "/farm/payouts",
+    "body": {
+     "lotId": 1,
+     "memberId": 1,
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "payoutId": 3,
+     "status": "pending_approval",
+     "grossAmount": 9800,
+     "creditDeducted": 5000,
+     "netAmount": 4800,
+     "rejectReasons": []
+    }
+   }
+  },
+  {
+   "id": "CO46",
+   "title": "A second payout for the same share is rejected (PAYOUT_EXCEEDS_SHARE, suggested gross 0)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/payouts",
+    "body": {
+     "lotId": 1,
+     "memberId": 1,
+     "grossAmount": 100,
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "payoutId": 4,
+     "status": "rejected",
+     "rejectReasons": [
+      {
+       "code": "PAYOUT_EXCEEDS_SHARE",
+       "suggestedGrossAmount": 0
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "CO47",
+   "title": "Default payout when the whole share is already committed is rejected (PAYOUT_NOTHING_DUE)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/payouts",
+    "body": {
+     "lotId": 1,
+     "memberId": 1,
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "payoutId": 5,
+     "status": "rejected",
+     "rejectReasons": [
+      {
+       "code": "PAYOUT_NOTHING_DUE"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "CO48",
+   "title": "Gross R7 000 is above member 2 share R6 533.33: PAYOUT_EXCEEDS_SHARE with suggested gross R6 533.33",
+   "request": {
+    "method": "POST",
+    "path": "/farm/payouts",
+    "body": {
+     "lotId": 1,
+     "memberId": 2,
+     "grossAmount": 7000,
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "payoutId": 6,
+     "status": "rejected",
+     "rejectReasons": [
+      {
+       "code": "PAYOUT_EXCEEDS_SHARE",
+       "suggestedGrossAmount": 6533.33
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "CO49",
+   "title": "Member 3 has R1 000 open credit: paying out with no deduction is rejected (CREDIT_NOT_DEDUCTED, suggested R1 000)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/payouts",
+    "body": {
+     "lotId": 1,
+     "memberId": 3,
+     "grossAmount": 3266.67,
+     "creditDeducted": 0,
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "payoutId": 7,
+     "status": "rejected",
+     "rejectReasons": [
+      {
+       "code": "CREDIT_NOT_DEDUCTED",
+       "suggestedCreditDeducted": 1000
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "CO50",
+   "title": "Deducting R2 000 when only R1 000 credit is open is rejected (CREDIT_DEDUCTION_INVALID)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/payouts",
+    "body": {
+     "lotId": 1,
+     "memberId": 3,
+     "creditDeducted": 2000,
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "payoutId": 8,
+     "status": "rejected",
+     "rejectReasons": [
+      {
+       "code": "CREDIT_DEDUCTION_INVALID",
+       "suggestedCreditDeducted": 1000
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "CO51",
+   "title": "Default payout for member 3: gross R3 266.67, credit R1 000 deducted, net R2 266.67",
+   "request": {
+    "method": "POST",
+    "path": "/farm/payouts",
+    "body": {
+     "lotId": 1,
+     "memberId": 3,
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "payoutId": 9,
+     "status": "pending_approval",
+     "grossAmount": 3266.67,
+     "creditDeducted": 1000,
+     "netAmount": 2266.67
+    }
+   }
+  },
+  {
+   "id": "CO52",
+   "title": "A member who gave nothing to the lot gets MEMBER_NOT_IN_LOT",
+   "request": {
+    "method": "POST",
+    "path": "/farm/payouts",
+    "body": {
+     "lotId": 1,
+     "memberId": 4,
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "payoutId": 10,
+     "status": "rejected",
+     "rejectReasons": [
+      {
+       "code": "MEMBER_NOT_IN_LOT"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "CO53",
+   "title": "Negative gross is a 400 VALIDATION_ERROR on grossAmount",
+   "request": {
+    "method": "POST",
+    "path": "/farm/payouts",
+    "body": {
+     "lotId": 1,
+     "memberId": 1,
+     "grossAmount": -5
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "grossAmount"
+    }
+   }
+  },
+  {
+   "id": "CO54",
+   "title": "Payout for an unknown lot is 404 LOT_NOT_FOUND",
+   "request": {
+    "method": "POST",
+    "path": "/farm/payouts",
+    "body": {
+     "lotId": 99,
+     "memberId": 1
+    }
+   },
+   "expect": {
+    "status": 404,
+    "body": {
+     "error": "LOT_NOT_FOUND"
+    }
+   }
+  },
+  {
+   "id": "CO55",
+   "title": "Payout for an unknown member is 404 MEMBER_NOT_FOUND",
+   "request": {
+    "method": "POST",
+    "path": "/farm/payouts",
+    "body": {
+     "lotId": 1,
+     "memberId": 99
+    }
+   },
+   "expect": {
+    "status": 404,
+    "body": {
+     "error": "MEMBER_NOT_FOUND"
+    }
+   }
+  },
+  {
+   "id": "CO56",
+   "title": "Approving payout 3 re-runs the rules and approves it",
+   "request": {
+    "method": "POST",
+    "path": "/farm/payouts/3/decision",
+    "body": {
+     "decision": "approve",
+     "actor": "farmer",
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:20:00Z"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "payoutId": 3,
+     "status": "approved"
+    }
+   }
+  },
+  {
+   "id": "CO57",
+   "title": "Approving the payout repaid member 1 credit oldest first (R2 500, R1 350, then R1 150 of credit 5)",
+   "request": {
+    "method": "GET",
+    "path": "/farm/credits?memberId=1"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "credits": [
+      {
+       "creditId": 1,
+       "repaidAmount": 2500
+      },
+      {
+       "creditId": 2,
+       "repaidAmount": 1350
+      },
+      {
+       "creditId": 4,
+       "status": "rejected",
+       "repaidAmount": 0
+      },
+      {
+       "creditId": 5,
+       "repaidAmount": 1150
+      },
+      {
+       "creditId": 6,
+       "repaidAmount": 0
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "CO58",
+   "title": "Member 1 now has no open credit and the full R5 000 available",
+   "request": {
+    "method": "GET",
+    "path": "/farm/members/1"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "outstandingCredit": 0,
+     "availableCredit": 5000
+    }
+   }
+  },
+  {
+   "id": "CO59",
+   "title": "Approving payout 9 (member 3) works",
+   "request": {
+    "method": "POST",
+    "path": "/farm/payouts/9/decision",
+    "body": {
+     "decision": "approve",
+     "actor": "farmer",
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:20:00Z"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "payoutId": 9,
+     "status": "approved"
+    }
+   }
+  },
+  {
+   "id": "CO60",
+   "title": "Member 3 credit of R1 000 is repaid",
+   "request": {
+    "method": "GET",
+    "path": "/farm/members/3"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "outstandingCredit": 0,
+     "availableCredit": 4000
+    }
+   }
+  },
+  {
+   "id": "CO61",
+   "title": "Approving payout 3 again is 409 ALREADY_DECIDED",
+   "request": {
+    "method": "POST",
+    "path": "/farm/payouts/3/decision",
+    "body": {
+     "decision": "approve",
+     "actor": "farmer",
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:20:00Z"
+    }
+   },
+   "expect": {
+    "status": 409,
+    "body": {
+     "error": "ALREADY_DECIDED"
+    }
+   }
+  },
+  {
+   "id": "CO62",
+   "title": "A payout rejected by the rules cannot be approved (409 NOT_APPROVABLE)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/payouts/4/decision",
+    "body": {
+     "decision": "approve",
+     "actor": "farmer",
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:20:00Z"
+    }
+   },
+   "expect": {
+    "status": 409,
+    "body": {
+     "error": "NOT_APPROVABLE"
+    }
+   }
+  },
+  {
+   "id": "CO63",
+   "title": "Audit: the payout approval wrote a payout_approved row",
+   "request": {
+    "method": "GET",
+    "path": "/farm/audit?limit=500"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "events": {
+      "$contains": {
+       "event": "payout_approved",
+       "actor": "farmer",
+       "detail": "payout 3"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "CO64",
+   "title": "Audit: the credit repayment wrote a credit_repaid_by_payout row",
+   "request": {
+    "method": "GET",
+    "path": "/farm/audit?limit=500"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "events": {
+      "$contains": {
+       "event": "credit_repaid_by_payout",
+       "actor": "farmer",
+       "detail": "credit 5 repaid R1150.00 by payout 3"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "CO65",
+   "title": "Approving allocation 5 (400 kg to contract 2) is allowed",
+   "request": {
+    "method": "POST",
+    "path": "/farm/allocations/5/decision",
+    "body": {
+     "decision": "approve",
+     "actor": "farmer",
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:20:00Z"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "allocationId": 5,
+     "status": "approved"
+    }
+   }
+  },
+  {
+   "id": "CO66",
+   "title": "Delivering allocation 5 raises the delivered lot value to R23 400",
+   "request": {
+    "method": "POST",
+    "path": "/farm/allocations/5/decision",
+    "body": {
+     "decision": "deliver",
+     "actor": "farmer",
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:20:00Z"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "allocationId": 5,
+     "status": "delivered"
+    }
+   }
+  },
+  {
+   "id": "CO67",
+   "title": "More delivered value raises the shares: member 2 default payout is now the full share R7 800",
+   "request": {
+    "method": "POST",
+    "path": "/farm/payouts",
+    "body": {
+     "lotId": 1,
+     "memberId": 2,
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "payoutId": 11,
+     "status": "pending_approval",
+     "grossAmount": 7800,
+     "creditDeducted": 0,
+     "netAmount": 7800
+    }
+   }
+  },
+  {
+   "id": "CO68",
+   "title": "Fair allocation plan, enough stock: lot 2 (1 000 kg maize) vs 600 kg still open: contract 2 gets its 600 kg, 400 kg stay unallocated",
+   "request": {
+    "method": "POST",
+    "path": "/farm/lots/2/fair-allocation",
+    "body": {}
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "committed": false,
+     "method": "full",
+     "availableKg": 1000,
+     "demandKg": 600,
+     "allocations": [
+      {
+       "contractId": 2,
+       "kg": 600
+      }
+     ],
+     "unallocatedKg": 400
+    }
+   }
+  },
+  {
+   "id": "CO69",
+   "title": "Fair allocation plan, not enough stock: lot 3 (450 kg beans) vs contracts wanting 500 and 300: pro rata 281.25/168.75 gives 281 + 169 (largest remainder), total 450",
+   "request": {
+    "method": "POST",
+    "path": "/farm/lots/3/fair-allocation",
+    "body": {}
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "committed": false,
+     "method": "pro_rata",
+     "availableKg": 450,
+     "demandKg": 800,
+     "allocations": [
+      {
+       "contractId": 3,
+       "kg": 281
+      },
+      {
+       "contractId": 5,
+       "kg": 169
+      }
+     ],
+     "unallocatedKg": 0
+    }
+   }
+  },
+  {
+   "id": "CO70",
+   "title": "Committing the plan creates two pending allocations through the same rules",
+   "request": {
+    "method": "POST",
+    "path": "/farm/lots/3/fair-allocation",
+    "body": {
+     "commit": true,
+     "requestId": "co-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "committed": true,
+     "created": [
+      {
+       "allocationId": 8,
+       "contractId": 3,
+       "kg": 281,
+       "status": "pending_approval"
+      },
+      {
+       "allocationId": 9,
+       "contractId": 5,
+       "kg": 169,
+       "status": "pending_approval"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "CO71",
+   "title": "Lot 3 is now fully allocated",
+   "request": {
+    "method": "GET",
+    "path": "/farm/lots/3"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "quantityKg": 450,
+     "allocatedKg": 450,
+     "availableKg": 0
+    }
+   }
+  },
+  {
+   "id": "CO72",
+   "title": "A second plan for the same lot has nothing left to allocate",
+   "request": {
+    "method": "POST",
+    "path": "/farm/lots/3/fair-allocation",
+    "body": {}
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "committed": false,
+     "method": "none",
+     "availableKg": 0,
+     "allocations": [],
+     "unallocatedKg": 0
+    }
+   }
+  },
+  {
+   "id": "CO73",
+   "title": "Contract 3 shows 281 kg allocated and 219 kg remaining",
+   "request": {
+    "method": "GET",
+    "path": "/farm/contracts/3"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "allocatedKg": 281,
+     "remainingKg": 219
+    }
+   }
+  },
+  {
+   "id": "CO74",
+   "title": "Audit: committing the plan wrote a fair_allocation_committed row",
+   "request": {
+    "method": "GET",
+    "path": "/farm/audit?limit=500"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "events": {
+      "$contains": {
+       "event": "fair_allocation_committed",
+       "actor": "farmer",
+       "detail": "lot 3: 2 allocation(s), 450 kg, method pro_rata"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "CO75",
+   "title": "Fair allocation for an unknown lot is 404 LOT_NOT_FOUND",
+   "request": {
+    "method": "POST",
+    "path": "/farm/lots/99/fair-allocation",
+    "body": {}
+   },
+   "expect": {
+    "status": 404,
+    "body": {
+     "error": "LOT_NOT_FOUND"
+    }
+   }
+  },
+  {
+   "id": "CO76",
+   "title": "commit must be a boolean (400 VALIDATION_ERROR)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/lots/3/fair-allocation",
+    "body": {
+     "commit": "yes"
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "commit"
+    }
+   }
+  },
+  {
    "id": "FAIL01",
    "title": "INTENTIONAL FAILURE: asserts that irrigating a wet plot is approved (the rules correctly reject it, so this case must fail)",
    "intentionalFail": true,

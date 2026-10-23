@@ -5,6 +5,7 @@
 //  6. eval/fixes.test.mjs: unit/resilience tests for the QA bug fixes (litres on hold/notify, OpenEdge outage timing, calendar dates)
 //  3. API eval + device cases through the real PASOE HTTP client path, against the mock-pasoe HTTP server
 //  7. eval/ui.test.mjs: web UI (static routes, local-only proxy, demo tools, API shapes the UI reads, front-end file checks)
+//  8. eval/coop.test.mjs: co-op rule unit tests (pro rata rounding, caps, approve re-check, payouts, audit). The co-op contract cases CO01 to CO76 are part of suite 1.
 // The same contract cases run against the REAL ABL code on Windows with scripts\oe-run.ps1 -Action test (see docs/NOTES.md).
 import { readFileSync } from 'node:fs';
 import { createStore } from '../mock-pasoe/store.js';
@@ -52,6 +53,13 @@ const uiPass = Number((/^# pass (\d+)/m.exec(uiTests.stdout) || [])[1] || 0), ui
 for (const m of uiTests.stdout.matchAll(/^(not ok|ok) \d+ - (.*)$/gm)) console.log(`  ${m[1] === 'ok' ? 'PASS' : 'FAIL'}  ${m[2]}`);
 console.log(`  web UI tests: ${uiPass} passed, ${uiFail} failed`);
 totals.pass += uiPass; totals.fail += uiFail + (uiTests.status === 0 ? 0 : (uiFail ? 0 : 1));
+
+console.log('\n=== 8. Co-op rules: pro rata maths, caps, approval re-check, payouts, audit (eval/coop.test.mjs, node:test) ===');
+const coopTests = spawnSync(process.execPath, ['--test', '--test-reporter=tap', fileURLToPath(new URL('./coop.test.mjs', import.meta.url))], { encoding: 'utf8' });
+const coPass = Number((/^# pass (\d+)/m.exec(coopTests.stdout) || [])[1] || 0), coFail = Number((/^# fail (\d+)/m.exec(coopTests.stdout) || [])[1] || 0);
+for (const m of coopTests.stdout.matchAll(/^(not ok|ok) \d+ - (.*)$/gm)) console.log(`  ${m[1] === 'ok' ? 'PASS' : 'FAIL'}  ${m[2]}`);
+console.log(`  co-op tests: ${coPass} passed, ${coFail} failed`);
+totals.pass += coPass; totals.fail += coFail + (coopTests.status === 0 ? 0 : (coFail ? 0 : 1));
 
 console.log(`\nTOTAL: ${totals.pass} passed, ${totals.fail} failed, ${totals.intentional} intentional failures confirmed (by design), ${totals.unexpected} unexpected passes of intentional cases`);
 process.exit(totals.fail === 0 && totals.unexpected === 0 ? 0 : 1);
