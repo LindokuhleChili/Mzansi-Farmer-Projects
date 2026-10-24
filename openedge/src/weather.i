@@ -50,10 +50,10 @@ FUNCTION fWxAlertJson RETURNS JsonObject (INPUT piId AS INTEGER):
     jo:Add("alertType", bA.AlertType).
     jo:Add("dayNo", bA.DayNo).
     jo:Add("forecastDate", fWxDate(bA.ForecastDate)).
-    jo:Add("value", bA.Value).
+    jo:Add("value", bA.ObservedValue).
     jo:Add("unit", bA.Unit).
     jo:Add("level", bA.Level).
-    jo:Add("message", bA.Message).
+    jo:Add("message", bA.AlertText).
     jo:Add("status", bA.AlertStatus).
     jo:Add("createdAt", fIso(bA.CreatedAt)).
     IF bA.AckedAt = ? THEN jo:AddNull("ackedAt"). ELSE jo:Add("ackedAt", fIso(bA.AckedAt)).
@@ -69,7 +69,7 @@ FUNCTION fWxThJson RETURNS JsonObject (INPUT piId AS INTEGER):
     jo:Add("thresholdId", bT.ThresholdId).
     jo:Add("alertType", bT.AlertType).
     jo:Add("op", bT.Op).
-    jo:Add("value", bT.Value).
+    jo:Add("value", bT.LimitValue).
     jo:Add("unit", bT.Unit).
     jo:Add("level", bT.Level).
     jo:Add("active", bT.Active).
@@ -191,7 +191,7 @@ PROCEDURE h-wx-refresh:
                 dVal = (IF k = 1 THEN bF.RainMm ELSE IF k = 2 THEN bF.TempMaxC ELSE bF.TempMinC).
                 cLevel = "".
                 FOR EACH bT NO-LOCK WHERE bT.AlertType = cType AND bT.Active:
-                    IF ((bT.Op = ">=" AND dVal >= bT.Value) OR (bT.Op = "<=" AND dVal <= bT.Value))
+                    IF ((bT.Op = ">=" AND dVal >= bT.LimitValue) OR (bT.Op = "<=" AND dVal <= bT.LimitValue))
                        AND fWxRank(bT.Level) > fWxRank(cLevel) THEN cLevel = bT.Level.
                 END.
                 IF cLevel = "" THEN NEXT.
@@ -199,15 +199,15 @@ PROCEDURE h-wx-refresh:
                 FIND bA WHERE bA.FarmId = bFm.FarmId AND bA.AlertType = cType AND bA.ForecastDate = bF.ForecastDate EXCLUSIVE-LOCK NO-ERROR.
                 IF AVAILABLE bA THEN DO:
                     IF bA.AlertStatus = "expired" THEN DO:
-                        ASSIGN bA.AlertStatus = "open" bA.Level = cLevel bA.Value = dVal bA.Message = fWxMessage(cType, bF.DayNo, dVal) bA.AckedAt = ?.
+                        ASSIGN bA.AlertStatus = "open" bA.Level = cLevel bA.ObservedValue = dVal bA.AlertText = fWxMessage(cType, bF.DayNo, dVal) bA.AckedAt = ?.
                         iCreated = iCreated + 1.
                     END.
                     NEXT.
                 END.
                 CREATE bA.
                 ASSIGN bA.AlertId = NEXT-VALUE(AlertSeq) bA.FarmId = bFm.FarmId bA.Province = bFm.Province bA.AlertType = cType
-                       bA.DayNo = bF.DayNo bA.ForecastDate = bF.ForecastDate bA.Value = dVal bA.Unit = fWxUnit(cType) bA.Level = cLevel
-                       bA.Message = fWxMessage(cType, bF.DayNo, dVal) bA.CreatedAt = NOW bA.AlertStatus = "open" bA.RequestId = cReq.
+                       bA.DayNo = bF.DayNo bA.ForecastDate = bF.ForecastDate bA.ObservedValue = dVal bA.Unit = fWxUnit(cType) bA.Level = cLevel
+                       bA.AlertText = fWxMessage(cType, bF.DayNo, dVal) bA.CreatedAt = NOW bA.AlertStatus = "open" bA.RequestId = cReq.
                 iCreated = iCreated + 1.
             END.
         END.
@@ -265,7 +265,7 @@ PROCEDURE h-wx-threshold-save:
     IF piId = ? OR NOT AVAILABLE bT THEN DO:
         RUN reply-error (404, "THRESHOLD_NOT_FOUND", SUBSTITUTE("No threshold with id &1.", (IF piId = ? THEN "?" ELSE STRING(piId))), ?). RETURN.
     END.
-    ASSIGN dVal = bT.Value cLevel = bT.Level lActive = bT.Active.
+    ASSIGN dVal = bT.LimitValue cLevel = bT.Level lActive = bT.Active.
     IF goBody:Has("value") THEN DO:
         RUN get-num (goBody, "value", OUTPUT dVal, OUTPUT lOk).
         IF NOT lOk OR dVal * 10 <> TRUNCATE(dVal * 10, 0) THEN DO:
@@ -290,15 +290,15 @@ PROCEDURE h-wx-threshold-save:
         RUN reply-error (400, "ALERT_THRESHOLD_INVALID", "Heat threshold must be between 0 and 60 C.", "value"). RETURN. END.
     IF bT.AlertType = "frost" AND NOT (dVal >= -20 AND dVal <= 20) THEN DO:
         RUN reply-error (400, "ALERT_THRESHOLD_INVALID", "Frost threshold must be between -20 and 20 C.", "value"). RETURN. END.
-    IF lActive AND bT.AlertType = "frost" AND CAN-FIND(FIRST bO WHERE bO.AlertType = "heat" AND bO.Active AND bO.ThresholdId <> piId AND dVal >= bO.Value) THEN DO:
+    IF lActive AND bT.AlertType = "frost" AND CAN-FIND(FIRST bO WHERE bO.AlertType = "heat" AND bO.Active AND bO.ThresholdId <> piId AND dVal >= bO.LimitValue) THEN DO:
         RUN reply-error (400, "ALERT_THRESHOLD_INVALID", "The frost (minimum) threshold must be below the heat (maximum) threshold.", "value"). RETURN. END.
-    IF lActive AND bT.AlertType = "heat" AND CAN-FIND(FIRST bO WHERE bO.AlertType = "frost" AND bO.Active AND bO.ThresholdId <> piId AND dVal <= bO.Value) THEN DO:
+    IF lActive AND bT.AlertType = "heat" AND CAN-FIND(FIRST bO WHERE bO.AlertType = "frost" AND bO.Active AND bO.ThresholdId <> piId AND dVal <= bO.LimitValue) THEN DO:
         RUN reply-error (400, "ALERT_THRESHOLD_INVALID", "The heat (maximum) threshold must be above the frost (minimum) threshold.", "value"). RETURN. END.
     RUN get-str (goBody, "updatedBy", OUTPUT cBy, OUTPUT lOk). IF NOT lOk THEN cBy = "api".
     RUN get-str (goBody, "requestId", OUTPUT cReq, OUTPUT lOk). IF NOT lOk THEN cReq = "".
     DO TRANSACTION:
         FIND bT WHERE bT.ThresholdId = piId EXCLUSIVE-LOCK.
-        ASSIGN bT.Value = dVal bT.Level = cLevel bT.Active = lActive bT.UpdatedAt = NOW bT.UpdatedBy = SUBSTRING(cBy, 1, 40).
+        ASSIGN bT.LimitValue = dVal bT.Level = cLevel bT.Active = lActive bT.UpdatedAt = NOW bT.UpdatedBy = SUBSTRING(cBy, 1, 40).
         RELEASE bT.
     END.
     RUN audit (cReq, SUBSTRING(cBy, 1, 40), "alert_threshold_changed",

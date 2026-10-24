@@ -139,7 +139,7 @@ ADD FIELD "Op" OF "AlertThreshold" AS character
   MAX-WIDTH 4
   ORDER 30
 
-ADD FIELD "Value" OF "AlertThreshold" AS decimal
+ADD FIELD "LimitValue" OF "AlertThreshold" AS decimal
   FORMAT "->>9.9"
   INITIAL "0"
   LABEL "Value"
@@ -248,7 +248,7 @@ ADD FIELD "ForecastDate" OF "WeatherAlert" AS date
   MAX-WIDTH 3
   ORDER 60
 
-ADD FIELD "Value" OF "WeatherAlert" AS decimal
+ADD FIELD "ObservedValue" OF "WeatherAlert" AS decimal
   FORMAT "->>>9.9"
   INITIAL "0"
   LABEL "Value"
@@ -273,7 +273,7 @@ ADD FIELD "Level" OF "WeatherAlert" AS character
   MAX-WIDTH 20
   ORDER 90
 
-ADD FIELD "Message" OF "WeatherAlert" AS character
+ADD FIELD "AlertText" OF "WeatherAlert" AS character
   FORMAT "x(200)"
   INITIAL ""
   LABEL "Message"

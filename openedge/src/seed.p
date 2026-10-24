@@ -316,7 +316,7 @@ DO TRANSACTION:
         jo = ja:GetJsonObject(i).
         CREATE AlertThreshold.
         ASSIGN AlertThreshold.ThresholdId = NEXT-VALUE(ThresholdSeq) AlertThreshold.AlertType = jo:GetCharacter("alertType")
-               AlertThreshold.Op = jo:GetCharacter("op") AlertThreshold.Value = jo:GetDecimal("value") AlertThreshold.Unit = jo:GetCharacter("unit")
+               AlertThreshold.Op = jo:GetCharacter("op") AlertThreshold.LimitValue = jo:GetDecimal("value") AlertThreshold.Unit = jo:GetCharacter("unit")
                AlertThreshold.Level = jo:GetCharacter("level") AlertThreshold.Active = TRUE AlertThreshold.UpdatedBy = "seed".
         RELEASE AlertThreshold.
         iWxTh = iWxTh + 1.
