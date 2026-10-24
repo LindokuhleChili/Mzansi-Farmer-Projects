@@ -109,6 +109,16 @@ PROCEDURE reply-error:
     RUN reply (piStat, jo).
 END PROCEDURE.
 
+/* Audit hash chain. RowHash = lower-case hex SHA-256 of PrevHash|AuditId|LoggedAt(ISO, UTC)|RequestId|Actor|Event|Detail.
+   Same formula as mock-pasoe/audit-chain.js. Rows written before 005-audit-chain.df have an empty RowHash ("legacy"). */
+FUNCTION fSha256Hex RETURNS CHARACTER (INPUT pcData AS CHARACTER):
+    RETURN LC(STRING(HEX-ENCODE(MESSAGE-DIGEST("SHA-256", pcData)))).
+END FUNCTION.
+FUNCTION fAuditHash RETURNS CHARACTER (INPUT pcPrev AS CHARACTER, INPUT piId AS INTEGER, INPUT ptAt AS DATETIME-TZ,
+    INPUT pcReq AS CHARACTER, INPUT pcActor AS CHARACTER, INPUT pcEvent AS CHARACTER, INPUT pcDetail AS CHARACTER):
+    RETURN fSha256Hex(pcPrev + "|" + STRING(piId) + "|" + fIso(ptAt) + "|" + pcReq + "|" + pcActor + "|" + pcEvent + "|" + pcDetail).
+END FUNCTION.
+
 PROCEDURE audit:
     DEFINE INPUT PARAMETER pcRequestId AS CHARACTER NO-UNDO.
     DEFINE INPUT PARAMETER pcActor     AS CHARACTER NO-UNDO.
@@ -116,6 +126,11 @@ PROCEDURE audit:
     DEFINE INPUT PARAMETER pcDetail    AS CHARACTER NO-UNDO.
     DEFINE INPUT PARAMETER ptAt        AS DATETIME-TZ NO-UNDO.
     DEFINE OUTPUT PARAMETER piId       AS INTEGER NO-UNDO.
+    DEFINE BUFFER bPrev FOR AuditLog.
+    DEFINE VARIABLE cPrev AS CHARACTER NO-UNDO INITIAL "".
+    /* hash chain (005-audit-chain.df): lock the current head row so two writers cannot fork the chain */
+    FIND LAST bPrev USE-INDEX AuditId EXCLUSIVE-LOCK NO-ERROR.
+    IF AVAILABLE bPrev THEN cPrev = bPrev.RowHash.
     CREATE AuditLog.
     ASSIGN AuditLog.AuditId   = NEXT-VALUE(AuditSeq)
            AuditLog.LoggedAt        = (IF ptAt = ? THEN NOW ELSE ptAt)
@@ -123,8 +138,11 @@ PROCEDURE audit:
            AuditLog.Actor     = pcActor
            AuditLog.Event     = pcEvent
            AuditLog.Detail    = SUBSTRING(pcDetail, 1, 4000).
+    ASSIGN AuditLog.PrevHash = cPrev
+           AuditLog.RowHash  = fAuditHash(cPrev, AuditLog.AuditId, AuditLog.LoggedAt, AuditLog.RequestId, AuditLog.Actor, AuditLog.Event, AuditLog.Detail).
     piId = AuditLog.AuditId.
     RELEASE AuditLog.
+    IF AVAILABLE bPrev THEN RELEASE bPrev.
 END PROCEDURE.
 
 /* Typed getters. pcName must exist with the right JSON type. */
@@ -676,6 +694,35 @@ PROCEDURE h-post-audit:
     RUN reply (201, jo).
 END PROCEDURE.
 
+/* GET /farm/audit/verify : walk the chain oldest first. Leading rows with no RowHash are legacy (before 005).
+   The first row whose PrevHash does not equal the previous RowHash, or whose RowHash does not match its content, is reported. */
+PROCEDURE h-verify-audit:
+    DEFINE VARIABLE jo AS JsonObject NO-UNDO.
+    DEFINE VARIABLE cPrev AS CHARACTER NO-UNDO INITIAL "".
+    DEFINE VARIABLE lStarted AS LOGICAL NO-UNDO INITIAL FALSE.
+    DEFINE VARIABLE iChecked AS INTEGER NO-UNDO.
+    DEFINE VARIABLE iLegacy AS INTEGER NO-UNDO.
+    DEFINE VARIABLE iBad AS INTEGER NO-UNDO INITIAL ?.
+    DEFINE VARIABLE cWhy AS CHARACTER NO-UNDO INITIAL ?.
+    FOR EACH AuditLog NO-LOCK BY AuditLog.AuditId:
+        IF NOT lStarted AND AuditLog.RowHash = "" THEN DO: iLegacy = iLegacy + 1. NEXT. END.
+        IF NOT lStarted THEN ASSIGN lStarted = TRUE cPrev = AuditLog.PrevHash.
+        iChecked = iChecked + 1.
+        IF AuditLog.PrevHash <> cPrev THEN DO: ASSIGN iBad = AuditLog.AuditId cWhy = "PREV_HASH_MISMATCH". LEAVE. END.
+        IF AuditLog.RowHash <> fAuditHash(AuditLog.PrevHash, AuditLog.AuditId, AuditLog.LoggedAt, AuditLog.RequestId, AuditLog.Actor, AuditLog.Event, AuditLog.Detail)
+            THEN DO: ASSIGN iBad = AuditLog.AuditId cWhy = "ROW_HASH_MISMATCH". LEAVE. END.
+        cPrev = AuditLog.RowHash.
+    END.
+    jo = NEW JsonObject().
+    jo:Add("ok", iBad = ?).
+    jo:Add("checked", iChecked).
+    jo:Add("legacy", iLegacy).
+    IF iBad = ? THEN jo:AddNull("firstBadId"). ELSE jo:Add("firstBadId", iBad).
+    IF cWhy = ? THEN jo:AddNull("reason"). ELSE jo:Add("reason", cWhy).
+    jo:Add("headHash", (IF iBad = ? THEN cPrev ELSE "")).
+    RUN reply (200, jo).
+END PROCEDURE.
+
 PROCEDURE h-list-audit:
     DEFINE VARIABLE ja AS JsonArray NO-UNDO.
     DEFINE VARIABLE jo AS JsonObject NO-UNDO.
@@ -697,6 +744,8 @@ PROCEDURE h-list-audit:
         je:Add("actor", AuditLog.Actor).
         je:Add("event", AuditLog.Event).
         je:Add("detail", AuditLog.Detail).
+        je:Add("prevHash", AuditLog.PrevHash).
+        je:Add("rowHash", AuditLog.RowHash).
         ja:Add(je).
     END.
     jo = NEW JsonObject().
@@ -742,6 +791,7 @@ PROCEDURE dispatch:
             ELSE IF cP = "suggestions" THEN RUN h-list-suggestions.
             ELSE IF n = 2 AND ENTRY(1, cP, "/") = "suggestions" THEN RUN h-get-suggestion (INTEGER(ENTRY(2, cP, "/"))).
             ELSE IF cP = "audit" THEN RUN h-list-audit.
+            ELSE IF cP = "audit/verify" THEN RUN h-verify-audit.
             ELSE IF cP = "members" THEN RUN h-coop-members.
             ELSE IF n = 2 AND ENTRY(1, cP, "/") = "members" THEN RUN h-coop-member (fPathId(ENTRY(2, cP, "/"))).
             ELSE IF cP = "credits" THEN RUN h-coop-credits.
