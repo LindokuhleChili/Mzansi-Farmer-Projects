@@ -67,7 +67,7 @@ FUNCTION fPlain RETURNS CHARACTER (INPUT pi AS INT64):
     DO WHILE i > 0:
         iDig = INTEGER(i MODULO 10).
         c = SUBSTRING("0123456789", iDig + 1, 1) + c.
-        i = i / 10.
+        i = TRUNCATE(i / 10, 0).
     END.
     RETURN cSign + c.
 END FUNCTION.
@@ -81,7 +81,7 @@ FUNCTION fRand RETURNS CHARACTER (INPUT piCents AS INT64):
     DEFINE VARIABLE cSign  AS CHARACTER NO-UNDO INITIAL "".
     IF piCents < 0 THEN ASSIGN cSign = "-" iAbs = - piCents.
     ELSE iAbs = piCents.
-    iWhole = iAbs / 100.
+    iWhole = TRUNCATE(iAbs / 100, 0).
     iFrac = INTEGER(iAbs MODULO 100).
     cFrac = fPlain(iFrac).
     IF LENGTH(cFrac) < 2 THEN cFrac = "0" + cFrac.
@@ -411,7 +411,7 @@ PROCEDURE p-check-credit:
     DEFINE INPUT  PARAMETER piAmount AS INT64      NO-UNDO.
     DEFINE INPUT  PARAMETER piExcl   AS INTEGER    NO-UNDO.
     DEFINE OUTPUT PARAMETER poResult AS JsonObject NO-UNDO.
-    DEFINE BUFFER bMem FOR Member.
+    DEFINE BUFFER bMem FOR CoopMember.
     DEFINE VARIABLE iOut   AS INT64     NO-UNDO.
     DEFINE VARIABLE iLimit AS INT64     NO-UNDO.
     DEFINE VARIABLE iHead  AS INT64     NO-UNDO.
@@ -658,7 +658,7 @@ END PROCEDURE.
 
 /* ---------- JSON builders ---------- */
 FUNCTION fMemberJson RETURNS JsonObject (INPUT piId AS INTEGER):
-    DEFINE BUFFER bMem FOR Member.
+    DEFINE BUFFER bMem FOR CoopMember.
     DEFINE VARIABLE jo     AS JsonObject NO-UNDO.
     DEFINE VARIABLE iOut   AS INT64 NO-UNDO.
     DEFINE VARIABLE iLim   AS INT64 NO-UNDO.
@@ -832,7 +832,7 @@ END PROCEDURE.
 /* ---------- reads ---------- */
 PROCEDURE h-coop-members:
     DEFINE VARIABLE ja AS JsonArray NO-UNDO.
-    DEFINE BUFFER bM FOR Member.
+    DEFINE BUFFER bM FOR CoopMember.
     ja = NEW JsonArray().
     FOR EACH bM NO-LOCK BY bM.MemberId:
         ja:Add(fMemberJson(bM.MemberId)).
@@ -983,7 +983,7 @@ PROCEDURE h-coop-credit-create:
     DEFINE VARIABLE lPass   AS LOGICAL NO-UNDO.
     DEFINE VARIABLE iNew    AS INTEGER NO-UNDO.
     DEFINE VARIABLE iAud    AS INTEGER NO-UNDO.
-    DEFINE BUFFER bMem FOR Member.
+    DEFINE BUFFER bMem FOR CoopMember.
     DEFINE BUFFER bCr  FOR InputCredit.
     RUN p-read-posint ("memberId", "memberId must be an integer.", 2147483647, OUTPUT iMember, OUTPUT lOk).
     IF NOT lOk THEN RETURN.
@@ -1396,7 +1396,7 @@ PROCEDURE h-coop-payout-create:
     DEFINE VARIABLE iNew   AS INTEGER NO-UNDO.
     DEFINE VARIABLE iAud   AS INTEGER NO-UNDO.
     DEFINE BUFFER bL FOR HarvestLot.
-    DEFINE BUFFER bM FOR Member.
+    DEFINE BUFFER bM FOR CoopMember.
     DEFINE BUFFER bP FOR Payout.
     RUN p-read-posint ("lotId", "lotId must be an integer.", 2147483647, OUTPUT iLot, OUTPUT lOk).
     IF NOT lOk THEN RETURN.
