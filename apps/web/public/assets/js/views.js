@@ -1,7 +1,7 @@
 // Pure rendering: data in, HTML out (every value is escaped by html``). Event handling lives in main.js via data-act attributes.
 // Layout, sizes and copy follow the approved demo screens; the desktop and phone layouts are both rendered and the CSS shows one (d-only / m-only).
 import { html, raw, icon, fmtTime, fmtHM, fmtDay, fmtShortDay, fmtDateTime, ageMinutes, num, shortName, cap, photoUrl, photoStyle } from './util.js';
-import { t, tEn, getLang, LANGS, zuIrrigateLine, zuSoilDryLine, ZU_RAIN_BANNER, ZU_RAIN_WAIT, stripDraftNote, looksZulu } from './i18n.js';
+import { t, tEn, tx, getLang, LANGS, zuIrrigateLine, zuSoilDryLine, ZU_RAIN_BANNER, ZU_RAIN_WAIT, stripDraftNote, looksZulu } from './i18n.js';
 import { FRESH_MINUTES } from './api.js';
 
 export const bg = (url) => `background-image:url(${url})`;
@@ -141,7 +141,16 @@ const ruleHtml = (r) => html`<div class="rrow ${r.state === 'no' ? 'bad' : ''}">
   <div><div class="nm">${t('r_' + r.code)}</div><div class="cd">${r.code}</div></div>
   <div class="vl">${r.v}${r.sub ? html`<small>${r.sub}</small>` : ''}</div></div>`;
 
+// The advice reason comes from the API in English (or isiZulu). For isiZulu the hand-written lines (zuBlock) come first;
+// for every other language the English reason goes through the AI translate pipeline (tx), numbers / litres kept.
 function reasonText(s, plot, f) {
+  const r = reasonEn(s, plot, f);
+  const l = getLang();
+  if (l === 'en' || (l === 'zu' && zuLines(s, plot, f).lines.length)) return r;
+  return tx(r);
+}
+export const reasonTextFor = reasonText;
+function reasonEn(s, plot, f) {
   if (!looksZulu(s.reason)) return String(s.reason || '').replace(/\s*\(example\)/gi, '');
   const m = f?.soilMoisturePct != null ? num(f.soilMoisturePct) : '—', th = f?.dryThresholdPct ?? plot?.dryThresholdPct ?? '—';
   return tEn('reason_' + (s.action === 'irrigate' ? 'irrigate' : s.action === 'hold' ? 'hold' : 'notify'), { m, t: th, l: s.litres });

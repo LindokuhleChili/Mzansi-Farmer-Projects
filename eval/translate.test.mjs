@@ -4,7 +4,7 @@
 //  - the web language picker: 11 languages in their own names, English default with no saved choice, a manual pick is saved
 import test from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtempSync } from 'node:fs';
+import { mkdtempSync, readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { loadConfig } from '../apps/api/src/config.js';
@@ -87,7 +87,7 @@ test('translate: the local UI proxy reaches /translate (no token in the browser)
 const store = new Map();
 globalThis.localStorage = { getItem: (k) => (store.has(k) ? store.get(k) : null), setItem: (k, v) => store.set(k, String(v)), removeItem: (k) => store.delete(k) };
 test('UI picker: 11 languages, each in its own language; English when nothing is saved; a manual pick is saved', async () => {
-  const i18n = await import('../apps/web/public/assets/js/i18n.js?fresh=1');
+  const i18n = await import('../apps/web/public/assets/js/i18n.js');
   assert.equal(i18n.getLang(), 'en', 'no saved choice => English (no device-language detection)');
   assert.deepEqual([...i18n.LANG_CODES].sort(), [...CODES].sort());
   assert.deepEqual(Object.fromEntries(i18n.LANGS), { en: 'English', af: 'Afrikaans', nr: 'isiNdebele', xh: 'isiXhosa', zu: 'isiZulu', nso: 'Sepedi', st: 'Sesotho', tn: 'Setswana', ss: 'siSwati', ve: 'Tshivenda', ts: 'Xitsonga' });
@@ -99,7 +99,7 @@ test('UI picker: 11 languages, each in its own language; English when nothing is
   assert.ok(!/glow|box-shadow|outline/.test(h));
 });
 test('UI picker: hand-written isiZulu first, then AI for missing strings, user content via tx(); show original switch', async () => {
-  const i18n = await import('../apps/web/public/assets/js/i18n.js?fresh=1');
+  const i18n = await import('../apps/web/public/assets/js/i18n.js');
   i18n.setLang('zu');
   assert.equal(i18n.t('mk_publish'), 'Shicilela');                         // hand-written zuMarket line wins
   i18n.takeMissing(); i18n.beginRender();
@@ -111,4 +111,39 @@ test('UI picker: hand-written isiZulu first, then AI for missing strings, user c
   assert.equal(i18n.tx('Spinach day'), 'Spinach day'); assert.deepEqual(i18n.takeMissing(), [], 'a failed string is not retried (no render loop)');
   i18n.toggleOriginal(); assert.equal(i18n.t('mk_notes'), 'Notes'); assert.equal(i18n.t('mk_publish'), 'Publish'); i18n.toggleOriginal();
   i18n.setLang('en'); assert.equal(i18n.tx('Spinach day'), 'Spinach day'); assert.deepEqual(i18n.takeMissing(), []);
+});
+
+test('advice: the irrigation reason is translated for every language except en; hand-written isiZulu wins; litres kept', async () => {
+  const i18n = await import('../apps/web/public/assets/js/i18n.js');
+  const { reasonTextFor } = await import('../apps/web/public/assets/js/views.js');
+  const plot = { plotId: 1, plotName: 'Maize field A', dryThresholdPct: 30 };
+  const f = { soilMoisturePct: 22, dryThresholdPct: 30 };
+  const s = { plotId: 1, action: 'irrigate', litres: 120, status: 'pending_approval', reason: 'Soil moisture on Maize field A is 22%, below the dry threshold of 30%. Irrigate 120 L.' };
+  i18n.setLang('en'); i18n.takeMissing();
+  assert.equal(reasonTextFor(s, plot, f), s.reason); assert.deepEqual(i18n.takeMissing(), []);
+  for (const code of ['st', 'xh', 'af', 'nso', 'tn', 'ss', 've', 'ts', 'nr']) {
+    i18n.setLang(code); i18n.takeMissing();
+    assert.equal(reasonTextFor(s, plot, f), s.reason, 'English until the AI answers');
+    assert.deepEqual(i18n.takeMissing(), [s.reason], code);
+  }
+  const tr = await createTranslator(createMockProvider()).translate([s.reason], 'st');
+  for (const keep of ['22%', '30%', '120 L', 'Maize field A']) assert.ok(tr.translations[0].text.includes(keep), keep);
+  i18n.storeAi('st', [[s.reason, tr.translations[0].text]]); i18n.setLang('st'); i18n.beginRender();
+  assert.equal(reasonTextFor(s, plot, f), tr.translations[0].text); assert.equal(i18n.renderUsedAi(), true);
+  i18n.toggleOriginal(); assert.equal(reasonTextFor(s, plot, f), s.reason); i18n.toggleOriginal();
+  i18n.setLang('zu'); i18n.takeMissing();
+  const zuS = { ...s, reason: 'Umswakama e-Maize field A ungu-22%.' };
+  reasonTextFor(zuS, plot, f); assert.deepEqual(i18n.takeMissing(), [], 'isiZulu advice with hand-written lines is not sent to the AI');
+});
+test('advice: rule-check titles and explanations go through the same pipeline (missing in st => queued)', async () => {
+  const i18n = await import('../apps/web/public/assets/js/i18n.js');
+  i18n.setLang('st'); i18n.takeMissing();
+  const out = [i18n.t('r_RAIN_DETECTED'), i18n.t('rej_why_RAIN_DETECTED')];
+  const q = i18n.takeMissing();
+  assert.equal(q.length, 2); assert.deepEqual(out, q);
+  i18n.setLang('en');
+});
+test('live refresh: main.js queues translation after the 30 s dashboard and plot redraws', () => {
+  const src = readFileSync(new URL('../apps/web/public/assets/js/main.js', import.meta.url), 'utf8');
+  assert.ok(/drawDashboard\(x\); afterLiveDraw\(\)/.test(src)); assert.ok(/drawPlotLive\(plot, rd\); afterLiveDraw\(\)/.test(src));
 });

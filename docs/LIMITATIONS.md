@@ -25,7 +25,7 @@ This is a hackathon prototype. It shows one idea: an AI model may propose, OpenE
 - **The checks cover known failures only.** Tests cover invalid output, extra fields, a forbidden action (prompt injection) and invented numbers. They do not prove the model is safe against every input.
 - **isiZulu text needs review by a native speaker.** The isiZulu strings (templates, screens and AI answers) were written without one. The API adds a note that the text is a draft. Do not treat it as final.
 
-- **Translation.** Languages other than English and the reviewed isiZulu lines are machine-translated by the AI on demand. Quality varies by language and is not reviewed; numbers/prices/placeholders are checked, wording is not. The caches are in memory (server) and localStorage (browser). With the mock provider the "translation" is `[code] English`. See docs/TRANSLATION.md.
+- **Translation.** Languages other than English and the reviewed isiZulu lines are machine-translated by the AI on demand. Quality varies by language and is not reviewed; numbers/prices/placeholders are checked, wording is not. The caches are in memory (server) and localStorage (browser). With the mock provider the "translation" is `[code] English`. Irrigation advice reasons are translated the same way after they are generated in English, so the wording of safety-relevant advice in those languages is unreviewed AI text; the numbers, litres and rule decisions come from OpenEdge and are not changed. See docs/TRANSLATION.md.
 
 ## OpenEdge and the demo setup
 

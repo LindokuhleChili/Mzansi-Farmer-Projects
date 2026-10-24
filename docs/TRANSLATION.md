@@ -18,6 +18,15 @@ siSwati (`ss`), Tshivenda (`ve`), Xitsonga (`ts`) and isiNdebele (`nr`).
 5. **Note.** When anything on a screen is AI text, a small grey "Translated by AI" line appears above the page with
    a "Show original" switch that shows the English source (and back).
 
+## Irrigation advice
+- The advice reason from `/plots/:id/advise` is generated in English (or isiZulu for `zu`). In isiZulu the hand-written
+  isiZulu lines are shown first; for every other language the English reason goes through `tx()` and the same
+  `/translate` pipeline (numbers, %, litres and plot names protected; English fallback; "Translated by AI" + Show original).
+- Suggestion titles, rule-check names, the red "blocked" banners and their explanations are fixed strings, so they use the
+  hand-written tables first and AI for the rest. Market rule-check messages from OpenEdge go through `tx()` too.
+- **Live refresh.** The 30 s dashboard and plot refreshes queue any new strings after redrawing. This is cheap: cached
+  strings never reach the API again, and strings that failed are not retried in the session, so it cannot loop.
+
 ## API
 `POST /api/v1/translate` — `{ "texts": ["Market day", ...], "target": "xh" }`
 - `target` must be one of the 11 codes, otherwise `400 VALIDATION_ERROR` (`field: "target"`).
@@ -39,5 +48,4 @@ siSwati (`ss`), Tshivenda (`ve`), Xitsonga (`ts`) and isiNdebele (`nr`).
   Xitsonga) tend to be weaker than isiZulu, isiXhosa or Afrikaans.
 - **Native-speaker review is still recommended** for all fixed screen text before real farmers use it. The reviewed path is:
   translate once, have a speaker check it, and add it as a hand-written table (like `zu` / `zuMarket`), which always wins.
-- AI advice text (`/plots/:id/advise`) is still English or isiZulu only; other languages get English advice.
 - With the mock provider, screenshots show `[xh] ...` mock output, not real isiXhosa.

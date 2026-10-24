@@ -146,7 +146,7 @@ async function dashboardPage(alive, silent) {
   const d = await loadDashboardData();
   if (!alive()) return;
   drawDashboard(d);
-  state.timer = setInterval(() => { if (!document.hidden && alive() && !overlay.firstChild) loadDashboardData().then((x) => alive() && drawDashboard(x)).catch(() => {}); }, 30000);
+  state.timer = setInterval(() => { if (!document.hidden && alive() && !overlay.firstChild) loadDashboardData().then((x) => { if (alive()) { drawDashboard(x); afterLiveDraw(); } }).catch(() => {}); }, 30000);
 }
 
 async function plotsPage(alive) {
@@ -198,7 +198,7 @@ async function plotPage(id, alive) {
           <p class="xs mut">${t('ai_greedy_hint')}</p></div>` : ''}
       </div></div></div>`);
   drawPlotLive(plot, readings);
-  state.timer = setInterval(async () => { if (document.hidden || !alive()) return; try { drawPlotLive(plot, await getReadings(id, 20)); } catch { /* keep the old data */ } }, 30000);
+  state.timer = setInterval(async () => { if (document.hidden || !alive()) return; try { const rd = await getReadings(id, 20); if (!alive()) return; drawPlotLive(plot, rd); afterLiveDraw(); } catch { /* keep the old data */ } }, 30000);
 }
 
 async function suggestionsPage(alive) {
@@ -304,9 +304,11 @@ function aiNote() {
 async function route() {
   beginRender();
   await routeInner();
-  aiNote();
-  fillTranslations();
+  afterLiveDraw();
 }
+// also called after the 30 s live refreshes: new strings (a new suggestion, a new reason) are queued for translation.
+// Cheap: cached strings never reach the API again and failed ones are not retried, so a refresh cannot loop.
+function afterLiveDraw() { aiNote(); fillTranslations(); }
 async function routeInner() {
   clearInterval(state.timer);
   const me = ++state.nav, alive = () => me === state.nav;

@@ -74,7 +74,7 @@ function ruleCard(e) {
   if (!reasons.length) return html`<div class="card pad"><div class="row sp"><div class="lbl">${t('mk_rules')}</div>${lvl('n', 'check', t('mk_rules_ok'))}</div>
     <p class="xs mut" style="margin-top:8px">${t('mk_publish_hint')}</p></div>`;
   return html`<div class="card pad"><div class="row sp"><div class="lbl">${t('mk_rules')}</div>${lvl('o', 'x', t('mk_rules_bad'))}</div>
-    ${reasons.map((r) => html`<div class="mk-reason">${icon('x', 14)}<div><b>${t('r_' + r.code) !== 'r_' + r.code ? t('r_' + r.code) : r.code}${r.item ? ' · ' + t('mk_item_n', { n: r.item }) : ''}</b><div class="xs mut">${r.message}</div></div></div>`)}</div>`;
+    ${reasons.map((r) => html`<div class="mk-reason">${icon('x', 14)}<div><b>${t('r_' + r.code) !== 'r_' + r.code ? t('r_' + r.code) : r.code}${r.item ? ' · ' + t('mk_item_n', { n: r.item }) : ''}</b><div class="xs mut">${tx(r.message)}</div></div></div>`)}</div>`;
 }
 function itemsTable(e) {
   return html`<div class="tbl-wrap"><table class="t mk-t"><thead><tr><th>${t('mk_col_item')}</th><th class="r">${t('mk_col_kg')}</th><th class="r">${t('mk_col_price')}</th><th class="r d-only">${t('mk_col_retail')}</th><th class="r d-only">${t('mk_col_reserve')}</th><th class="r d-only">${t('mk_col_walk')}</th></tr></thead><tbody>
