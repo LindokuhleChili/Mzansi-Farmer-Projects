@@ -66,6 +66,9 @@ This is a hackathon prototype. It shows one idea: an AI model may propose, OpenE
 
 ## Not built
 
+- Planned features 17-22, including weather alerts from a 7-day forecast and a tamper-evident hash chain on the audit log (see docs/OLD-APP-IDEAS-PLAN.md)
+- Native-speaker review of the AI translations (only the hand-written isiZulu lines were drafted by hand, and they still need review)
+
 - A co-op screen (the rules are HTTP only; see `docs/COOP.md`)
 - A native mobile app (the web interface works in a phone browser)
 - Retrieval from farming documents (RAG)
