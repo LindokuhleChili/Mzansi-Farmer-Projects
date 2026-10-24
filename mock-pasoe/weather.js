@@ -25,7 +25,7 @@ export function loadWeatherSeed(store, path = WEATHER_SEED_PATH) {
   }
   for (const t of w.thresholds) store.thresholds.push({ thresholdId: ++store.seq.threshold, ...t, active: true, updatedAt: null, updatedBy: 'seed' });
   for (const r of w.forecast) store.forecast.push({ forecastId: ++store.seq.forecast, province: r.province, baseDate: w.baseDate, dayNo: r.dayNo,
-    forecastDate: addDays(w.baseDate, r.dayNo - 1), tempMaxC: r.tempMaxC, tempMinC: r.tempMinC, rainMm: r.rainMm, isSynthetic: true });
+    forecastDate: addDays(w.baseDate, r.dayNo - 1), tempMaxC: r.tempMaxC, tempMinC: r.tempMinC, rainMm: r.rainMm, isSynthetic: true, source: 'example' });
 }
 
 const provinceDays = (s, province) => {
@@ -51,6 +51,36 @@ const alertJson = (a) => ({ alertId: a.alertId, farmId: a.farmId, province: a.pr
 const thJson = (t) => ({ thresholdId: t.thresholdId, alertType: t.alertType, op: t.op, value: t.value, unit: t.unit, level: t.level, active: t.active, updatedAt: iso(t.updatedAt), updatedBy: t.updatedBy });
 const openAlerts = (s, farmId) => s.alerts.filter((a) => a.farmId === farmId && a.status === 'open').sort((a, b) => (a.forecastDate < b.forecastDate ? -1 : a.forecastDate > b.forecastDate ? 1 : a.alertType < b.alertType ? -1 : 1));
 
+const PROVINCES = ['Eastern Cape', 'Free State', 'Gauteng', 'KwaZulu-Natal', 'Limpopo', 'Mpumalanga', 'North West', 'Northern Cape', 'Western Cape'];
+const r1 = (v) => Math.round(v * 10) / 10;
+function forecastJson(s, province) {
+  const days = provinceDays(s, province);
+  return { province, baseDate: days[0]?.baseDate ?? null, isSynthetic: days.length ? days[0].isSynthetic : true, source: days.length ? (days[0].source || 'example') : 'example',
+    noData: days.length === 0, days: days.map((d) => ({ dayNo: d.dayNo, date: d.forecastDate, tempMaxC: d.tempMaxC, tempMinC: d.tempMinC, rainMm: d.rainMm })) };
+}
+/** POST /forecast/import: a real forecast (Open-Meteo) fetched by the API; replaces that province's rows for baseDate. Same rules as h-wx-import. */
+function importForecast(s, b, clock) {
+  const bad = (field, m) => err(400, 'FORECAST_INVALID', m, field);
+  if (!PROVINCES.includes(b.province)) return bad('province', 'province must be one of the 9 South African provinces.');
+  const okDate = typeof b.baseDate === 'string' && /^\d{4}-\d{2}-\d{2}$/.test(b.baseDate) && (() => { try { return addDays(b.baseDate, 0) === b.baseDate; } catch { return false; } })();
+  if (!okDate) return bad('baseDate', 'baseDate must be a real date (yyyy-mm-dd).');
+  if (typeof b.source !== 'string' || !/^[a-z0-9-]{1,20}$/.test(b.source) || b.source === 'example') return bad('source', "source must be 1 to 20 lower-case letters, digits or '-', and not 'example'.");
+  if (!Array.isArray(b.days) || b.days.length !== 7) return bad('days', 'days must be an array of 7 days.');
+  for (let i = 0; i < 7; i++) {
+    const d = b.days[i], f = (x) => `days[${i}]${x}`;
+    if (!d || typeof d !== 'object' || Array.isArray(d)) return bad(f(''), `${f('')} is missing or out of range.`);
+    if (d.dayNo !== i + 1) return bad(f('.dayNo'), `${f('.dayNo')} is missing or out of range.`);
+    if (!isNum(d.tempMaxC) || d.tempMaxC < -30 || d.tempMaxC > 60) return bad(f('.tempMaxC'), `${f('.tempMaxC')} is missing or out of range.`);
+    if (!isNum(d.tempMinC) || d.tempMinC < -30 || d.tempMinC > 60 || d.tempMinC > d.tempMaxC) return bad(f('.tempMinC'), `${f('.tempMinC')} is missing or out of range.`);
+    if (!isNum(d.rainMm) || d.rainMm < 0 || d.rainMm > 1000) return bad(f('.rainMm'), `${f('.rainMm')} is missing or out of range.`);
+  }
+  s.forecast = s.forecast.filter((r) => !(r.province === b.province && r.baseDate === b.baseDate));
+  b.days.forEach((d, i) => s.forecast.push({ forecastId: ++s.seq.forecast, province: b.province, baseDate: b.baseDate, dayNo: i + 1, forecastDate: addDays(b.baseDate, i),
+    tempMaxC: r1(d.tempMaxC), tempMinC: r1(d.tempMinC), rainMm: r1(d.rainMm), isSynthetic: false, source: b.source }));
+  appendAudit(s, typeof b.requestId === 'string' ? b.requestId : '', 'api', 'forecast_imported', JSON.stringify({ province: b.province, baseDate: b.baseDate, source: b.source, days: 7 }), clock());
+  return { status: 200, body: forecastJson(s, b.province) };
+}
+
 export function handleWeather(s, method, segs, q, body, clock) {
   const n = segs.length, idOf = (x) => (/^-?\d+$/.test(x) ? parseInt(x, 10) : NaN);
   if (!s.forecast) return null;
@@ -62,9 +92,9 @@ export function handleWeather(s, method, segs, q, body, clock) {
     const province = q.get('province');
     if (!province) return err(400, 'VALIDATION_ERROR', 'province is required.', 'province');
     const days = provinceDays(s, province);
-    return { status: 200, body: { province, baseDate: days[0]?.baseDate ?? null, isSynthetic: true, source: 'example', noData: days.length === 0,
-      days: days.map((d) => ({ dayNo: d.dayNo, date: d.forecastDate, tempMaxC: d.tempMaxC, tempMinC: d.tempMinC, rainMm: d.rainMm })) } };
+    return { status: 200, body: forecastJson(s, province) };
   }
+  if (method === 'POST' && n === 2 && segs[0] === 'forecast' && segs[1] === 'import') return importForecast(s, body, clock);
   if (method === 'GET' && n === 1 && segs[0] === 'alerts') {
     const farmId = idOf(q.get('farmId') ?? '');
     if (!Number.isInteger(farmId)) return err(400, 'VALIDATION_ERROR', 'farmId is required.', 'farmId');

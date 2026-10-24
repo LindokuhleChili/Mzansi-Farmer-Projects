@@ -1,4 +1,5 @@
 // Fastify app: /api/v1. AI proposes -> OpenEdge (ABL) rules validate -> farmer approves with an explicit confirmation step.
+import { fetchOpenMeteo, PROVINCE_COORDS } from './weather/open-meteo.js';
 import Fastify from 'fastify';
 import crypto from 'node:crypto';
 import { mkdirSync, appendFileSync } from 'node:fs';
@@ -16,7 +17,7 @@ const safeEqual = (a, b) => {
   return x.length === y.length && crypto.timingSafeEqual(x, y);
 };
 
-export function buildApp({ config, oe, provider, clock = () => new Date() }) {
+export function buildApp({ config, oe, provider, clock = () => new Date(), weatherFetch = globalThis.fetch }) {
   const app = Fastify({ logger: config.logLevel === 'silent' ? false : { level: config.logLevel }, genReqId: () => 'req_' + crypto.randomBytes(4).toString('hex') });
   const confirmations = new Map(); // token -> { suggestionId, action, expiresAt }
   let logFile = null;
@@ -277,6 +278,24 @@ export function buildApp({ config, oe, provider, clock = () => new Date() }) {
     const st = typeof req.query?.status === 'string' ? `&status=${encodeURIComponent(req.query.status)}` : '';
     return `/farm/alerts?farmId=${id}${st}`;
   }));
+  // Real forecast: the API fetches Open-Meteo (no key) and OpenEdge validates and stores it. On any failure nothing changes and the
+  // answer says so (fallback: true); the page keeps showing the stored forecast with its own label (example or open-meteo).
+  app.post(`${PREFIX}/forecast/refresh`, async (req, reply) => {
+    if (!requireApp(req, reply)) return;
+    const province = req.body?.province;
+    if (typeof province !== 'string' || !PROVINCE_COORDS[province]) return fail(reply, req, 400, 'VALIDATION_ERROR', 'province must be one of the 9 South African provinces.', { field: 'province' });
+    if (config.weatherSource === 'example') return reply.send({ province, source: 'example', fallback: false, skipped: true });
+    let body;
+    try {
+      body = await tool(req, 'weather.open_meteo', { province, place: PROVINCE_COORDS[province].place }, () => fetchOpenMeteo(province, { fetchImpl: weatherFetch, timeoutMs: config.weatherTimeoutMs }),
+        (x) => ({ baseDate: x.baseDate, days: x.days.length }));
+    } catch (e) {
+      return reply.send({ province, source: 'stored', fallback: true, reason: e.kind || 'network' });
+    }
+    const r = await oeCall(req, 'oe.forecast_import', 'POST', '/farm/forecast/import', { ...body, requestId: req.id });
+    if (r.status !== 200) return reply.send({ province, source: 'stored', fallback: true, reason: 'rejected_by_openedge', error: r.body?.error, field: r.body?.field });
+    return reply.send({ province, source: 'open-meteo', fallback: false, forecast: r.body });
+  });
   app.get(`${PREFIX}/alert-thresholds`, passthrough('oe.alert_thresholds', () => '/farm/alert-thresholds'));
   app.post(`${PREFIX}/farms/:id/alerts/refresh`, async (req, reply) => {
     if (!requireApp(req, reply)) return;

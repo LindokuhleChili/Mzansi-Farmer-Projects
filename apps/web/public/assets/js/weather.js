@@ -38,11 +38,13 @@ export async function weatherPage(alive, renderChrome, draw, viewEl, need) {
   const open = alerts.filter((a) => a.status === 'open');
   draw(viewEl, html`<div class="pg">
     <div class="pagehead"><div><h1>${t('wx_title')}</h1><div class="sub">${t('wx_sub')}</div></div>
-      <button class="btn dk sm" data-act="wx-refresh">${icon('spark', 16)}${t('wx_refresh')}</button></div>
+      <button class="btn dk sm" data-act="wx-refresh" data-province="${farm.province || ''}">${icon('spark', 16)}${t('wx_refresh')}</button></div>
     <div class="mk-hero" style="background-image:url(${HERO})" role="img" aria-label="Storm clouds over a wheat field">
       <div class="mk-hero-t"><div class="lbl">${tx(farm.province || '')}</div><b>${open.length ? t(open.length === 1 ? 'wx_open_1' : 'wx_open_n', { n: open.length }) : t('wx_open_0')}</b><span>${t('wx_rules')}</span></div></div>
-    <div class="row sp wrap g8" style="margin:14px 0 10px"><div class="lbl">${t('wx_week')}</div><span class="tag-ex d">${t('wx_example')}</span></div>
+    <div class="row sp wrap g8" style="margin:14px 0 10px"><div class="lbl">${t('wx_week')}</div>${fc.body?.source === 'open-meteo' ? html`<span class="tag-ex d wx-live">${t('wx_src_om')}</span>` : html`<span class="tag-ex d">${t('wx_example')}</span>`}</div>
     ${days.length ? html`<div class="wx-days">${days.map((d) => dayCard(d, open))}</div>` : html`<div class="card pad"><p class="empty">${t('wx_nodata')}</p></div>`}
+    ${fc.body?.source === 'open-meteo' ? html`<p class="xs mut wx-credit">${t('wx_om_credit_pre')} <a href="https://open-meteo.com/" target="_blank" rel="noopener">Open-Meteo.com</a> (<a href="https://creativecommons.org/licenses/by/4.0/" target="_blank" rel="noopener">CC BY 4.0</a>) · ${t('wx_om_place', { date: fc.body.baseDate })}</p>`
+      : html`<p class="xs mut wx-credit">${t('wx_example_note')}</p>`}
     <div class="wx-grid">
       <div class="card pad"><div class="lbl" style="margin-bottom:6px">${t('wx_alerts')}</div>
         ${alerts.length ? alerts.map(alertRow) : html`<p class="sm mut">${t('wx_none')}</p>`}</div>
@@ -55,8 +57,12 @@ export async function weatherClick(a, el, { route, toast, busy, errText }) {
   busy(el, true);
   try {
     if (a === 'wx-refresh') {
+      // 1) real forecast from Open-Meteo (OpenEdge validates and stores it); on failure the stored forecast stays and we say so
+      const fr = await api('POST', '/forecast/refresh', { province: el.dataset.province || '' });
+      const fellBack = fr.status !== 200 || fr.body.fallback;
+      // 2) OpenEdge compares the stored forecast with the alert levels
       const r = await api('POST', `/farms/${FARM_ID}/alerts/refresh`, {});
-      if (r.status === 200) toast(r.body.noData ? t('wx_nodata') : t('wx_refreshed', { a: r.body.created, b: r.body.expired })); else fail(r);
+      if (r.status === 200) toast((fellBack ? t('wx_fetch_failed') + ' ' : '') + (r.body.noData ? t('wx_nodata') : t('wx_refreshed', { a: r.body.created, b: r.body.expired })), fellBack); else fail(r);
     } else if (a === 'wx-ack') {
       const r = await api('POST', `/alerts/${Number(el.dataset.id)}/acknowledge`, {});
       if (r.status === 200) toast(t('wx_acked')); else fail(r);

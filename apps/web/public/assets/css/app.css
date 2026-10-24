@@ -411,3 +411,4 @@ table.t td.n{font-variant-numeric:tabular-nums;color:var(--mut)}
 .wx-th{display:flex;align-items:center;gap:8px;padding:8px 0;border-top:1px solid var(--line,#e3e8df)}
 .wx-th input{width:76px}
 @media (max-width:760px){.wx-days{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:110px;overflow-x:auto}.wx-grid{grid-template-columns:1fr}.wx-alert{flex-wrap:wrap;gap:6px}}
+.wx-credit{margin-top:8px}.wx-credit a{color:inherit;text-decoration:underline}.tag-ex.wx-live{border-style:solid}
