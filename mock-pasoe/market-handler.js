@@ -1,5 +1,6 @@
 // Harvest-day market routes of the OpenEdge REST contract (docs/OE-CONTRACT.md, docs/MARKET.md). Called from handler.js for paths that start
 // with /market; returns null otherwise. Same behaviour as openedge/src/market.i (included by farm-api.p).
+import { appendAudit } from './audit-chain.js';
 import { MAX_AMOUNT_RAND, MAX_KG, MARKET_MAX_ITEMS } from './constants.js';
 import { parseIso, iso } from './time.js';
 import { checkEvent, checkReservation, findEvent, findItem, eventItems, retailPrice, reservedKg, reservableKg, ACTIVE_EVENT } from './market-rules.js';
@@ -30,11 +31,7 @@ function eventJson(s, e) {
 const resJson = (r) => ({ reservationId: r.reservationId, eventId: r.eventId, itemId: r.itemId, buyerName: r.buyerName, quantityKg: r.quantityKg, status: r.status,
   verdict: r.verdict, rejectReasons: r.rejectReasons, createdAt: iso(r.createdAt), decidedAt: iso(r.decidedAt), requestId: r.requestId });
 
-function addAudit(store, requestId, actor, event, detail, at) {
-  const row = { auditId: ++store.seq.audit, at, requestId: requestId || '', actor: actor || 'api', event, detail: (detail || '').slice(0, 4000) };
-  store.audit.push(row);
-  return row;
-}
+const addAudit = (store, requestId, actor, event, detail, at) => appendAudit(store, requestId, actor, event, detail, at);   // hash chain: audit-chain.js
 function common(body, clock) {
   const requestId = isStr(body.requestId) ? body.requestId : '';
   const actor = isStr(body.actor) ? body.actor : 'farmer';

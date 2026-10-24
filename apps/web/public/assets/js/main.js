@@ -239,12 +239,18 @@ async function reviewPage(id, alive) {
 
 async function auditPage(alive) {
   skeleton(); renderChrome('audit');
-  const events = need(await api('GET', '/audit?limit=200')).events || [];
+  const [ar, vr] = await Promise.all([api('GET', '/audit?limit=200'), api('GET', '/audit/verify').catch(() => null)]);
+  const events = need(ar).events || [];
   if (!alive()) return;
+  const v = vr?.status === 200 ? vr.body : null;
+  const chain = html`<div class="card pad chain ${v ? (v.ok ? 'ok' : 'bad') : ''}" role="status" style="margin-bottom:12px"><div class="row sp"><div class="lbl">${t('audit_chain_t')}</div>${v ? lvl(v.ok ? 'n' : 'o', v.ok ? 'check' : 'x', v.ok ? 'OK' : '!') : ''}</div>
+    <p class="sm" style="margin-top:6px">${!v ? t('audit_chain_na') : v.ok ? t('audit_chain_ok', { n: v.checked }) : t('audit_chain_bad', { id: v.firstBadId, why: t('audit_chain_why_' + v.reason) })}</p>
+    ${v?.legacy ? html`<p class="xs mut" style="margin-top:4px">${t('audit_chain_legacy', { n: v.legacy })}</p>` : ''}
+    ${v?.ok && v.headHash ? html`<p class="xs mut" style="margin-top:4px">${t('audit_chain_head')}: <code>${v.headHash.slice(0, 16)}…</code></p>` : ''}</div>`;
   const F = { decisions: (e) => e.event !== 'tool_call', all: () => true, calls: (e) => e.event === 'tool_call' };
   const shown = events.filter(F[state.auditFilter] || F.all).slice(0, 60);
   draw(viewEl, html`<div class="pg"><div class="pagehead"><div><h1>${t('audit_title')}</h1><div class="sub">${t('audit_sub')}</div></div></div>
-    <div class="chipsel" role="group" style="margin-bottom:12px">${['decisions', 'all', 'calls'].map((k) => html`<button data-act="audit-filter" data-f="${k}" aria-pressed="${String(state.auditFilter === k)}">${t('audit_f_' + k)} (${events.filter(F[k]).length})</button>`)}</div>
+    ${chain}<div class="chipsel" role="group" style="margin-bottom:12px">${['decisions', 'all', 'calls'].map((k) => html`<button data-act="audit-filter" data-f="${k}" aria-pressed="${String(state.auditFilter === k)}">${t('audit_f_' + k)} (${events.filter(F[k]).length})</button>`)}</div>
     <div class="card pad">${shown.length ? shown.map(auditRow) : html`<p class="empty">${t('audit_none')}</p>`}</div></div>`);
 }
 

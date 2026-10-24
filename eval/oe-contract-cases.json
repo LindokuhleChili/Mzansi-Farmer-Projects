@@ -1000,6 +1000,47 @@
    }
   },
   {
+   "id": "AUD03",
+   "title": "Audit rows carry the hash chain: rowHash is 64 hex chars and links to the previous row",
+   "request": {
+    "method": "GET",
+    "path": "/farm/audit?limit=2"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "events": [
+      {
+       "rowHash": "$hex64",
+       "prevHash": "$hex64"
+      },
+      {
+       "rowHash": "$hex64"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "AUD04",
+   "title": "Audit chain verifies: ok, nothing bad, head hash returned",
+   "request": {
+    "method": "GET",
+    "path": "/farm/audit/verify"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "ok": true,
+     "firstBadId": null,
+     "reason": null,
+     "legacy": 0,
+     "checked": "$num",
+     "headHash": "$hex64"
+    }
+   }
+  },
+  {
    "id": "MISC01",
    "title": "Unknown route is 404",
    "request": {
@@ -4476,6 +4517,22 @@
        "detail": "reservation 2"
       }
      }
+    }
+   }
+  },
+  {
+   "id": "AUD05",
+   "title": "After every other case (rule checks, decisions, co-op, market) the audit chain still verifies",
+   "request": {
+    "method": "GET",
+    "path": "/farm/audit/verify"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "ok": true,
+     "firstBadId": null,
+     "headHash": "$hex64"
     }
    }
   }

@@ -1,5 +1,6 @@
 // mock-pasoe: implements the OpenEdge REST contract (docs/OE-CONTRACT.md) in Node, with the same rules as farm-api.p.
 // handle(store, method, pathWithQuery, body, clock) -> { status, body }
+import { appendAudit, verifyAudit } from './audit-chain.js';
 import { validate } from './rules.js';
 import { parseIso, iso } from './time.js';
 import { handleCoop } from './coop-handler.js';
@@ -17,11 +18,7 @@ function suggJson(s) {
   return { suggestionId: s.suggestionId, plotId: s.plotId, action: s.action, litres: s.litres, reason: s.reason, provider: s.provider,
     status: s.status, verdict: s.verdict, rejectReasons: s.rejectReasons, createdAt: iso(s.createdAt), decidedAt: iso(s.decidedAt), requestId: s.requestId };
 }
-function addAudit(store, requestId, actor, event, detail, at) {
-  const row = { auditId: ++store.seq.audit, at, requestId: requestId || '', actor: actor || 'api', event, detail: detail || '' };
-  store.audit.push(row);
-  return row;
-}
+const addAudit = (store, requestId, actor, event, detail, at) => appendAudit(store, requestId, actor, event, detail, at);   // hash chain: audit-chain.js
 function parseAsOf(body, clock) {
   if (body.asOf === undefined) return { asOf: clock() };
   const d = isStr(body.asOf) ? parseIso(body.asOf) : null;
@@ -78,11 +75,12 @@ export function handle(store, method, pathWithQuery, body = {}, clock = () => ne
       const s = store.suggestions.find((x) => x.suggestionId === idOf(segs[1]));
       return s ? { status: 200, body: suggJson(s) } : err(404, 'SUGGESTION_NOT_FOUND', `No suggestion with id ${idOf(segs[1])}.`);
     }
+    if (n === 2 && segs[0] === 'audit' && segs[1] === 'verify') return { status: 200, body: verifyAudit(store) };
     if (n === 1 && segs[0] === 'audit') {
       let limit = parseInt(q.get('limit') ?? '50', 10);
       if (!(limit >= 1 && limit <= 500)) limit = 50;
       const rows = [...store.audit].sort((a, b) => b.auditId - a.auditId).slice(0, limit)
-        .map((a) => ({ auditId: a.auditId, at: iso(a.at), requestId: a.requestId, actor: a.actor, event: a.event, detail: a.detail }));
+        .map((a) => ({ auditId: a.auditId, at: iso(a.at), requestId: a.requestId, actor: a.actor, event: a.event, detail: a.detail, prevHash: a.prevHash || '', rowHash: a.rowHash || '' }));
       return { status: 200, body: { events: rows } };
     }
     return err(404, 'NOT_FOUND', 'Unknown route.');

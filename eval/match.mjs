@@ -2,9 +2,10 @@
 // expected object  -> every expected key must match in actual (extra keys in actual are fine)
 // expected array   -> same length, element-wise subset match
 // {"$startsWith": "x"} string prefix, {"$contains": {...}} some array element matches
-// "$any" matches anything, "$num" any number, {"$length": n} an array of length n
+// "$any" matches anything, "$hex64" a lower-case SHA-256 hex string, "$num" any number, {"$length": n} an array of length n
 export function match(expected, actual, path = '$') {
   if (expected === '$any') return [];
+  if (expected === '$hex64') return typeof actual === 'string' && /^[0-9a-f]{64}$/.test(actual) ? [] : [`${path}: expected 64 lower-case hex chars, got ${JSON.stringify(actual)}`];
   if (expected === '$num') return typeof actual === 'number' ? [] : [`${path}: expected a number, got ${JSON.stringify(actual)}`];
   if (expected && typeof expected === 'object' && !Array.isArray(expected) && '$length' in expected) {
     return Array.isArray(actual) && actual.length === expected.$length ? [] : [`${path}: expected array of length ${expected.$length}, got ${Array.isArray(actual) ? actual.length : JSON.stringify(actual)}`];
