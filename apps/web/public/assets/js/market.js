@@ -2,7 +2,7 @@
 // The farmer lists produce for a market day; OpenEdge checks every price against the retail buyer price and every lot
 // against its free stock; the farmer publishes with the same two-step confirmation as approving a suggestion.
 import { html, raw, $, $$, icon, num, fmtDayLong, fmtDayNoYear, fmtHM, photoStyle } from './util.js';
-import { t } from './i18n.js';
+import { t, tx } from './i18n.js';
 import { api } from './api.js';
 import { lvl, fmtSecs } from './views.js';
 
@@ -30,9 +30,9 @@ function eventRow(e) {
   const crops = [...new Set(e.items.map((i) => i.crop))];
   return html`<a class="mk-row" href="#/market/${e.eventId}">
     ${dateBlock(e)}
-    <div class="grow"><div class="row sp g8"><div class="nm">${e.eventName}</div>${stLvl(e.status)}</div>
+    <div class="grow"><div class="row sp g8"><div class="nm">${tx(e.eventName)}</div>${stLvl(e.status)}</div>
       <div class="xs mut" style="margin-top:3px">${icon('pin', 12)} ${e.venue}${e.area ? ' · ' + e.area : ''} · ${t('mk_time', { a: fmtHM(e.startsAt), b: fmtHM(e.endsAt) })}</div>
-      <div class="mk-crops">${crops.map((c) => html`<span class="mk-crop"><span class="th photo" style="${photoStyle(c)}"></span>${c}</span>`)}</div>
+      <div class="mk-crops">${crops.map((c) => html`<span class="mk-crop"><span class="th photo" style="${photoStyle(c)}"></span>${tx(c)}</span>`)}</div>
       <div class="xs mut">${t(e.items.length === 1 ? 'mk_items_1' : 'mk_items_n', { n: e.items.length })} · ${t('mk_kg_total', { kg: num(e.totalKg, 0) })}${e.reservedKg ? ' · ' + t('mk_reserved_kg', { kg: num(e.reservedKg, 0) }) : ''}</div></div>
     ${icon('chev', 18)}</a>`;
 }
@@ -58,7 +58,7 @@ export async function marketPage(alive, renderChrome, draw, viewEl, need) {
     <div class="pagehead"><div><h1>${t('mk_title')}</h1><div class="sub">${t('mk_sub')}</div></div>
       <a class="btn dk sm d-only" href="#/market/new">${icon('spark', 16)}${t('mk_new')}</a></div>
     <div class="mk-hero" style="background-image:url(${HERO})" role="img" aria-label="Fresh produce on a market stall">
-      <div class="mk-hero-t">${next ? html`<div class="lbl">${t('mk_hero_t')}</div><b>${next.eventName}</b><span>${fmtDayLong(next.startsAt)} · ${fmtHM(next.startsAt)} · ${next.venue}</span>`
+      <div class="mk-hero-t">${next ? html`<div class="lbl">${t('mk_hero_t')}</div><b>${tx(next.eventName)}</b><span>${fmtDayLong(next.startsAt)} · ${fmtHM(next.startsAt)} · ${next.venue}</span>`
         : html`<b>${t('mk_hero_none')}</b>`}</div></div>
     <div class="row sp wrap g8" style="margin:14px 0 12px">
       <div class="chipsel" role="group">${Object.keys(FILTERS).map((k) => html`<button data-act="mk-filter" data-f="${k}" aria-pressed="${String(mstate.filter === k)}">${t('mk_f_' + k)} (${events.filter(FILTERS[k]).length})</button>`)}</div>
@@ -78,7 +78,7 @@ function ruleCard(e) {
 }
 function itemsTable(e) {
   return html`<div class="tbl-wrap"><table class="t mk-t"><thead><tr><th>${t('mk_col_item')}</th><th class="r">${t('mk_col_kg')}</th><th class="r">${t('mk_col_price')}</th><th class="r d-only">${t('mk_col_retail')}</th><th class="r d-only">${t('mk_col_reserve')}</th><th class="r d-only">${t('mk_col_walk')}</th></tr></thead><tbody>
-    ${e.items.map((i) => html`<tr><td><div class="row g8"><span class="th photo" style="${photoStyle(i.crop)}"></span><div><b>${i.label}</b><div class="xs mut">${i.crop}${i.lotId ? ' · ' + t('mk_lot', { id: i.lotId }) : ''}</div></div></div></td>
+    ${e.items.map((i) => html`<tr><td><div class="row g8"><span class="th photo" style="${photoStyle(i.crop)}"></span><div><b>${tx(i.label)}</b><div class="xs mut">${tx(i.crop)}${i.lotId ? ' · ' + t('mk_lot', { id: i.lotId }) : ''}</div></div></div></td>
       <td class="r">${num(i.quantityKg, 0)}</td>
       <td class="r"><b>${t('mk_per_kg', { p: rand(i.pricePerKg) })}</b>${i.retailBuyerPricePerKg !== null && i.pricePerKg < i.retailBuyerPricePerKg ? html`<div class="xs ok">${t('mk_below', { d: rand(i.retailBuyerPricePerKg - i.pricePerKg) })}</div>` : ''}</td>
       <td class="r d-only">${i.retailBuyerPricePerKg === null ? html`<span class="xs mut">${t('mk_no_ref')}</span>` : t('mk_per_kg', { p: rand(i.retailBuyerPricePerKg) })}</td>
@@ -91,7 +91,7 @@ function reservationsCard(e, res) {
   const items = new Map(e.items.map((i) => [i.itemId, i]));
   return html`<div class="card pad"><div class="lbl" style="margin-bottom:4px">${t('mk_res_title')}</div>
     <p class="xs mut">${t('mk_res_hint', { cap: RESERVE_CAP_KG })}</p>
-    ${conf.length ? conf.map((r) => html`<div class="kv"><span>${r.buyerName} · ${items.get(r.itemId)?.label || ''}</span><span class="row g8"><b>${num(r.quantityKg, 0)} kg</b>${open ? html`<button class="btn out sm" data-act="mk-res-cancel" data-id="${r.reservationId}" aria-label="${t('mk_res_cancel')}">${icon('x', 14)}</button>` : ''}</span></div>`)
+    ${conf.length ? conf.map((r) => html`<div class="kv"><span>${r.buyerName} · ${tx(items.get(r.itemId)?.label || '')}</span><span class="row g8"><b>${num(r.quantityKg, 0)} kg</b>${open ? html`<button class="btn out sm" data-act="mk-res-cancel" data-id="${r.reservationId}" aria-label="${t('mk_res_cancel')}">${icon('x', 14)}</button>` : ''}</span></div>`)
       : html`<p class="sm mut" style="margin-top:8px">${open ? t('mk_res_none') : t('mk_res_closed')}</p>`}
     ${open ? html`<form id="mk-res" class="mk-resform" data-event="${e.eventId}" novalidate>
       <div class="field"><label for="r-name">${t('mk_res_buyer')}</label><input id="r-name" name="buyer" type="text" maxlength="80" autocomplete="off" required></div>
@@ -113,12 +113,12 @@ export async function marketEventPage(id, alive, renderChrome, draw, viewEl, nee
   draw(viewEl, html`<div class="pg">
     <a class="back" href="#/market">${icon('back', 16)} ${t('mk_back')}</a>
     <div class="mk-dhead" style="background-image:url(${HERO})" role="img" aria-label="Fresh produce on a market stall"></div>
-    <div class="pagehead"><div><div class="row g8 wrap">${stLvl(e.status)}<span class="tag-ex d">${t('example_data')}</span></div><h1 style="margin-top:6px">${e.eventName}</h1>
+    <div class="pagehead"><div><div class="row g8 wrap">${stLvl(e.status)}<span class="tag-ex d">${t('example_data')}</span></div><h1 style="margin-top:6px">${tx(e.eventName)}</h1>
       <div class="sub">${icon('clock', 12)} ${fmtDayLong(e.startsAt)} · ${t('mk_time', { a: fmtHM(e.startsAt), b: fmtHM(e.endsAt) })} SAST</div>
       <div class="sub">${icon('pin', 12)} ${e.venue}${e.area ? ', ' + e.area : ''}</div></div></div>
     <div class="two"><div>
       <div class="card pad"><div class="lbl" style="margin-bottom:8px">${t('mk_produce')}</div>${itemsTable(e)}
-        ${e.notes ? html`<p class="sm" style="margin-top:12px"><b>${t('mk_notes')}:</b> ${e.notes}</p>` : ''}</div>
+        ${e.notes ? html`<p class="sm" style="margin-top:12px"><b>${t('mk_notes')}:</b> ${tx(e.notes)}</p>` : ''}</div>
       ${hasRes && e.status !== 'cancelled' ? html`<p class="xs mut" style="margin-top:10px">${t('mk_has_res')}</p>` : ''}
       <div class="row g8 wrap mk-acts">${acts}</div>
     </div><div>${ruleCard(e)}${reservationsCard(e, res)}</div></div>
@@ -152,7 +152,7 @@ export async function marketFormPage(id, alive, renderChrome, draw, viewEl, need
   const e = ev || { eventName: '', venue: '', area: '', notes: '', startsAt: tomorrow.slice(0, 10) + 'T05:00:00Z', endsAt: tomorrow.slice(0, 10) + 'T10:00:00Z', items: [{ crop: formPrices[0]?.crop }] };
   const s = sastParts(e.startsAt), en = sastParts(e.endsAt);
   draw(viewEl, html`<div class="pg">
-    <a class="back" href="${id ? `#/market/${id}` : '#/market'}">${icon('back', 16)} ${id ? e.eventName : t('mk_back')}</a>
+    <a class="back" href="${id ? `#/market/${id}` : '#/market'}">${icon('back', 16)} ${id ? tx(e.eventName) : t('mk_back')}</a>
     <div class="pagehead"><div><h1>${id ? t('mk_edit') : t('mk_new')}</h1><div class="sub">${t('mk_form_hint')}</div></div></div>
     <form id="mk-form" class="card pad mk-form" data-id="${id || ''}" novalidate>
       <div class="mk-grid">

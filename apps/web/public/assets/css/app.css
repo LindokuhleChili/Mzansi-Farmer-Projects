@@ -389,3 +389,12 @@ table.t td.n{font-variant-numeric:tabular-nums;color:var(--mut)}
 @media (min-width:900px){.mk-item{grid-template-columns:1.1fr 1.3fr .7fr .9fr .8fr 40px;align-items:end}.mk-item .mk-rm{position:static}.mk-item .field:first-child{padding-right:0}}
 .field select,.field input[type=date],.field input[type=time],.field textarea{border-radius:12px;border:1.5px solid #c9d3c6;padding:0 12px;font:inherit;background:#fff;color:var(--ink);min-width:0;width:100%;height:42px}
 .field textarea{height:auto;padding:10px 12px;resize:vertical}
+
+/* language picker (native select, flat) and the subtle "Translated by AI" note */
+.lang select{appearance:none;-webkit-appearance:none;border:0;background:transparent;color:inherit;font:inherit;font-size:11.5px;font-weight:700;height:24px;padding:0 10px;cursor:pointer}
+.lang select option{color:#13221a}
+.lang{color:#fff}.lang.d{color:var(--f8)}
+.sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
+.ai-note{display:flex;align-items:center;gap:8px;font-size:11.5px;color:#5d6f63;padding:6px 24px 0}
+.ai-note[hidden]{display:none}
+.ai-note button{font-size:11.5px;text-decoration:underline;color:#33463b;background:none;border:0;padding:0;cursor:pointer}

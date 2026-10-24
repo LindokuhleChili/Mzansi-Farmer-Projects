@@ -8,6 +8,7 @@ import { proposeAction, computeInsight } from './ai/advise.js';
 import { CONFIRM_TTL_SECONDS, FUTURE_SKEW_MINUTES, READINGS_FOR_AI, AUDIT_TIMEOUT_MS } from './config.js';
 import { isValidIsoTimestamp } from './iso.js';
 import { registerUi } from './ui.js';
+import { createTranslator, validateTranslateBody } from './ai/translate.js';
 
 const PREFIX = '/api/v1';
 const safeEqual = (a, b) => {
@@ -264,6 +265,17 @@ export function buildApp({ config, oe, provider, clock = () => new Date() }) {
     if (id === null) return fail(reply, req, 400, 'VALIDATION_ERROR', 'id must be an integer.', { field: 'id' });
     const r = await oeCall(req, 'oe.market_cancel_reservation', 'POST', `/farm/market/reservations/${id}/decision`, { decision: 'cancel', actor: 'farmer', requestId: req.id, asOf: clock().toISOString() });
     return reply.code(r.status).send(r.status < 400 ? r.body : { ...r.body, requestId: req.id });
+  });
+
+  // ---- dynamic AI translation (English -> one of the 11 official languages). Never fails because the AI failed: English is returned.
+  const translator = createTranslator(provider);
+  app.post(`${PREFIX}/translate`, async (req, reply) => {
+    if (!requireApp(req, reply)) return;
+    const bad = validateTranslateBody(req.body);
+    if (bad) return fail(reply, req, 400, 'VALIDATION_ERROR', bad.message, { field: bad.field });
+    const { texts, target } = req.body;
+    const r = await translator.translate(texts, target);
+    return { target, provider: provider.name, fallback: r.fallback, translations: r.translations, requestId: req.id };
   });
 
   if (config.uiEnabled) registerUi(app, { config, oe, provider, clock, oeCall, fail });

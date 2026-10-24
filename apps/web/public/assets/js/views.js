@@ -1,7 +1,7 @@
 // Pure rendering: data in, HTML out (every value is escaped by html``). Event handling lives in main.js via data-act attributes.
 // Layout, sizes and copy follow the approved demo screens; the desktop and phone layouts are both rendered and the CSS shows one (d-only / m-only).
 import { html, raw, icon, fmtTime, fmtHM, fmtDay, fmtShortDay, fmtDateTime, ageMinutes, num, shortName, cap, photoUrl, photoStyle } from './util.js';
-import { t, tEn, getLang, zuIrrigateLine, zuSoilDryLine, ZU_RAIN_BANNER, ZU_RAIN_WAIT, stripDraftNote, looksZulu } from './i18n.js';
+import { t, tEn, getLang, LANGS, zuIrrigateLine, zuSoilDryLine, ZU_RAIN_BANNER, ZU_RAIN_WAIT, stripDraftNote, looksZulu } from './i18n.js';
 import { FRESH_MINUTES } from './api.js';
 
 export const bg = (url) => `background-image:url(${url})`;
@@ -184,7 +184,7 @@ export function reviewView(s, plot, f, meta = {}) {
   const factsNote = meta.factsAsOf === 'now' ? t('nums_now') : t('nums_used');
   const zFirst = lang === 'zu';
   const when = `${fmtDay(s.createdAt)}, ${fmtHM(s.createdAt)}`;
-  const lng = (onPhoto) => html`<div class="lang ${onPhoto ? '' : 'd'}" role="group" aria-label="Language"><button data-act="lang" data-lang="zu" aria-pressed="${String(lang === 'zu')}">ZU</button><button data-act="lang" data-lang="en" aria-pressed="${String(lang === 'en')}">EN</button></div>`;
+  const lng = (onPhoto) => langToggle(onPhoto);
 
   // --- rule card
   const shown = rejected ? [...rows.filter((r) => r.state === 'no'), ...rows.filter((r) => r.state === 'ok' && r.code === 'SOIL_NOT_DRY').slice(0, 1)] : rows;
@@ -262,7 +262,8 @@ export function reviewView(s, plot, f, meta = {}) {
 
 export function langToggle(onPhoto = false) {
   const l = getLang();
-  return html`<div class="lang ${onPhoto ? '' : 'd'}" role="group" aria-label="Language"><button data-act="lang" data-lang="zu" aria-pressed="${String(l === 'zu')}">ZU</button><button data-act="lang" data-lang="en" aria-pressed="${String(l === 'en')}">EN</button></div>`;
+  // one native <select> with all 11 official languages, each written in its own language (flat style, no highlighted border)
+  return html`<label class="lang ${onPhoto ? '' : 'd'}"><span class="sr">${t('set_lang')}</span><select data-act="lang-pick" aria-label="Language / Ulimi / Taal">${LANGS.map(([c, n]) => html`<option value="${c}" lang="${c}" ${c === l ? raw('selected') : ''}>${n}</option>`)}</select></label>`;
 }
 
 export function confirmSheet({ summary, secs, id, crop, reqId }) {

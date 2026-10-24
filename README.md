@@ -189,6 +189,10 @@ Three cases are designed to fail (`FAIL01` and `E20`, the last in two modes). Th
 | `scripts/` | `setup-env.mjs`, `demo.mjs`, `oe-run.ps1`, `gen-seed.mjs` |
 | `docs/` | API contract, OpenEdge contract, ESP32 guide, engineering notes, demo screens |
 
+## Languages
+
+The UI has a picker for all 11 official South African languages. Reviewed isiZulu lines are used where they exist; everything else, including market day names and notes, is translated on demand by the configured AI provider through `POST /api/v1/translate`, cached, and marked "Translated by AI" with a "Show original" switch. English is the default. AI translations still need native-speaker review. See [docs/TRANSLATION.md](docs/TRANSLATION.md).
+
 ## Documentation
 
 | Doc | What |

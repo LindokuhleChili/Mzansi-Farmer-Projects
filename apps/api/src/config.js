@@ -40,3 +40,6 @@ export function loadConfig(env = process.env) {
     problems,
   };
 }
+export const TRANSLATE_MAX_TEXTS = 60;      // max strings per POST /api/v1/translate
+export const TRANSLATE_MAX_CHARS = 500;     // max characters per string (market notes are max 500)
+export const TRANSLATE_CACHE_MAX = 5000;    // in-memory translation cache entries (oldest dropped first)

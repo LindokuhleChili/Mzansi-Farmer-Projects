@@ -1,11 +1,47 @@
 // English / isiZulu. English is the source of truth. The isiZulu lines below are ONLY the lines in the approved demo-screen table
 // (docs/screens/api-fields.md). Nothing else is translated: any key without an approved isiZulu line falls back to English.
 // All isiZulu text still needs native-speaker review before the demo (see docs/UI.md; that note is deliberately not shown to farmers).
+// Other languages (and any isiZulu line not in the tables) are translated dynamically by the AI through POST /translate (see
+// docs/TRANSLATION.md). AI text is cached in localStorage and shown with a small "Translated by AI" note and a "Show original" switch.
 const KEY = 'mf.lang';
+const AI_KEY = 'mf.ai-tr.v1';
+// The 11 official South African languages, each named in its own language. Order: English first, then alphabetical by code.
+export const LANGS = [['en', 'English'], ['af', 'Afrikaans'], ['nr', 'isiNdebele'], ['xh', 'isiXhosa'], ['zu', 'isiZulu'], ['nso', 'Sepedi'],
+  ['st', 'Sesotho'], ['tn', 'Setswana'], ['ss', 'siSwati'], ['ve', 'Tshivenda'], ['ts', 'Xitsonga']];
+export const LANG_CODES = LANGS.map(([c]) => c);
+// No saved choice => English (deliberately no device-language detection). A manual pick is saved and wins from then on.
+export const pickLang = (saved) => (LANG_CODES.includes(saved) ? saved : 'en');
 let lang = 'en';
-try { lang = localStorage.getItem(KEY) === 'zu' ? 'zu' : 'en'; } catch { /* storage may be blocked */ }
+try { lang = pickLang(localStorage.getItem(KEY)); } catch { /* storage may be blocked */ }
 export const getLang = () => lang;
-export const setLang = (l) => { lang = l === 'zu' ? 'zu' : 'en'; try { localStorage.setItem(KEY, lang); } catch { /* ignore */ } document.documentElement.lang = lang === 'zu' ? 'zu' : 'en'; };
+export const setLang = (l) => { lang = pickLang(l); try { localStorage.setItem(KEY, lang); } catch { /* ignore */ } if (typeof document !== 'undefined') document.documentElement.lang = lang; };
+
+// ---- AI translation cache and queue. aiCache[lang][english] = translated text.
+let aiCache = {};
+try { aiCache = JSON.parse(localStorage.getItem(AI_KEY) || '{}') || {}; } catch { aiCache = {}; }
+const missing = new Set();          // English strings seen on this render with no translation yet
+const failed = new Set();           // `${lang}|${english}` the AI could not translate this session (not retried, so no render loop)
+let usedAi = false;                 // did the current render show any AI text?
+let showOriginal = false;
+export const isShowingOriginal = () => showOriginal;
+export const toggleOriginal = () => { showOriginal = !showOriginal; };
+export const beginRender = () => { usedAi = false; };
+export const renderUsedAi = () => usedAi;
+const fromAi = (s) => {
+  if (lang === 'en' || showOriginal || !s) return null;
+  const v = aiCache[lang]?.[s];
+  if (v) { usedAi = true; return v; }
+  if (!failed.has(lang + '|' + s)) missing.add(s);
+  return null;
+};
+/** Translate user-typed content (market day names, notes, item labels, crop names). English is shown until the AI answers. */
+export const tx = (s) => { const str = String(s ?? ''); if (!str.trim()) return str; return fromAi(str) || str; };
+export const takeMissing = () => { const a = [...missing]; missing.clear(); return a; };
+export function storeAi(target, pairs) {   // pairs: [english, translated|null]
+  aiCache[target] = aiCache[target] || {};
+  for (const [s, v] of pairs) { if (v) aiCache[target][s] = v; else failed.add(target + '|' + s); }
+  try { localStorage.setItem(AI_KEY, JSON.stringify(aiCache)); } catch { /* quota: keep in memory only */ }
+}
 
 const en = {
   nav_dashboard: 'Dashboard', nav_plots: 'Plots', nav_suggestions: 'Suggestions', nav_audit: 'Audit log', nav_home: 'Home', nav_settings: 'Settings', nav_more: 'More', log_out: 'Log out', search_ph: 'Search plot or suggestion', search_none: 'Nothing found.', search_plots: 'Plots', search_sugs: 'Suggestions', bell: 'Suggestions waiting for you',
@@ -66,7 +102,7 @@ const en = {
   sim_title: 'Simulate a sensor reading', sim_hint: 'Posts a reading as this plot’s sensor, like the ESP32 would.', sim_soil: 'Soil moisture %', sim_temp: 'Temperature °C', sim_hum: 'Humidity %', sim_rain: 'Raining',
   sim_dry: 'Dry soil', sim_wet: 'Wet soil', sim_rainy: 'Raining', sim_send: 'Send reading', sim_ok: 'Reading stored (id {id}).', sim_none: 'No sensor device is registered for this plot, so a reading cannot be simulated here.',
   ai_mode_title: 'AI behaviour (stand-in AI only)', ai_normal: 'Normal', ai_greedy: 'Over-eager', ai_greedy_hint: 'The over-eager AI always asks for the maximum irrigation, so you can watch the rules say no.',
-  settings_title: 'Settings', settings_sub: 'This app runs on example data.', set_lang: 'Language', set_lang_hint: 'isiZulu is only available for the approved lines. Everything else stays in English.', set_data: 'Data and AI', set_oe: 'OpenEdge', set_ai: 'AI', set_oe_mock: 'Test stand-in (no real OpenEdge)', set_oe_real: 'Connected', set_ai_mock: 'Stand-in AI', set_ai_real: 'Live model', set_session: 'Session', set_session_proxy: 'You are on the computer that runs the app. There is no account to sign out of.', set_session_token: 'The app token is kept in this browser tab only.', set_signed_out: 'Signed out of this browser tab.',
+  settings_title: 'Settings', settings_sub: 'This app runs on example data.', set_lang: 'Language', set_lang_hint: 'Reviewed isiZulu lines are used where they exist. Everything else is translated by AI and may contain mistakes.', ai_note: 'Translated by AI', ai_show_orig: 'Show original', ai_show_tr: 'Show translation', set_data: 'Data and AI', set_oe: 'OpenEdge', set_ai: 'AI', set_oe_mock: 'Test stand-in (no real OpenEdge)', set_oe_real: 'Connected', set_ai_mock: 'Stand-in AI', set_ai_real: 'Live model', set_session: 'Session', set_session_proxy: 'You are on the computer that runs the app. There is no account to sign out of.', set_session_token: 'The app token is kept in this browser tab only.', set_signed_out: 'Signed out of this browser tab.',
   login_title: 'Enter the app token', login_hint: 'This page is not on the computer that runs the API, so it needs the app token. It is kept only in this browser tab.', login_btn: 'Open the app', login_bad: 'That token was not accepted.',
   err_load: 'Could not load data.', err_retry: 'Try again', err_offline: 'The API did not answer.',
   e_UNAUTHORIZED: 'The app token was not accepted.', e_OE_UNAVAILABLE: 'OpenEdge is not reachable right now. Nothing was changed.', e_OE_TIMEOUT: 'OpenEdge took too long to answer. Nothing was changed.',
@@ -127,7 +163,9 @@ const zuMarket = {
   mk_res_none: 'Akekho osebekisile. Abathengi bangafika nje ngosuku.',
 };
 export const t = (key, vars = {}) => {
-  const s = (lang === 'zu' && (zu[key] || zuMarket[key])) || en[key] || key;
+  // hand-written isiZulu first; otherwise the AI translation of the English template (placeholders kept), otherwise English
+  const hand = !showOriginal && lang === 'zu' && (zu[key] || zuMarket[key]);
+  const s = hand || (en[key] ? fromAi(en[key]) || en[key] : key);
   return s.replace(/\{(\w+)\}/g, (_, k) => (vars[k] === undefined ? `{${k}}` : String(vars[k])));
 };
 export const tEn = (key, vars = {}) => (en[key] || key).replace(/\{(\w+)\}/g, (_, k) => (vars[k] === undefined ? `{${k}}` : String(vars[k])));
