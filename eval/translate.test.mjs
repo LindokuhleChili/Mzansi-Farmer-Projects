@@ -147,3 +147,29 @@ test('live refresh: main.js queues translation after the 30 s dashboard and plot
   const src = readFileSync(new URL('../apps/web/public/assets/js/main.js', import.meta.url), 'utf8');
   assert.ok(/drawDashboard\(x\); afterLiveDraw\(\)/.test(src)); assert.ok(/drawPlotLive\(plot, rd\); afterLiveDraw\(\)/.test(src));
 });
+
+test('translate: a failed batch is retried once; two failures fall back to English', async () => {
+  let n = 0;
+  const flaky = { name: 'x', translate: async (texts) => { n++; if (n === 1) throw new Error('503'); return JSON.stringify({ translations: texts.map((s) => 'T ' + s) }); } };
+  const ok = await createTranslator(flaky).translate(['Beans'], 'af');
+  assert.equal(n, 2); assert.equal(ok.translations[0].text, 'T Beans'); assert.equal(ok.fallback, false);
+  let m = 0;
+  const down = await createTranslator({ name: 'x', translate: async () => { m++; throw new Error('down'); } }).translate(['Beans'], 'af');
+  assert.equal(m, 2); assert.equal(down.fallback, true); assert.equal(down.translations[0].text, 'Beans');
+});
+test('translate: rejected-by-number-check strings are counted in the log with short hashes only (no text)', async () => {
+  const logs = [];
+  const src = 'Spinach 10 kg at R18.50/kg';
+  await createTranslator(createMockProvider({ behaviour: 'translate-mangle' }), { log: (r) => logs.push(r) }).translate([src, 'Beans'], 'xh');
+  assert.equal(logs.length, 1);
+  assert.equal(logs[0].rejectedByNumberCheck, 1); assert.equal(logs[0].strings, 2); assert.equal(logs[0].ok, true);
+  const line = JSON.stringify(logs[0]);
+  assert.ok(!line.includes('Spinach') && !line.includes('Beans'), 'no text content in the log');
+});
+test('translate: AI_TRANSLATE_TIMEOUT_MS is separate from the 8 s advice timeout (default 20000)', async () => {
+  const base = { APP_TOKEN: APP, DEVICE_REGISTRY: JSON.stringify([{ deviceId: 'd', plotId: 1, token: 'tr-device-token-fixture-9' }]) };
+  assert.equal(loadConfig(base).aiTranslateTimeoutMs, 20000);
+  assert.equal(loadConfig({ ...base, AI_TRANSLATE_TIMEOUT_MS: '15000' }).aiTranslateTimeoutMs, 15000);
+  assert.equal(loadConfig({ ...base, AI_TRANSLATE_TIMEOUT_MS: 'abc' }).aiTranslateTimeoutMs, 20000);
+  const { AI_TIMEOUT_MS } = await import('../apps/api/src/config.js'); assert.equal(AI_TIMEOUT_MS, 8000);
+});

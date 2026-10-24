@@ -1,7 +1,7 @@
 // AI providers. The model only PROPOSES; it never supplies facts. Providers return raw text (JSON expected).
 //  - mock: deterministic, no key, no network. AI_MOCK_BEHAVIOUR (or provider.behaviour) simulates failures for tests/demo.
 //  - http: any OpenAI-compatible /chat/completions endpoint. Key from AI_API_KEY (never committed).
-import { AI_TIMEOUT_MS, LITRES_PER_PCT_DEFICIT } from '../config.js';
+import { AI_TIMEOUT_MS, AI_TRANSLATE_TIMEOUT_MS, LITRES_PER_PCT_DEFICIT } from '../config.js';
 import { TRANSLATE_SYSTEM_PROMPT, buildTranslatePrompt } from './translate.js';
 
 export class AiError extends Error {
@@ -59,9 +59,9 @@ export function createMockProvider({ behaviour = process.env.AI_MOCK_BEHAVIOUR |
 }
 
 export function createHttpProvider(config) {
-  async function chat(system, user) {
+  async function chat(system, user, timeoutMs = AI_TIMEOUT_MS) {
     const ctl = new AbortController();
-    const timer = setTimeout(() => ctl.abort(), AI_TIMEOUT_MS);
+    const timer = setTimeout(() => ctl.abort(), timeoutMs);
     try {
       const res = await fetch(config.aiBaseUrl.replace(/\/+$/, '') + '/chat/completions', {
         method: 'POST', signal: ctl.signal,
@@ -73,13 +73,13 @@ export function createHttpProvider(config) {
       return data?.choices?.[0]?.message?.content ?? '';
     } catch (e) {
       if (e instanceof AiError) throw e;
-      if (e.name === 'AbortError') throw new AiError('timeout', `AI did not answer within ${AI_TIMEOUT_MS} ms`);
+      if (e.name === 'AbortError') throw new AiError('timeout', `AI did not answer within ${timeoutMs} ms`);
       throw new AiError('network', `AI provider not reachable: ${e.cause?.code || e.message}`);
     } finally { clearTimeout(timer); }
   }
   return {
     name: 'http',
-    translate: (texts, target) => chat(TRANSLATE_SYSTEM_PROMPT, buildTranslatePrompt(texts, target)),
+    translate: (texts, target) => chat(TRANSLATE_SYSTEM_PROMPT, buildTranslatePrompt(texts, target), config.aiTranslateTimeoutMs || AI_TRANSLATE_TIMEOUT_MS),
     async propose(ctx, lang) {
       const ctl = new AbortController();
       const timer = setTimeout(() => ctl.abort(), AI_TIMEOUT_MS);

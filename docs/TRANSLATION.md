@@ -49,3 +49,19 @@ siSwati (`ss`), Tshivenda (`ve`), Xitsonga (`ts`) and isiNdebele (`nr`).
 - **Native-speaker review is still recommended** for all fixed screen text before real farmers use it. The reviewed path is:
   translate once, have a speaker check it, and add it as a hand-written table (like `zu` / `zuMarket`), which always wins.
 - With the mock provider, screenshots show `[xh] ...` mock output, not real isiXhosa.
+
+## Real AI (Gemini) settings
+Set these in your local `.env` (created by `npm run setup`; `.env` is gitignored, never commit it):
+```
+AI_PROVIDER=http
+AI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai
+AI_MODEL=gemini-3.5-flash-lite
+AI_API_KEY=<your key>
+AI_TRANSLATE_TIMEOUT_MS=20000
+```
+- `gemini-3.5-flash-lite` answers a batch in about a second. Larger flash models can take 6–10 s or more per batch, which is
+  why translation has its own timeout (`AI_TRANSLATE_TIMEOUT_MS`, default 20000 ms); advice keeps `AI_TIMEOUT_MS` (8 s).
+- A failed batch (timeout, HTTP error, bad JSON, wrong count) is retried once, then English is shown.
+- Each batch writes one line to `logs/tool-calls.jsonl` (`event: translate_batch`) with the target, string count, attempts,
+  and how many strings the number check rejected (short hashes only). The text and the key are never logged.
+- With `AI_PROVIDER=mock` (the default) everything still works offline.

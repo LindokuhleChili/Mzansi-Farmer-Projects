@@ -193,6 +193,8 @@ Three cases are designed to fail (`FAIL01` and `E20`, the last in two modes). Th
 
 The UI has a picker for all 11 official South African languages. Reviewed isiZulu lines are used where they exist; everything else, including market day names and notes, is translated on demand by the configured AI provider through `POST /api/v1/translate`, cached, and marked "Translated by AI" with a "Show original" switch. English is the default. AI translations still need native-speaker review. See [docs/TRANSLATION.md](docs/TRANSLATION.md).
 
+For real translation with Gemini, set in your local `.env` only: `AI_PROVIDER=http`, `AI_BASE_URL=https://generativelanguage.googleapis.com/v1beta/openai`, `AI_MODEL=gemini-3.5-flash-lite`, `AI_API_KEY=<your key>`. `AI_TRANSLATE_TIMEOUT_MS` (default 20000) is the per-batch translation timeout; advice keeps its 8 s limit.
+
 ## Documentation
 
 | Doc | What |

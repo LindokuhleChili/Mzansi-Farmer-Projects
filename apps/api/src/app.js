@@ -268,7 +268,10 @@ export function buildApp({ config, oe, provider, clock = () => new Date() }) {
   });
 
   // ---- dynamic AI translation (English -> one of the 11 official languages). Never fails because the AI failed: English is returned.
-  const translator = createTranslator(provider);
+  const translator = createTranslator(provider, { log: (rec) => {
+    if (logFile) { try { appendFileSync(logFile, JSON.stringify({ at: clock().toISOString(), ...rec }) + '\n'); } catch { /* ignore */ } }
+    if (rec.rejectedByNumberCheck || !rec.ok) app.log.warn(rec, 'translation batch');
+  } });
   app.post(`${PREFIX}/translate`, async (req, reply) => {
     if (!requireApp(req, reply)) return;
     const bad = validateTranslateBody(req.body);
