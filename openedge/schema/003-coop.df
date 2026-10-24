@@ -34,12 +34,12 @@ ADD SEQUENCE "PayoutSeq"
   CYCLE-ON-LIMIT no
   MIN-VAL 0
 
-ADD TABLE "Member"
+ADD TABLE "CoopMember"
   AREA "Schema Area"
   DESCRIPTION "A co-op member (farmer) with a credit limit in Rand. Example data only"
-  DUMP-NAME "member"
+  DUMP-NAME "coopmember"
 
-ADD FIELD "MemberId" OF "Member" AS integer
+ADD FIELD "MemberId" OF "CoopMember" AS integer
   FORMAT ">>>>>>>>9"
   INITIAL "0"
   LABEL "Member Id"
@@ -48,7 +48,7 @@ ADD FIELD "MemberId" OF "Member" AS integer
   ORDER 10
   MANDATORY
 
-ADD FIELD "MemberName" OF "Member" AS character
+ADD FIELD "MemberName" OF "CoopMember" AS character
   FORMAT "x(60)"
   INITIAL ""
   LABEL "Member name"
@@ -57,7 +57,7 @@ ADD FIELD "MemberName" OF "Member" AS character
   ORDER 20
   MANDATORY
 
-ADD FIELD "Location" OF "Member" AS character
+ADD FIELD "Location" OF "CoopMember" AS character
   FORMAT "x(40)"
   INITIAL ""
   LABEL "Location"
@@ -65,7 +65,7 @@ ADD FIELD "Location" OF "Member" AS character
   MAX-WIDTH 80
   ORDER 30
 
-ADD FIELD "PreferredLang" OF "Member" AS character
+ADD FIELD "PreferredLang" OF "CoopMember" AS character
   FORMAT "x(5)"
   INITIAL "en"
   LABEL "Preferred language"
@@ -73,7 +73,7 @@ ADD FIELD "PreferredLang" OF "Member" AS character
   MAX-WIDTH 10
   ORDER 40
 
-ADD FIELD "CreditLimit" OF "Member" AS decimal
+ADD FIELD "CreditLimit" OF "CoopMember" AS decimal
   FORMAT "->>>,>>>,>>9.99"
   INITIAL "0"
   LABEL "Credit limit (R)"
@@ -83,7 +83,7 @@ ADD FIELD "CreditLimit" OF "Member" AS decimal
   ORDER 50
   MANDATORY
 
-ADD FIELD "IsExample" OF "Member" AS logical
+ADD FIELD "IsExample" OF "CoopMember" AS logical
   FORMAT "yes/no"
   INITIAL "yes"
   LABEL "Example data"
@@ -91,7 +91,7 @@ ADD FIELD "IsExample" OF "Member" AS logical
   MAX-WIDTH 1
   ORDER 60
 
-ADD INDEX "MemberId" ON "Member"
+ADD INDEX "MemberId" ON "CoopMember"
   AREA "Schema Area"
   UNIQUE
   PRIMARY

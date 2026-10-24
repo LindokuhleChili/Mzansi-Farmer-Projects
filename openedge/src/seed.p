@@ -52,7 +52,7 @@ DO TRANSACTION:
     FOR EACH InputCredit EXCLUSIVE-LOCK: DELETE InputCredit. END.
     FOR EACH HarvestLot EXCLUSIVE-LOCK: DELETE HarvestLot. END.
     FOR EACH BuyerContract EXCLUSIVE-LOCK: DELETE BuyerContract. END.
-    FOR EACH Member EXCLUSIVE-LOCK: DELETE Member. END.
+    FOR EACH CoopMember EXCLUSIVE-LOCK: DELETE CoopMember. END.
     FOR EACH AuditLog EXCLUSIVE-LOCK: DELETE AuditLog. END.
     FOR EACH AiSuggestion EXCLUSIVE-LOCK: DELETE AiSuggestion. END.
     FOR EACH SensorReading EXCLUSIVE-LOCK: DELETE SensorReading. END.
@@ -115,13 +115,13 @@ DO TRANSACTION:
     ja = joCoop:GetJsonArray("members").
     DO i = 1 TO ja:Length:
         jo = ja:GetJsonObject(i).
-        CREATE Member.
-        ASSIGN Member.MemberId = NEXT-VALUE(MemberSeq)
-               Member.MemberName = jo:GetCharacter("memberName")
-               Member.Location = jo:GetCharacter("location")
-               Member.PreferredLang = jo:GetCharacter("preferredLang")
-               Member.CreditLimit = jo:GetDecimal("creditLimit")
-               Member.IsExample = TRUE.
+        CREATE CoopMember.
+        ASSIGN CoopMember.MemberId = NEXT-VALUE(MemberSeq)
+               CoopMember.MemberName = jo:GetCharacter("memberName")
+               CoopMember.Location = jo:GetCharacter("location")
+               CoopMember.PreferredLang = jo:GetCharacter("preferredLang")
+               CoopMember.CreditLimit = jo:GetDecimal("creditLimit")
+               CoopMember.IsExample = TRUE.
         iMembers = iMembers + 1.
     END.
     ja = joCoop:GetJsonArray("credits").
