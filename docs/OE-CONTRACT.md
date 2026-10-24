@@ -36,6 +36,8 @@ Every failing rule is reported (not only the first), in that order, so the farme
 `SensorReading` has a unique index on (`DeviceId`, `ReadAt`) which enforces the duplicate rule in the database itself.
 `003-coop.df`: `Member`, `InputCredit`, `HarvestLot`, `LotContribution`, `BuyerContract`, `Allocation`, `Payout` and sequences `MemberSeq`, `CreditSeq`, `LotSeq`, `ContractSeq`, `AllocationSeq`, `PayoutSeq`.
 
+`004-market.df`: `MarketEvent`, `MarketItem`, `MarketReservation`, `RetailBuyerPrice` and sequences `MarketEventSeq`, `MarketItemSeq`, `ReservationSeq` (harvest-day market, `docs/MARKET.md`).
+
 ## Co-op routes
 
 Same host and the same `/farm` prefix. Money in JSON is Rand with two decimals. Quantities are whole kilograms. Create returns 201 with `facts` and stores `pending_approval` or `rejected`. Approve, reject and deliver are separate POSTs. The full list, the rule codes and the OpenEdge 12.8 steps are in `docs/COOP.md`.
@@ -48,3 +50,7 @@ Same host and the same `/farm` prefix. Money in JSON is Rand with two decimals. 
 | `GET /farm/contracts`, `GET /farm/contracts/{id}` | 200, or 404 `CONTRACT_NOT_FOUND` |
 | `GET /farm/allocations`, `GET /farm/allocations/{id}`, `POST /farm/allocations`, `POST /farm/allocations/{id}/decision` | 200 / 201, or 404 / 409. `decision` is `approve`, `reject` or `deliver` |
 | `GET /farm/payouts`, `GET /farm/payouts/{id}`, `POST /farm/payouts`, `POST /farm/payouts/{id}/decision` | 200 / 201, or 404 / 409 |
+
+## Market routes
+
+Harvest-day market, same `/farm` prefix: `/farm/market/prices`, `/farm/market/events`, `/farm/market/events/{id}`, `/farm/market/events/{id}/decision`, `/farm/market/reservations`, `/farm/market/reservations/{id}/decision`. Rules, codes and shapes are in `docs/MARKET.md`; the shared cases are `MK01` to `MK51`.

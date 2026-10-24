@@ -4,8 +4,9 @@ import { parseIso } from './time.js';
 
 const SEED_PATH = new URL('../openedge/data/seed.json', import.meta.url);
 const COOP_SEED_PATH = new URL('../openedge/data/coop-seed.json', import.meta.url);
+const MARKET_SEED_PATH = new URL('../openedge/data/market-seed.json', import.meta.url);
 
-export function createStore(seedPath = SEED_PATH, coopSeedPath = COOP_SEED_PATH) {
+export function createStore(seedPath = SEED_PATH, coopSeedPath = COOP_SEED_PATH, marketSeedPath = MARKET_SEED_PATH) {
   const seed = JSON.parse(readFileSync(seedPath, 'utf8'));
   const store = {
     farms: seed.farms.map((f) => ({ ...f })),
@@ -13,7 +14,9 @@ export function createStore(seedPath = SEED_PATH, coopSeedPath = COOP_SEED_PATH)
     readings: [], suggestions: [], audit: [],
     // co-op tables (openedge/schema/003-coop.df); money is kept as integer cents, quantities as whole kg
     members: [], credits: [], lots: [], contracts: [], allocations: [], payouts: [],
-    seq: { reading: 1000, suggestion: 0, audit: 0, member: 0, credit: 0, lot: 0, contract: 0, allocation: 0, payout: 0 },
+    // harvest-day market tables (openedge/schema/004-market.df)
+    retailPrices: [], marketEvents: [], marketItems: [], reservations: [],
+    seq: { reading: 1000, suggestion: 0, audit: 0, member: 0, credit: 0, lot: 0, contract: 0, allocation: 0, payout: 0, marketEvent: 0, marketItem: 0, reservation: 0 },
     latestReading(plotId) {
       let best = null;
       for (const r of this.readings) if (r.plotId === plotId && (!best || r.readAt > best.readAt)) best = r;
@@ -29,6 +32,7 @@ export function createStore(seedPath = SEED_PATH, coopSeedPath = COOP_SEED_PATH)
       action: s.action, litres: s.litres, reason: s.reason, provider: s.provider, status: s.status, verdict: s.verdict, rejectReasons: [], requestId: 'seed' });
   }
   loadCoopSeed(store, coopSeedPath);
+  loadMarketSeed(store, marketSeedPath);
   return store;
 }
 
@@ -45,4 +49,21 @@ function loadCoopSeed(store, path) {
     store.lots.push({ lotId: ++store.seq.lot, lotCode: l.lotCode, crop: l.crop, contributions, quantityKg: contributions.reduce((a, x) => a + x.kg, 0) });
   }
   for (const c of seed.contracts) store.contracts.push({ contractId: ++store.seq.contract, contractCode: c.contractCode, buyerName: c.buyerName, crop: c.crop, quantityKg: c.quantityKg, priceCents: toCents(c.pricePerKg), status: c.status });
+}
+
+function loadMarketSeed(store, path) {
+  const seed = JSON.parse(readFileSync(path, 'utf8'));
+  for (const p of seed.retailPrices) store.retailPrices.push({ crop: p.crop, priceCents: toCents(p.pricePerKg), source: p.source });
+  for (const e of seed.events) {
+    const ev = { eventId: ++store.seq.marketEvent, farmId: 1, eventName: e.eventName, venue: e.venue, area: e.area, notes: e.notes, startsAt: parseIso(e.startsAt), endsAt: parseIso(e.endsAt),
+      status: e.status, verdict: 'approved_by_rules', rejectReasons: [], createdAt: parseIso(e.createdAt), decidedAt: parseIso(e.decidedAt), requestId: 'seed' };
+    store.marketEvents.push(ev);
+    e.items.forEach((it, i) => store.marketItems.push({ itemId: ++store.seq.marketItem, eventId: ev.eventId, itemOrder: i + 1, crop: it.crop, itemLabel: it.label,
+      quantityKg: it.quantityKg, priceCents: toCents(it.pricePerKg), lotId: it.lotId || 0 }));
+  }
+  for (const r of seed.reservations) {
+    const item = store.marketItems.filter((x) => x.eventId === r.eventIndex)[r.itemIndex - 1];
+    store.reservations.push({ reservationId: ++store.seq.reservation, eventId: item.eventId, itemId: item.itemId, buyerName: r.buyerName, quantityKg: r.quantityKg, status: 'confirmed',
+      verdict: 'approved_by_rules', rejectReasons: [], createdAt: parseIso(r.createdAt), decidedAt: null, requestId: 'seed' });
+  }
 }

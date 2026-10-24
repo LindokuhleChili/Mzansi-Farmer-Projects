@@ -5,6 +5,7 @@
 //  6. eval/fixes.test.mjs: unit/resilience tests for the QA bug fixes (litres on hold/notify, OpenEdge outage timing, calendar dates)
 //  3. API eval + device cases through the real PASOE HTTP client path, against the mock-pasoe HTTP server
 //  7. eval/ui.test.mjs: web UI (static routes, local-only proxy, demo tools, API shapes the UI reads, front-end file checks)
+//  9. eval/market.test.mjs: harvest-day market rule edges and the /api/v1/market routes (two-step publish and cancel). Cases MK01 to MK51 are part of suite 1.
 //  8. eval/coop.test.mjs: co-op rule unit tests (pro rata rounding, caps, approve re-check, payouts, audit). The co-op contract cases CO01 to CO76 are part of suite 1.
 // The same contract cases run against the REAL ABL code on Windows with scripts\oe-run.ps1 -Action test (see docs/NOTES.md).
 import { readFileSync } from 'node:fs';
@@ -60,6 +61,13 @@ const coPass = Number((/^# pass (\d+)/m.exec(coopTests.stdout) || [])[1] || 0), 
 for (const m of coopTests.stdout.matchAll(/^(not ok|ok) \d+ - (.*)$/gm)) console.log(`  ${m[1] === 'ok' ? 'PASS' : 'FAIL'}  ${m[2]}`);
 console.log(`  co-op tests: ${coPass} passed, ${coFail} failed`);
 totals.pass += coPass; totals.fail += coFail + (coopTests.status === 0 ? 0 : (coFail ? 0 : 1));
+
+console.log('\n=== 9. Harvest-day market: rule edges, /api/v1/market, confirmation (eval/market.test.mjs, node:test) ===');
+const mkTests = spawnSync(process.execPath, ['--test', '--test-reporter=tap', fileURLToPath(new URL('./market.test.mjs', import.meta.url))], { encoding: 'utf8' });
+const mkPass = Number((/^# pass (\d+)/m.exec(mkTests.stdout) || [])[1] || 0), mkFail = Number((/^# fail (\d+)/m.exec(mkTests.stdout) || [])[1] || 0);
+for (const m of mkTests.stdout.matchAll(/^(not ok|ok) \d+ - (.*)$/gm)) console.log(`  ${m[1] === 'ok' ? 'PASS' : 'FAIL'}  ${m[2]}`);
+console.log(`  market tests: ${mkPass} passed, ${mkFail} failed`);
+totals.pass += mkPass; totals.fail += mkFail + (mkTests.status === 0 ? 0 : (mkFail ? 0 : 1));
 
 console.log(`\nTOTAL: ${totals.pass} passed, ${totals.fail} failed, ${totals.intentional} intentional failures confirmed (by design), ${totals.unexpected} unexpected passes of intentional cases`);
 process.exit(totals.fail === 0 && totals.unexpected === 0 ? 0 : 1);

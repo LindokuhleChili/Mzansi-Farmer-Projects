@@ -205,7 +205,7 @@ test('API shapes the UI depends on: plots, readings, suggestions, advise facts, 
 // ---------------- front-end files
 test('UI files: every JS module parses, index.html and CSS only reference files that exist', () => {
   const js = readdirSync(join(WEB, 'assets/js')).filter((f) => f.endsWith('.js'));
-  assert.deepEqual(js.sort(), ['api.js', 'i18n.js', 'main.js', 'util.js', 'views.js']);
+  assert.deepEqual(js.sort(), ['api.js', 'i18n.js', 'main.js', 'market.js', 'util.js', 'views.js']);
   for (const f of js) { const r = spawnSync(process.execPath, ['--check', join(WEB, 'assets/js', f)], { encoding: 'utf8' }); assert.equal(r.status, 0, `${f}: ${r.stderr}`); }
   const index = readFileSync(join(WEB, 'index.html'), 'utf8');
   for (const m of index.matchAll(/(?:href|src)="(\/[^"]+)"/g)) assert.ok(existsSync(join(WEB, m[1] === '/favicon.svg' ? 'assets/favicon.svg' : m[1])), m[1]);

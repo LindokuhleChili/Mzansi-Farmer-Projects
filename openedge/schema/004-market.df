@@ -1,0 +1,431 @@
+ADD SEQUENCE "MarketEventSeq"
+  INITIAL 0
+  INCREMENT 1
+  CYCLE-ON-LIMIT no
+  MIN-VAL 0
+
+ADD SEQUENCE "MarketItemSeq"
+  INITIAL 0
+  INCREMENT 1
+  CYCLE-ON-LIMIT no
+  MIN-VAL 0
+
+ADD SEQUENCE "ReservationSeq"
+  INITIAL 0
+  INCREMENT 1
+  CYCLE-ON-LIMIT no
+  MIN-VAL 0
+
+ADD TABLE "MarketEvent"
+  AREA "Schema Area"
+  DESCRIPTION "A community harvest-day market event hosted by a farmer. Needs the farmer approval step before it is published. Example data only"
+  DUMP-NAME "marketevent"
+
+ADD FIELD "EventId" OF "MarketEvent" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Event Id"
+  POSITION 2
+  MAX-WIDTH 4
+  ORDER 10
+  MANDATORY
+
+ADD FIELD "FarmId" OF "MarketEvent" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Farm Id"
+  POSITION 3
+  MAX-WIDTH 4
+  ORDER 20
+  MANDATORY
+
+ADD FIELD "EventName" OF "MarketEvent" AS character
+  FORMAT "x(80)"
+  INITIAL ""
+  LABEL "Event name"
+  POSITION 4
+  MAX-WIDTH 160
+  ORDER 30
+  MANDATORY
+
+ADD FIELD "VenueName" OF "MarketEvent" AS character
+  FORMAT "x(120)"
+  INITIAL ""
+  LABEL "Venue"
+  POSITION 5
+  MAX-WIDTH 240
+  ORDER 40
+  MANDATORY
+
+ADD FIELD "VenueArea" OF "MarketEvent" AS character
+  FORMAT "x(80)"
+  INITIAL ""
+  LABEL "Area"
+  POSITION 6
+  MAX-WIDTH 160
+  ORDER 50
+
+ADD FIELD "EventNotes" OF "MarketEvent" AS character
+  FORMAT "x(500)"
+  INITIAL ""
+  LABEL "Notes"
+  POSITION 7
+  MAX-WIDTH 1000
+  ORDER 60
+
+ADD FIELD "StartsAt" OF "MarketEvent" AS datetime-tz
+  FORMAT "99/99/9999 HH:MM:SS.SSS+HH:MM"
+  INITIAL "?"
+  LABEL "Starts at"
+  POSITION 8
+  MAX-WIDTH 8
+  ORDER 70
+  MANDATORY
+
+ADD FIELD "EndsAt" OF "MarketEvent" AS datetime-tz
+  FORMAT "99/99/9999 HH:MM:SS.SSS+HH:MM"
+  INITIAL "?"
+  LABEL "Ends at"
+  POSITION 9
+  MAX-WIDTH 8
+  ORDER 80
+  MANDATORY
+
+ADD FIELD "EventStatus" OF "MarketEvent" AS character
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "Status"
+  POSITION 10
+  MAX-WIDTH 40
+  ORDER 90
+  MANDATORY
+
+ADD FIELD "Verdict" OF "MarketEvent" AS character
+  FORMAT "x(30)"
+  INITIAL ""
+  LABEL "Rule verdict"
+  POSITION 11
+  MAX-WIDTH 60
+  ORDER 100
+
+ADD FIELD "RejectReasons" OF "MarketEvent" AS character
+  FORMAT "x(2000)"
+  INITIAL ""
+  LABEL "Reject reasons (JSON)"
+  POSITION 12
+  MAX-WIDTH 4000
+  ORDER 110
+
+ADD FIELD "CreatedAt" OF "MarketEvent" AS datetime-tz
+  FORMAT "99/99/9999 HH:MM:SS.SSS+HH:MM"
+  INITIAL "?"
+  LABEL "Created at"
+  POSITION 13
+  MAX-WIDTH 8
+  ORDER 120
+  MANDATORY
+
+ADD FIELD "DecidedAt" OF "MarketEvent" AS datetime-tz
+  FORMAT "99/99/9999 HH:MM:SS.SSS+HH:MM"
+  INITIAL "?"
+  LABEL "Decided at"
+  POSITION 14
+  MAX-WIDTH 8
+  ORDER 130
+
+ADD FIELD "RequestId" OF "MarketEvent" AS character
+  FORMAT "x(40)"
+  INITIAL ""
+  LABEL "Request Id"
+  POSITION 15
+  MAX-WIDTH 80
+  ORDER 140
+
+ADD FIELD "IsExample" OF "MarketEvent" AS logical
+  FORMAT "yes/no"
+  INITIAL "yes"
+  LABEL "Example data"
+  POSITION 16
+  MAX-WIDTH 1
+  ORDER 150
+
+ADD INDEX "EventId" ON "MarketEvent"
+  AREA "Schema Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "EventId" ASCENDING
+
+ADD INDEX "EventStart" ON "MarketEvent"
+  AREA "Schema Area"
+  INDEX-FIELD "StartsAt" ASCENDING
+  INDEX-FIELD "EventId" ASCENDING
+
+ADD INDEX "EventStatus" ON "MarketEvent"
+  AREA "Schema Area"
+  INDEX-FIELD "EventStatus" ASCENDING
+  INDEX-FIELD "EventId" ASCENDING
+
+ADD TABLE "MarketItem"
+  AREA "Schema Area"
+  DESCRIPTION "Produce listed for sale at a harvest-day event, priced per kg below the retail-buyer reference price. Example data only"
+  DUMP-NAME "marketitem"
+
+ADD FIELD "ItemId" OF "MarketItem" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Item Id"
+  POSITION 2
+  MAX-WIDTH 4
+  ORDER 10
+  MANDATORY
+
+ADD FIELD "EventId" OF "MarketItem" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Event Id"
+  POSITION 3
+  MAX-WIDTH 4
+  ORDER 20
+  MANDATORY
+
+ADD FIELD "ItemOrder" OF "MarketItem" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Order in event"
+  POSITION 4
+  MAX-WIDTH 4
+  ORDER 30
+
+ADD FIELD "Crop" OF "MarketItem" AS character
+  FORMAT "x(40)"
+  INITIAL ""
+  LABEL "Crop"
+  POSITION 5
+  MAX-WIDTH 80
+  ORDER 40
+  MANDATORY
+
+ADD FIELD "ItemLabel" OF "MarketItem" AS character
+  FORMAT "x(80)"
+  INITIAL ""
+  LABEL "Label"
+  POSITION 6
+  MAX-WIDTH 160
+  ORDER 50
+
+ADD FIELD "QuantityKg" OF "MarketItem" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Quantity (kg)"
+  POSITION 7
+  MAX-WIDTH 4
+  ORDER 60
+  MANDATORY
+
+ADD FIELD "PricePerKg" OF "MarketItem" AS decimal
+  FORMAT "->>>,>>>,>>9.99"
+  INITIAL "0"
+  LABEL "Price per kg (R)"
+  POSITION 8
+  MAX-WIDTH 17
+  DECIMALS 2
+  ORDER 70
+  MANDATORY
+
+ADD FIELD "LotId" OF "MarketItem" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Harvest lot Id (0 = none)"
+  POSITION 9
+  MAX-WIDTH 4
+  ORDER 80
+
+ADD INDEX "ItemId" ON "MarketItem"
+  AREA "Schema Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "ItemId" ASCENDING
+
+ADD INDEX "EventItem" ON "MarketItem"
+  AREA "Schema Area"
+  INDEX-FIELD "EventId" ASCENDING
+  INDEX-FIELD "ItemOrder" ASCENDING
+
+ADD INDEX "LotItem" ON "MarketItem"
+  AREA "Schema Area"
+  INDEX-FIELD "LotId" ASCENDING
+
+ADD TABLE "MarketReservation"
+  AREA "Schema Area"
+  DESCRIPTION "A community buyer reserving kg of a market item ahead of the harvest day (optional; walk-up is always allowed). Example data only"
+  DUMP-NAME "marketreservation"
+
+ADD FIELD "ReservationId" OF "MarketReservation" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Reservation Id"
+  POSITION 2
+  MAX-WIDTH 4
+  ORDER 10
+  MANDATORY
+
+ADD FIELD "EventId" OF "MarketReservation" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Event Id"
+  POSITION 3
+  MAX-WIDTH 4
+  ORDER 20
+  MANDATORY
+
+ADD FIELD "ItemId" OF "MarketReservation" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Item Id"
+  POSITION 4
+  MAX-WIDTH 4
+  ORDER 30
+  MANDATORY
+
+ADD FIELD "BuyerName" OF "MarketReservation" AS character
+  FORMAT "x(80)"
+  INITIAL ""
+  LABEL "Buyer name"
+  POSITION 5
+  MAX-WIDTH 160
+  ORDER 40
+  MANDATORY
+
+ADD FIELD "QuantityKg" OF "MarketReservation" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Quantity (kg)"
+  POSITION 6
+  MAX-WIDTH 4
+  ORDER 50
+  MANDATORY
+
+ADD FIELD "ResStatus" OF "MarketReservation" AS character
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "Status"
+  POSITION 7
+  MAX-WIDTH 40
+  ORDER 60
+  MANDATORY
+
+ADD FIELD "Verdict" OF "MarketReservation" AS character
+  FORMAT "x(30)"
+  INITIAL ""
+  LABEL "Rule verdict"
+  POSITION 8
+  MAX-WIDTH 60
+  ORDER 70
+
+ADD FIELD "RejectReasons" OF "MarketReservation" AS character
+  FORMAT "x(2000)"
+  INITIAL ""
+  LABEL "Reject reasons (JSON)"
+  POSITION 9
+  MAX-WIDTH 4000
+  ORDER 80
+
+ADD FIELD "CreatedAt" OF "MarketReservation" AS datetime-tz
+  FORMAT "99/99/9999 HH:MM:SS.SSS+HH:MM"
+  INITIAL "?"
+  LABEL "Created at"
+  POSITION 10
+  MAX-WIDTH 8
+  ORDER 90
+  MANDATORY
+
+ADD FIELD "DecidedAt" OF "MarketReservation" AS datetime-tz
+  FORMAT "99/99/9999 HH:MM:SS.SSS+HH:MM"
+  INITIAL "?"
+  LABEL "Decided at"
+  POSITION 11
+  MAX-WIDTH 8
+  ORDER 100
+
+ADD FIELD "RequestId" OF "MarketReservation" AS character
+  FORMAT "x(40)"
+  INITIAL ""
+  LABEL "Request Id"
+  POSITION 12
+  MAX-WIDTH 80
+  ORDER 110
+
+ADD FIELD "IsExample" OF "MarketReservation" AS logical
+  FORMAT "yes/no"
+  INITIAL "yes"
+  LABEL "Example data"
+  POSITION 13
+  MAX-WIDTH 1
+  ORDER 120
+
+ADD INDEX "ReservationId" ON "MarketReservation"
+  AREA "Schema Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "ReservationId" ASCENDING
+
+ADD INDEX "ItemRes" ON "MarketReservation"
+  AREA "Schema Area"
+  INDEX-FIELD "ItemId" ASCENDING
+  INDEX-FIELD "ResStatus" ASCENDING
+
+ADD INDEX "EventRes" ON "MarketReservation"
+  AREA "Schema Area"
+  INDEX-FIELD "EventId" ASCENDING
+
+ADD TABLE "RetailBuyerPrice"
+  AREA "Schema Area"
+  DESCRIPTION "Reference price per kg a big retail buyer would pay the farmer for a crop. Community prices must be below it. Example data only"
+  DUMP-NAME "retailbuyerprice"
+
+ADD FIELD "Crop" OF "RetailBuyerPrice" AS character
+  FORMAT "x(40)"
+  INITIAL ""
+  LABEL "Crop"
+  POSITION 2
+  MAX-WIDTH 80
+  ORDER 10
+  MANDATORY
+
+ADD FIELD "PricePerKg" OF "RetailBuyerPrice" AS decimal
+  FORMAT "->>>,>>>,>>9.99"
+  INITIAL "0"
+  LABEL "Retail-buyer price per kg (R)"
+  POSITION 3
+  MAX-WIDTH 17
+  DECIMALS 2
+  ORDER 20
+  MANDATORY
+
+ADD FIELD "PriceSource" OF "RetailBuyerPrice" AS character
+  FORMAT "x(120)"
+  INITIAL ""
+  LABEL "Source"
+  POSITION 4
+  MAX-WIDTH 240
+  ORDER 30
+
+ADD FIELD "IsExample" OF "RetailBuyerPrice" AS logical
+  FORMAT "yes/no"
+  INITIAL "yes"
+  LABEL "Example data"
+  POSITION 5
+  MAX-WIDTH 1
+  ORDER 40
+
+ADD INDEX "Crop" ON "RetailBuyerPrice"
+  AREA "Schema Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "Crop" ASCENDING
+
+.
+PSC
+cpstream=ISO8859-1
+.
+0000000000

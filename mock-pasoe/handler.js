@@ -3,6 +3,7 @@
 import { validate } from './rules.js';
 import { parseIso, iso } from './time.js';
 import { handleCoop } from './coop-handler.js';
+import { handleMarket } from './market-handler.js';
 
 const err = (status, error, message, field) => ({ status, body: { error, message, ...(field ? { field } : {}) } });
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
@@ -49,6 +50,8 @@ export function handle(store, method, pathWithQuery, body = {}, clock = () => ne
   const idOf = (s) => (/^-?\d+$/.test(s) ? parseInt(s, 10) : NaN);
   const coop = handleCoop(store, method, segs, q, body, clock);   // members, credits, lots, contracts, allocations, payouts
   if (coop) return coop;
+  const market = handleMarket(store, method, segs, q, body, clock);   // /market/prices, events, reservations
+  if (market) return market;
 
   if (method === 'GET') {
     if (n === 1 && segs[0] === 'plots') return { status: 200, body: { plots: [...store.plots].sort((a, b) => a.plotId - b.plotId).map(plotJson) } };

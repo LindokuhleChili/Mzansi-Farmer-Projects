@@ -1,8 +1,8 @@
 /* seed.p - (re)load FICTIONAL EXAMPLE DATA into the farm database.
-   Idempotent: deletes farm-ops and co-op rows and the seeded Farm ids, resets sequences.
-   Usage: _progres -b -db farm ... -p seed.p -param "C:\path\to\seed.json|C:\path\to\coop-seed.json"
-   If the coop file is omitted, coop-seed.json is read from the same directory as seed.json.
-   Schema 003-coop.df must already be loaded. */
+   Idempotent: deletes farm-ops, co-op and market rows and the seeded Farm ids, resets sequences.
+   Usage: _progres -b -db farm ... -p seed.p -param "C:\path\to\seed.json|C:\path\to\coop-seed.json|C:\path\to\market-seed.json"
+   If the coop or market file is omitted, coop-seed.json / market-seed.json is read from the same directory as seed.json.
+   Schemas 003-coop.df and 004-market.df must already be loaded. */
 USING Progress.Json.ObjectModel.JsonObject.
 USING Progress.Json.ObjectModel.JsonArray.
 USING Progress.Json.ObjectModel.ObjectModelParser.
@@ -26,6 +26,12 @@ DEFINE VARIABLE iKg AS INTEGER NO-UNDO.
 DEFINE VARIABLE iSlash AS INTEGER NO-UNDO.
 DEFINE VARIABLE iC AS INTEGER NO-UNDO.
 DEFINE VARIABLE joC AS JsonObject NO-UNDO.
+DEFINE VARIABLE cMarket AS CHARACTER NO-UNDO.
+DEFINE VARIABLE joMarket AS JsonObject NO-UNDO.
+DEFINE VARIABLE iEvents AS INTEGER NO-UNDO. DEFINE VARIABLE iItems AS INTEGER NO-UNDO.
+DEFINE VARIABLE iPrices AS INTEGER NO-UNDO. DEFINE VARIABLE iRes AS INTEGER NO-UNDO.
+DEFINE VARIABLE iEvIdx AS INTEGER NO-UNDO. DEFINE VARIABLE iItIdx AS INTEGER NO-UNDO.
+DEFINE BUFFER bMI FOR MarketItem.
 
 cArgs = SESSION:PARAMETER.
 cFile = ENTRY(1, cArgs, "|").
@@ -34,6 +40,17 @@ ELSE DO:
     iSlash = MAXIMUM(R-INDEX(cFile, "\"), R-INDEX(cFile, "/")).
     IF iSlash = 0 THEN cCoop = "coop-seed.json".
     ELSE cCoop = SUBSTRING(cFile, 1, iSlash) + "coop-seed.json".
+END.
+IF NUM-ENTRIES(cArgs, "|") >= 3 THEN cMarket = ENTRY(3, cArgs, "|").
+ELSE DO:
+    iSlash = MAXIMUM(R-INDEX(cFile, "\"), R-INDEX(cFile, "/")).
+    IF iSlash = 0 THEN cMarket = "market-seed.json".
+    ELSE cMarket = SUBSTRING(cFile, 1, iSlash) + "market-seed.json".
+END.
+FILE-INFO:FILE-NAME = cMarket.
+IF FILE-INFO:FULL-PATHNAME = ? THEN DO:
+    MESSAGE "MARKET SEED FILE NOT FOUND:" cMarket.
+    RETURN ERROR.
 END.
 FILE-INFO:FILE-NAME = cCoop.
 IF FILE-INFO:FULL-PATHNAME = ? THEN DO:
@@ -44,8 +61,14 @@ oParser = NEW ObjectModelParser().
 joSeed = CAST(oParser:ParseFile(cFile), JsonObject).
 oParser = NEW ObjectModelParser().
 joCoop = CAST(oParser:ParseFile(cCoop), JsonObject).
+oParser = NEW ObjectModelParser().
+joMarket = CAST(oParser:ParseFile(cMarket), JsonObject).
 
 DO TRANSACTION:
+    FOR EACH MarketReservation EXCLUSIVE-LOCK: DELETE MarketReservation. END.
+    FOR EACH MarketItem EXCLUSIVE-LOCK: DELETE MarketItem. END.
+    FOR EACH MarketEvent EXCLUSIVE-LOCK: DELETE MarketEvent. END.
+    FOR EACH RetailBuyerPrice EXCLUSIVE-LOCK: DELETE RetailBuyerPrice. END.
     FOR EACH Payout EXCLUSIVE-LOCK: DELETE Payout. END.
     FOR EACH Allocation EXCLUSIVE-LOCK: DELETE Allocation. END.
     FOR EACH LotContribution EXCLUSIVE-LOCK: DELETE LotContribution. END.
@@ -178,5 +201,79 @@ DO TRANSACTION:
                BuyerContract.IsExample = TRUE.
         iContracts = iContracts + 1.
     END.
+    /* harvest-day market (004-market.df) */
+    CURRENT-VALUE(MarketEventSeq) = 0.
+    CURRENT-VALUE(MarketItemSeq) = 0.
+    CURRENT-VALUE(ReservationSeq) = 0.
+    ja = joMarket:GetJsonArray("retailPrices").
+    DO i = 1 TO ja:Length:
+        jo = ja:GetJsonObject(i).
+        CREATE RetailBuyerPrice.
+        ASSIGN RetailBuyerPrice.Crop = jo:GetCharacter("crop")
+               RetailBuyerPrice.PricePerKg = jo:GetDecimal("pricePerKg")
+               RetailBuyerPrice.PriceSource = jo:GetCharacter("source")
+               RetailBuyerPrice.IsExample = TRUE.
+        RELEASE RetailBuyerPrice.
+        iPrices = iPrices + 1.
+    END.
+    ja = joMarket:GetJsonArray("events").
+    DO i = 1 TO ja:Length:
+        jo = ja:GetJsonObject(i).
+        CREATE MarketEvent.
+        ASSIGN MarketEvent.EventId = NEXT-VALUE(MarketEventSeq)
+               MarketEvent.FarmId = 1
+               MarketEvent.EventName = jo:GetCharacter("eventName")
+               MarketEvent.VenueName = jo:GetCharacter("venue")
+               MarketEvent.VenueArea = jo:GetCharacter("area")
+               MarketEvent.EventNotes = jo:GetCharacter("notes")
+               MarketEvent.StartsAt = fParseIso(jo:GetCharacter("startsAt"))
+               MarketEvent.EndsAt = fParseIso(jo:GetCharacter("endsAt"))
+               MarketEvent.EventStatus = jo:GetCharacter("status")
+               MarketEvent.Verdict = "approved_by_rules"
+               MarketEvent.RejectReasons = "[]"
+               MarketEvent.CreatedAt = fParseIso(jo:GetCharacter("createdAt"))
+               MarketEvent.DecidedAt = fParseIso(jo:GetCharacter("decidedAt"))
+               MarketEvent.RequestId = "seed"
+               MarketEvent.IsExample = TRUE.
+        jaC = jo:GetJsonArray("items").
+        DO iC = 1 TO jaC:Length:
+            joC = jaC:GetJsonObject(iC).
+            CREATE MarketItem.
+            ASSIGN MarketItem.ItemId = NEXT-VALUE(MarketItemSeq)
+                   MarketItem.EventId = MarketEvent.EventId
+                   MarketItem.ItemOrder = iC
+                   MarketItem.Crop = joC:GetCharacter("crop")
+                   MarketItem.ItemLabel = joC:GetCharacter("label")
+                   MarketItem.QuantityKg = joC:GetInteger("quantityKg")
+                   MarketItem.PricePerKg = joC:GetDecimal("pricePerKg")
+                   MarketItem.LotId = (IF joC:Has("lotId") THEN joC:GetInteger("lotId") ELSE 0).
+            RELEASE MarketItem.
+            iItems = iItems + 1.
+        END.
+        RELEASE MarketEvent.
+        iEvents = iEvents + 1.
+    END.
+    ja = joMarket:GetJsonArray("reservations").
+    DO i = 1 TO ja:Length:
+        jo = ja:GetJsonObject(i).
+        iEvIdx = jo:GetInteger("eventIndex").
+        iItIdx = jo:GetInteger("itemIndex").
+        FIND bMI WHERE bMI.EventId = iEvIdx AND bMI.ItemOrder = iItIdx NO-LOCK.
+        CREATE MarketReservation.
+        ASSIGN MarketReservation.ReservationId = NEXT-VALUE(ReservationSeq)
+               MarketReservation.EventId = bMI.EventId
+               MarketReservation.ItemId = bMI.ItemId
+               MarketReservation.BuyerName = jo:GetCharacter("buyerName")
+               MarketReservation.QuantityKg = jo:GetInteger("quantityKg")
+               MarketReservation.ResStatus = "confirmed"
+               MarketReservation.Verdict = "approved_by_rules"
+               MarketReservation.RejectReasons = "[]"
+               MarketReservation.CreatedAt = fParseIso(jo:GetCharacter("createdAt"))
+               MarketReservation.RequestId = "seed"
+               MarketReservation.IsExample = TRUE.
+        RELEASE MarketReservation.
+        iRes = iRes + 1.
+    END.
 END.
 MESSAGE SUBSTITUTE("SEED OK: &1 farm(s), &2 plots, &3 readings, &4 suggestions, &5 members, &6 credits, &7 lots, &8 contracts (EXAMPLE DATA)", iFarms, iPlots, iReads, iSugg, iMembers, iCredits, iLots, iContracts).
+MESSAGE SUBSTITUTE("MARKET SEED OK: &1 retail prices, &2 events, &3 items, &4 reservations (EXAMPLE DATA)", iPrices, iEvents, iItems, iRes).
