@@ -267,6 +267,41 @@ export function buildApp({ config, oe, provider, clock = () => new Date() }) {
     return reply.code(r.status).send(r.status < 400 ? r.body : { ...r.body, requestId: req.id });
   });
 
+  // ---- 6. weather alerts (docs/WEATHER.md): no AI. ABL compares the synthetic example forecast with the thresholds,
+  //      writes WeatherAlert rows and the audit; the farmer acknowledges. Thresholds are validated by OpenEdge.
+  app.get(`${PREFIX}/farms/:id`, passthrough('oe.farm', (req) => { const id = intId(req.params.id); return id === null ? null : `/farm/farms/${id}`; }));
+  app.get(`${PREFIX}/forecast`, passthrough('oe.forecast', (req) => `/farm/forecast${qsOf(req, ['province'])}`));
+  app.get(`${PREFIX}/farms/:id/alerts`, passthrough('oe.weather_alerts', (req) => {
+    const id = intId(req.params.id); if (id === null) return null;
+    const st = typeof req.query?.status === 'string' ? `&status=${encodeURIComponent(req.query.status)}` : '';
+    return `/farm/alerts?farmId=${id}${st}`;
+  }));
+  app.get(`${PREFIX}/alert-thresholds`, passthrough('oe.alert_thresholds', () => '/farm/alert-thresholds'));
+  app.post(`${PREFIX}/farms/:id/alerts/refresh`, async (req, reply) => {
+    if (!requireApp(req, reply)) return;
+    const id = intId(req.params.id);
+    if (id === null) return fail(reply, req, 400, 'VALIDATION_ERROR', 'id must be an integer.', { field: 'id' });
+    const r = await oeCall(req, 'oe.weather_refresh', 'POST', '/farm/alerts/refresh', { farmId: id, requestId: req.id, asOf: clock().toISOString() },
+      (x) => ({ status: x.status, created: x.body.created, expired: x.body.expired, noData: x.body.noData }));
+    return reply.code(r.status).send(r.status < 400 ? r.body : { ...r.body, requestId: req.id });
+  });
+  app.post(`${PREFIX}/alerts/:id/acknowledge`, async (req, reply) => {
+    if (!requireApp(req, reply)) return;
+    const id = intId(req.params.id);
+    if (id === null) return fail(reply, req, 400, 'VALIDATION_ERROR', 'id must be an integer.', { field: 'id' });
+    const r = await oeCall(req, 'oe.weather_ack', 'POST', `/farm/alerts/${id}/ack`, { actor: 'farmer', requestId: req.id, asOf: clock().toISOString() });
+    return reply.code(r.status).send(r.status < 400 ? r.body : { ...r.body, requestId: req.id });
+  });
+  app.post(`${PREFIX}/alert-thresholds/:id`, async (req, reply) => {
+    if (!requireApp(req, reply)) return;
+    const id = intId(req.params.id);
+    if (id === null) return fail(reply, req, 400, 'VALIDATION_ERROR', 'id must be an integer.', { field: 'id' });
+    const b = req.body;
+    if (!b || typeof b !== 'object' || Array.isArray(b)) return fail(reply, req, 400, 'VALIDATION_ERROR', 'Body must be a JSON object.', { field: 'body' });
+    const r = await oeCall(req, 'oe.alert_threshold_save', 'POST', `/farm/alert-thresholds/${id}`, { ...pick(b, ['value', 'level', 'active']), updatedBy: 'farmer', requestId: req.id });
+    return reply.code(r.status).send(r.status < 400 ? r.body : { ...r.body, requestId: req.id });
+  });
+
   // ---- dynamic AI translation (English -> one of the 11 official languages). Never fails because the AI failed: English is returned.
   const translator = createTranslator(provider, { log: (rec) => {
     if (logFile) { try { appendFileSync(logFile, JSON.stringify({ at: clock().toISOString(), ...rec }) + '\n'); } catch { /* ignore */ } }

@@ -1,0 +1,351 @@
+ADD FIELD "Province" OF "Farm" AS character
+  DESCRIPTION "Province used to pick the 7-day forecast (feature 17)"
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "Province"
+  POSITION 6
+  MAX-WIDTH 40
+  ORDER 50
+
+ADD TABLE "ForecastDay"
+  AREA "Schema Area"
+  DESCRIPTION "7-day forecast per province. FICTIONAL EXAMPLE DATA (synthetic CSV) unless Source says otherwise"
+  DUMP-NAME "forecastday"
+
+ADD FIELD "ForecastId" OF "ForecastDay" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Forecast Id"
+  POSITION 2
+  MAX-WIDTH 4
+  ORDER 10
+  MANDATORY
+
+ADD FIELD "Province" OF "ForecastDay" AS character
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "Province"
+  POSITION 3
+  MAX-WIDTH 40
+  ORDER 20
+
+ADD FIELD "BaseDate" OF "ForecastDay" AS date
+  FORMAT "9999/99/99"
+  INITIAL "?"
+  LABEL "Base date"
+  POSITION 4
+  MAX-WIDTH 3
+  ORDER 30
+
+ADD FIELD "DayNo" OF "ForecastDay" AS integer
+  FORMAT "9"
+  INITIAL "0"
+  LABEL "Day"
+  POSITION 5
+  MAX-WIDTH 4
+  ORDER 40
+
+ADD FIELD "ForecastDate" OF "ForecastDay" AS date
+  FORMAT "9999/99/99"
+  INITIAL "?"
+  LABEL "Date"
+  POSITION 6
+  MAX-WIDTH 3
+  ORDER 50
+
+ADD FIELD "TempMaxC" OF "ForecastDay" AS decimal
+  FORMAT "->>9.9"
+  INITIAL "0"
+  LABEL "Max C"
+  POSITION 7
+  MAX-WIDTH 17
+  DECIMALS 1
+  ORDER 60
+
+ADD FIELD "TempMinC" OF "ForecastDay" AS decimal
+  FORMAT "->>9.9"
+  INITIAL "0"
+  LABEL "Min C"
+  POSITION 8
+  MAX-WIDTH 17
+  DECIMALS 1
+  ORDER 70
+
+ADD FIELD "RainMm" OF "ForecastDay" AS decimal
+  FORMAT ">>>9.9"
+  INITIAL "0"
+  LABEL "Rain mm"
+  POSITION 9
+  MAX-WIDTH 17
+  DECIMALS 1
+  ORDER 80
+
+ADD FIELD "IsSynthetic" OF "ForecastDay" AS logical
+  FORMAT "yes/no"
+  INITIAL "yes"
+  LABEL "Synthetic"
+  POSITION 10
+  MAX-WIDTH 1
+  ORDER 90
+
+ADD FIELD "Source" OF "ForecastDay" AS character
+  FORMAT "x(20)"
+  INITIAL "example"
+  LABEL "Source"
+  POSITION 11
+  MAX-WIDTH 40
+  ORDER 100
+
+ADD INDEX "ForecastId" ON "ForecastDay"
+  AREA "Schema Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "ForecastId" ASCENDING
+
+ADD INDEX "ProvinceDay" ON "ForecastDay"
+  AREA "Schema Area"
+  UNIQUE
+  INDEX-FIELD "Province" ASCENDING
+  INDEX-FIELD "BaseDate" ASCENDING
+  INDEX-FIELD "DayNo" ASCENDING
+
+ADD TABLE "AlertThreshold"
+  AREA "Schema Area"
+  DESCRIPTION "Weather alert thresholds (rain >= mm, heat >= C, frost <= C), checked by ABL"
+  DUMP-NAME "alertthreshold"
+
+ADD FIELD "ThresholdId" OF "AlertThreshold" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Threshold Id"
+  POSITION 2
+  MAX-WIDTH 4
+  ORDER 10
+  MANDATORY
+
+ADD FIELD "AlertType" OF "AlertThreshold" AS character
+  FORMAT "x(10)"
+  INITIAL ""
+  LABEL "Type"
+  POSITION 3
+  MAX-WIDTH 20
+  ORDER 20
+
+ADD FIELD "Op" OF "AlertThreshold" AS character
+  FORMAT "x(2)"
+  INITIAL ""
+  LABEL "Op"
+  POSITION 4
+  MAX-WIDTH 4
+  ORDER 30
+
+ADD FIELD "Value" OF "AlertThreshold" AS decimal
+  FORMAT "->>9.9"
+  INITIAL "0"
+  LABEL "Value"
+  POSITION 5
+  MAX-WIDTH 17
+  DECIMALS 1
+  ORDER 40
+
+ADD FIELD "Unit" OF "AlertThreshold" AS character
+  FORMAT "x(5)"
+  INITIAL ""
+  LABEL "Unit"
+  POSITION 6
+  MAX-WIDTH 10
+  ORDER 50
+
+ADD FIELD "Level" OF "AlertThreshold" AS character
+  FORMAT "x(10)"
+  INITIAL "warning"
+  LABEL "Level"
+  POSITION 7
+  MAX-WIDTH 20
+  ORDER 60
+
+ADD FIELD "Active" OF "AlertThreshold" AS logical
+  FORMAT "yes/no"
+  INITIAL "yes"
+  LABEL "Active"
+  POSITION 8
+  MAX-WIDTH 1
+  ORDER 70
+
+ADD FIELD "UpdatedAt" OF "AlertThreshold" AS datetime-tz
+  FORMAT "99/99/9999 HH:MM:SS.SSS+HH:MM"
+  INITIAL "?"
+  LABEL "Updated"
+  POSITION 9
+  MAX-WIDTH 8
+  ORDER 80
+
+ADD FIELD "UpdatedBy" OF "AlertThreshold" AS character
+  FORMAT "x(40)"
+  INITIAL ""
+  LABEL "Updated by"
+  POSITION 10
+  MAX-WIDTH 80
+  ORDER 90
+
+ADD INDEX "ThresholdId" ON "AlertThreshold"
+  AREA "Schema Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "ThresholdId" ASCENDING
+
+ADD TABLE "WeatherAlert"
+  AREA "Schema Area"
+  DESCRIPTION "Weather alerts created by ABL from ForecastDay and AlertThreshold. No AI"
+  DUMP-NAME "weatheralert"
+
+ADD FIELD "AlertId" OF "WeatherAlert" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Alert Id"
+  POSITION 2
+  MAX-WIDTH 4
+  ORDER 10
+  MANDATORY
+
+ADD FIELD "FarmId" OF "WeatherAlert" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Farm"
+  POSITION 3
+  MAX-WIDTH 4
+  ORDER 20
+
+ADD FIELD "Province" OF "WeatherAlert" AS character
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "Province"
+  POSITION 4
+  MAX-WIDTH 40
+  ORDER 30
+
+ADD FIELD "AlertType" OF "WeatherAlert" AS character
+  FORMAT "x(10)"
+  INITIAL ""
+  LABEL "Type"
+  POSITION 5
+  MAX-WIDTH 20
+  ORDER 40
+
+ADD FIELD "DayNo" OF "WeatherAlert" AS integer
+  FORMAT "9"
+  INITIAL "0"
+  LABEL "Day"
+  POSITION 6
+  MAX-WIDTH 4
+  ORDER 50
+
+ADD FIELD "ForecastDate" OF "WeatherAlert" AS date
+  FORMAT "9999/99/99"
+  INITIAL "?"
+  LABEL "Date"
+  POSITION 7
+  MAX-WIDTH 3
+  ORDER 60
+
+ADD FIELD "Value" OF "WeatherAlert" AS decimal
+  FORMAT "->>>9.9"
+  INITIAL "0"
+  LABEL "Value"
+  POSITION 8
+  MAX-WIDTH 17
+  DECIMALS 1
+  ORDER 70
+
+ADD FIELD "Unit" OF "WeatherAlert" AS character
+  FORMAT "x(5)"
+  INITIAL ""
+  LABEL "Unit"
+  POSITION 9
+  MAX-WIDTH 10
+  ORDER 80
+
+ADD FIELD "Level" OF "WeatherAlert" AS character
+  FORMAT "x(10)"
+  INITIAL ""
+  LABEL "Level"
+  POSITION 10
+  MAX-WIDTH 20
+  ORDER 90
+
+ADD FIELD "Message" OF "WeatherAlert" AS character
+  FORMAT "x(200)"
+  INITIAL ""
+  LABEL "Message"
+  POSITION 11
+  MAX-WIDTH 400
+  ORDER 100
+
+ADD FIELD "CreatedAt" OF "WeatherAlert" AS datetime-tz
+  FORMAT "99/99/9999 HH:MM:SS.SSS+HH:MM"
+  INITIAL "?"
+  LABEL "Created"
+  POSITION 12
+  MAX-WIDTH 8
+  ORDER 110
+
+ADD FIELD "AlertStatus" OF "WeatherAlert" AS character
+  FORMAT "x(15)"
+  INITIAL "open"
+  LABEL "Status"
+  POSITION 13
+  MAX-WIDTH 30
+  ORDER 120
+
+ADD FIELD "AckedAt" OF "WeatherAlert" AS datetime-tz
+  FORMAT "99/99/9999 HH:MM:SS.SSS+HH:MM"
+  INITIAL "?"
+  LABEL "Acknowledged"
+  POSITION 14
+  MAX-WIDTH 8
+  ORDER 130
+
+ADD FIELD "RequestId" OF "WeatherAlert" AS character
+  FORMAT "x(40)"
+  INITIAL ""
+  LABEL "Request"
+  POSITION 15
+  MAX-WIDTH 80
+  ORDER 140
+
+ADD INDEX "AlertId" ON "WeatherAlert"
+  AREA "Schema Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "AlertId" ASCENDING
+
+ADD INDEX "FarmTypeDate" ON "WeatherAlert"
+  AREA "Schema Area"
+  UNIQUE
+  INDEX-FIELD "FarmId" ASCENDING
+  INDEX-FIELD "AlertType" ASCENDING
+  INDEX-FIELD "ForecastDate" ASCENDING
+
+ADD SEQUENCE "ForecastSeq"
+  INITIAL 0
+  INCREMENT 1
+  CYCLE-ON-LIMIT no
+  MIN-VAL 0
+
+ADD SEQUENCE "ThresholdSeq"
+  INITIAL 0
+  INCREMENT 1
+  CYCLE-ON-LIMIT no
+  MIN-VAL 0
+
+ADD SEQUENCE "AlertSeq"
+  INITIAL 0
+  INCREMENT 1
+  CYCLE-ON-LIMIT no
+  MIN-VAL 0
+
+.
+PSC
+cpstream=ISO8859-1
+.
+0000000000

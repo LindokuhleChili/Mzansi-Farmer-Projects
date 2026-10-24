@@ -1,6 +1,7 @@
 // In-memory stand-in for the OpenEdge database (same tables as openedge/schema/002-farm-ops.df). EXAMPLE DATA ONLY.
 import { readFileSync } from 'node:fs';
 import { parseIso } from './time.js';
+import { loadWeatherSeed } from './weather.js';
 
 const SEED_PATH = new URL('../openedge/data/seed.json', import.meta.url);
 const COOP_SEED_PATH = new URL('../openedge/data/coop-seed.json', import.meta.url);
@@ -33,6 +34,7 @@ export function createStore(seedPath = SEED_PATH, coopSeedPath = COOP_SEED_PATH,
   }
   loadCoopSeed(store, coopSeedPath);
   loadMarketSeed(store, marketSeedPath);
+  loadWeatherSeed(store);   // weather alerts (feature 17): forecast is FICTIONAL EXAMPLE DATA
   return store;
 }
 

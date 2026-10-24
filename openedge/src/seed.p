@@ -32,6 +32,11 @@ DEFINE VARIABLE iEvents AS INTEGER NO-UNDO. DEFINE VARIABLE iItems AS INTEGER NO
 DEFINE VARIABLE iPrices AS INTEGER NO-UNDO. DEFINE VARIABLE iRes AS INTEGER NO-UNDO.
 DEFINE VARIABLE iEvIdx AS INTEGER NO-UNDO. DEFINE VARIABLE iItIdx AS INTEGER NO-UNDO.
 DEFINE BUFFER bMI FOR MarketItem.
+/* weather alerts (feature 17): 4th file, default weather-seed.json next to seed.json */
+DEFINE VARIABLE cWeather AS CHARACTER NO-UNDO.
+DEFINE VARIABLE joWx AS JsonObject NO-UNDO.
+DEFINE VARIABLE dWxBase AS DATE NO-UNDO.
+DEFINE VARIABLE iWxDays AS INTEGER NO-UNDO. DEFINE VARIABLE iWxTh AS INTEGER NO-UNDO.
 
 cArgs = SESSION:PARAMETER.
 cFile = ENTRY(1, cArgs, "|").
@@ -46,6 +51,17 @@ ELSE DO:
     iSlash = MAXIMUM(R-INDEX(cFile, "\"), R-INDEX(cFile, "/")).
     IF iSlash = 0 THEN cMarket = "market-seed.json".
     ELSE cMarket = SUBSTRING(cFile, 1, iSlash) + "market-seed.json".
+END.
+IF NUM-ENTRIES(cArgs, "|") >= 4 THEN cWeather = ENTRY(4, cArgs, "|").
+ELSE DO:
+    iSlash = MAXIMUM(R-INDEX(cFile, "\"), R-INDEX(cFile, "/")).
+    IF iSlash = 0 THEN cWeather = "weather-seed.json".
+    ELSE cWeather = SUBSTRING(cFile, 1, iSlash) + "weather-seed.json".
+END.
+FILE-INFO:FILE-NAME = cWeather.
+IF FILE-INFO:FULL-PATHNAME = ? THEN DO:
+    MESSAGE "WEATHER SEED FILE NOT FOUND:" cWeather.
+    RETURN ERROR.
 END.
 FILE-INFO:FILE-NAME = cMarket.
 IF FILE-INFO:FULL-PATHNAME = ? THEN DO:
@@ -63,8 +79,13 @@ oParser = NEW ObjectModelParser().
 joCoop = CAST(oParser:ParseFile(cCoop), JsonObject).
 oParser = NEW ObjectModelParser().
 joMarket = CAST(oParser:ParseFile(cMarket), JsonObject).
+oParser = NEW ObjectModelParser().
+joWx = CAST(oParser:ParseFile(cWeather), JsonObject).
 
 DO TRANSACTION:
+    FOR EACH WeatherAlert EXCLUSIVE-LOCK: DELETE WeatherAlert. END.
+    FOR EACH AlertThreshold EXCLUSIVE-LOCK: DELETE AlertThreshold. END.
+    FOR EACH ForecastDay EXCLUSIVE-LOCK: DELETE ForecastDay. END.
     FOR EACH MarketReservation EXCLUSIVE-LOCK: DELETE MarketReservation. END.
     FOR EACH MarketItem EXCLUSIVE-LOCK: DELETE MarketItem. END.
     FOR EACH MarketEvent EXCLUSIVE-LOCK: DELETE MarketEvent. END.
@@ -274,6 +295,44 @@ DO TRANSACTION:
         RELEASE MarketReservation.
         iRes = iRes + 1.
     END.
+    /* ---- weather (feature 17): farm provinces, an extra example farm, thresholds, the synthetic 7-day forecast */
+    CURRENT-VALUE(ForecastSeq) = 0. CURRENT-VALUE(ThresholdSeq) = 0. CURRENT-VALUE(AlertSeq) = 0.
+    dWxBase = DATE(INTEGER(SUBSTRING(joWx:GetCharacter("baseDate"), 6, 2)), INTEGER(SUBSTRING(joWx:GetCharacter("baseDate"), 9, 2)), INTEGER(SUBSTRING(joWx:GetCharacter("baseDate"), 1, 4))).
+    ja = joWx:GetJsonArray("farms").
+    DO i = 1 TO ja:Length:
+        jo = ja:GetJsonObject(i).
+        FIND Farm WHERE Farm.FarmId = jo:GetInteger("farmId") EXCLUSIVE-LOCK NO-ERROR.
+        IF NOT AVAILABLE Farm THEN DO:
+            CREATE Farm.
+            ASSIGN Farm.FarmId = jo:GetInteger("farmId") Farm.FarmName = jo:GetCharacter("farmName")
+                   Farm.Location = jo:GetCharacter("location") Farm.Acreage = jo:GetDecimal("acreage").
+            iFarms = iFarms + 1.
+        END.
+        Farm.Province = jo:GetCharacter("province").
+        RELEASE Farm.
+    END.
+    ja = joWx:GetJsonArray("thresholds").
+    DO i = 1 TO ja:Length:
+        jo = ja:GetJsonObject(i).
+        CREATE AlertThreshold.
+        ASSIGN AlertThreshold.ThresholdId = NEXT-VALUE(ThresholdSeq) AlertThreshold.AlertType = jo:GetCharacter("alertType")
+               AlertThreshold.Op = jo:GetCharacter("op") AlertThreshold.Value = jo:GetDecimal("value") AlertThreshold.Unit = jo:GetCharacter("unit")
+               AlertThreshold.Level = jo:GetCharacter("level") AlertThreshold.Active = TRUE AlertThreshold.UpdatedBy = "seed".
+        RELEASE AlertThreshold.
+        iWxTh = iWxTh + 1.
+    END.
+    ja = joWx:GetJsonArray("forecast").
+    DO i = 1 TO ja:Length:
+        jo = ja:GetJsonObject(i).
+        CREATE ForecastDay.
+        ASSIGN ForecastDay.ForecastId = NEXT-VALUE(ForecastSeq) ForecastDay.Province = jo:GetCharacter("province") ForecastDay.BaseDate = dWxBase
+               ForecastDay.DayNo = jo:GetInteger("dayNo") ForecastDay.ForecastDate = dWxBase + jo:GetInteger("dayNo") - 1
+               ForecastDay.TempMaxC = jo:GetDecimal("tempMaxC") ForecastDay.TempMinC = jo:GetDecimal("tempMinC") ForecastDay.RainMm = jo:GetDecimal("rainMm")
+               ForecastDay.IsSynthetic = TRUE ForecastDay.Source = "example".
+        RELEASE ForecastDay.
+        iWxDays = iWxDays + 1.
+    END.
 END.
 MESSAGE SUBSTITUTE("SEED OK: &1 farm(s), &2 plots, &3 readings, &4 suggestions, &5 members, &6 credits, &7 lots, &8 contracts (EXAMPLE DATA)", iFarms, iPlots, iReads, iSugg, iMembers, iCredits, iLots, iContracts).
 MESSAGE SUBSTITUTE("MARKET SEED OK: &1 retail prices, &2 events, &3 items, &4 reservations (EXAMPLE DATA)", iPrices, iEvents, iItems, iRes).
+MESSAGE SUBSTITUTE("WEATHER SEED OK: &1 forecast days, &2 thresholds (FICTIONAL EXAMPLE FORECAST)", iWxDays, iWxTh).

@@ -3,6 +3,7 @@ import { html, raw, $, $$, icon, num, shortName, fmtDayLong, fmtDayNoYear, fmtHM
 import { t, getLang, setLang, zuHello, beginRender, renderUsedAi, takeMissing, storeAi, toggleOriginal, isShowingOriginal } from './i18n.js';
 import { api, demo, facts as apiFacts, loadSession, getSession, setToken, needsToken, FRESH_MINUTES } from './api.js';
 import { marketPage, marketEventPage, marketFormPage, marketClick, marketSubmit, marketChange } from './market.js';
+import { weatherPage, weatherClick, weatherSubmit } from './weather.js';
 import { plotCardD, plotCardM, plotState, lineChart, readingsTable, sugRow, sugTitle, reviewView, confirmSheet, fmtSecs, langToggle, auditRow, bg, metricsBlock, lvl } from './views.js';
 
 const viewEl = $('#view'), overlay = $('#overlay'), toastRoot = $('#toast-root');
@@ -40,7 +41,7 @@ function busy(btn, on, label) {
 }
 
 // ---------- chrome ----------
-const NAV = [['dashboard', '/', 'grid', 'nav_dashboard'], ['plots', '/plots', 'plots', 'nav_plots'], ['suggestions', '/suggestions', 'list', 'nav_suggestions'], ['market', '/market', 'basket', 'mk_nav'], ['audit', '/audit', 'book', 'nav_audit'], ['settings', '/settings', 'gear', 'nav_settings']];
+const NAV = [['dashboard', '/', 'grid', 'nav_dashboard'], ['plots', '/plots', 'plots', 'nav_plots'], ['suggestions', '/suggestions', 'list', 'nav_suggestions'], ['market', '/market', 'basket', 'mk_nav'], ['weather', '/weather', 'drop', 'wx_nav'], ['audit', '/audit', 'book', 'nav_audit'], ['settings', '/settings', 'gear', 'nav_settings']];
 function renderChrome(active, plain = true) {
   const s = getSession() || {};
   document.body.classList.toggle('plain', plain);
@@ -325,6 +326,7 @@ async function routeInner() {
       else if (b && c === 'edit') await marketFormPage(Number(b), ...mctx);
       else await (b ? marketEventPage(Number(b), ...mctx) : marketPage(...mctx));
     }
+    else if (a === 'weather') await weatherPage(alive, renderChrome, draw, viewEl, need);
     else if (a === 'audit') await auditPage(alive);
     else if (a === 'settings') settingsPage();
     else { location.hash = '#/'; }
@@ -406,6 +408,7 @@ document.addEventListener('click', async (ev) => {
   if (a === 'bell') { state.sugFilter = 'waiting'; return; }
   if (a === 'sug-filter') { state.sugFilter = el.dataset.f; return route(); }
   if (a === 'audit-filter') { state.auditFilter = el.dataset.f; return route(); }
+  if (a.startsWith('wx-')) return weatherClick(a, el, { route, toast, busy, errText });
   if (a.startsWith('mk-')) return marketClick(a, el, { route, toast, busy, errText, overlay, draw });
   if (a === 'preset') { const p = PRESETS[el.dataset.preset]; $('#f-soil').value = p.soil; $('#f-temp').value = p.temp; $('#f-hum').value = p.hum; $('#f-rain').checked = p.rain; return; }
   if (a === 'ai-mode') {
@@ -417,6 +420,7 @@ document.addEventListener('click', async (ev) => {
 document.addEventListener('change', (ev) => { if (ev.target.dataset?.act === 'lang-pick') { setLang(ev.target.value); route(); return; } marketChange(ev); });
 document.addEventListener('submit', async (ev) => {
   ev.preventDefault();
+  if (await weatherSubmit(ev, { route, toast, busy, errText })) return;
   if (await marketSubmit(ev, { route, toast, busy, errText })) return;
   if (ev.target.id === 'login') {
     setToken($('#tok').value.trim());

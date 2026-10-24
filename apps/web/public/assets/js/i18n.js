@@ -109,6 +109,15 @@ const en = {
   e_CONFIRMATION_INVALID: 'The confirmation expired or was already used. Press Approve to start again.', e_NOT_APPROVABLE: 'The rules blocked this suggestion, so it cannot be approved.', e_ALREADY_DECIDED: 'This suggestion was already decided.',
   e_WATER_BUDGET_EXCEEDED: 'The weekly water budget would be exceeded.',
   // ---- harvest-day market (docs/MARKET.md)
+  // ---- weather alerts (docs/WEATHER.md)
+  wx_nav: 'Weather', wx_title: 'Weather alerts', wx_sub: 'OpenEdge checks the 7-day forecast against your alert levels. No AI is used.',
+  wx_refresh: 'Check forecast', wx_week: 'Next 7 days', wx_example: 'Example forecast data', wx_day: 'Day {n}', wx_rain_mm: 'Rain {mm} mm',
+  wx_type_rain: 'Heavy rain', wx_type_heat: 'Heat', wx_type_frost: 'Frost', wx_lvl_watch: 'Watch', wx_lvl_warning: 'Warning', wx_lvl_severe: 'Severe',
+  wx_open_0: 'No open weather alerts', wx_open_1: '1 open weather alert', wx_open_n: '{n} open weather alerts', wx_rules: 'Alerts come from the OpenEdge rules, not from AI.',
+  wx_alerts: 'Alerts', wx_none: 'No alerts. Press Check forecast.', wx_ack: 'Acknowledge', wx_acked: 'Acknowledged',
+  wx_thresholds: 'Alert levels', wx_th_hint: 'OpenEdge checks every change. Frost must stay below heat.', wx_save: 'Save', wx_saved: 'Alert level saved.',
+  wx_nodata: 'No forecast for this province. Nothing was guessed.', wx_refreshed: '{a} new alert(s), {b} no longer expected.',
+  e_ALERT_THRESHOLD_INVALID: 'OpenEdge did not accept that alert level.', e_ALERT_NOT_FOUND: 'That alert was not found.',
   mk_nav: 'Market', mk_title: 'Harvest-day market', mk_sub: 'Sell straight to your community on market day, below what big retail buyers pay you.',
   mk_new: 'New market day', mk_edit: 'Edit market day', mk_none: 'No market days here yet.', mk_hero_t: 'Your next market day', mk_hero_none: 'Plan a market day and tell your community.',
   mk_f_upcoming: 'Upcoming', mk_f_waiting: 'Waiting for you', mk_f_blocked: 'Blocked by rules', mk_f_past: 'Past & cancelled',

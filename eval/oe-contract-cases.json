@@ -4478,6 +4478,586 @@
      }
     }
    }
+  },
+  {
+   "id": "WX01",
+   "title": "Forecast: KwaZulu-Natal has 7 example days (synthetic), Day 5 rain 11.0 mm",
+   "request": {
+    "method": "GET",
+    "path": "/farm/forecast?province=KwaZulu-Natal"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "province": "KwaZulu-Natal",
+     "baseDate": "2026-10-24",
+     "isSynthetic": true,
+     "source": "example",
+     "noData": false,
+     "days": {
+      "$length": 7
+     }
+    }
+   }
+  },
+  {
+   "id": "WX02",
+   "title": "Forecast: Day 5 is 2026-10-28 with max 33 C, min 16 C, rain 11 mm",
+   "request": {
+    "method": "GET",
+    "path": "/farm/forecast?province=KwaZulu-Natal"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "days": {
+      "$contains": {
+       "dayNo": 5,
+       "date": "2026-10-28",
+       "tempMaxC": 33,
+       "tempMinC": 16,
+       "rainMm": 11
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "WX03",
+   "title": "Forecast: a province with no forecast returns noData and no guessed values",
+   "request": {
+    "method": "GET",
+    "path": "/farm/forecast?province=Gauteng"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "noData": true,
+     "baseDate": null,
+     "days": {
+      "$length": 0
+     }
+    }
+   }
+  },
+  {
+   "id": "WX04",
+   "title": "Forecast: province is required (400)",
+   "request": {
+    "method": "GET",
+    "path": "/farm/forecast"
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "province"
+    }
+   }
+  },
+  {
+   "id": "WX05",
+   "title": "Farm 1 is in KwaZulu-Natal",
+   "request": {
+    "method": "GET",
+    "path": "/farm/farms/1"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "farmId": 1,
+     "province": "KwaZulu-Natal"
+    }
+   }
+  },
+  {
+   "id": "WX06",
+   "title": "Refresh farm 1 with default thresholds: heat Day 2, 3 and 5 (33 C, >= 33) and heavy rain Day 5 (11.0 mm), no frost (lowest min 12 C)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/alerts/refresh",
+    "body": {
+     "farmId": 1,
+     "requestId": "req_wx1"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "farmId": 1,
+     "noData": false,
+     "created": 4,
+     "expired": 0,
+     "alerts": [
+      {
+       "message": "Heat Day 2, 33.0 C",
+       "level": "warning",
+       "status": "open"
+      },
+      {
+       "message": "Heat Day 3, 33.0 C",
+       "level": "warning",
+       "status": "open"
+      },
+      {
+       "message": "Heat Day 5, 33.0 C",
+       "level": "warning",
+       "status": "open"
+      },
+      {
+       "message": "Heavy rain Day 5, 11.0 mm",
+       "level": "warning",
+       "status": "open"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "WX07",
+   "title": "Refresh twice: no duplicate alerts (unique farm/type/date)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/alerts/refresh",
+    "body": {
+     "farmId": 1
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "created": 0,
+     "expired": 0,
+     "alerts": {
+      "$length": 4
+     }
+    }
+   }
+  },
+  {
+   "id": "WX08",
+   "title": "Raise the rain threshold to 12 mm",
+   "request": {
+    "method": "POST",
+    "path": "/farm/alert-thresholds/1",
+    "body": {
+     "value": 12,
+     "updatedBy": "admin"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "thresholdId": 1,
+     "alertType": "rain",
+     "value": 12,
+     "active": true
+    }
+   }
+  },
+  {
+   "id": "WX09",
+   "title": "Fresh refresh after raising rain to 12: the Day 5 rain alert expires, heat stays",
+   "request": {
+    "method": "POST",
+    "path": "/farm/alerts/refresh",
+    "body": {
+     "farmId": 1
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "created": 0,
+     "expired": 1,
+     "alerts": [
+      {
+       "message": "Heat Day 2, 33.0 C",
+       "level": "warning",
+       "status": "open"
+      },
+      {
+       "message": "Heat Day 3, 33.0 C",
+       "level": "warning",
+       "status": "open"
+      },
+      {
+       "message": "Heat Day 5, 33.0 C",
+       "level": "warning",
+       "status": "open"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "WX10",
+   "title": "Rain threshold back to 10 mm",
+   "request": {
+    "method": "POST",
+    "path": "/farm/alert-thresholds/1",
+    "body": {
+     "value": 10
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "value": 10
+    }
+   }
+  },
+  {
+   "id": "WX11",
+   "title": "Refresh again: the Day 5 rain alert is open again",
+   "request": {
+    "method": "POST",
+    "path": "/farm/alerts/refresh",
+    "body": {
+     "farmId": 1
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "created": 1,
+     "alerts": [
+      {
+       "message": "Heat Day 2, 33.0 C",
+       "level": "warning",
+       "status": "open"
+      },
+      {
+       "message": "Heat Day 3, 33.0 C",
+       "level": "warning",
+       "status": "open"
+      },
+      {
+       "message": "Heat Day 5, 33.0 C",
+       "level": "warning",
+       "status": "open"
+      },
+      {
+       "message": "Heavy rain Day 5, 11.0 mm",
+       "level": "warning",
+       "status": "open"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "WX12",
+   "title": "Farm 2 (Gauteng, no forecast): noData, zero alerts, nothing guessed",
+   "request": {
+    "method": "POST",
+    "path": "/farm/alerts/refresh",
+    "body": {
+     "farmId": 2
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "farmId": 2,
+     "province": "Gauteng",
+     "noData": true,
+     "created": 0,
+     "alerts": {
+      "$length": 0
+     }
+    }
+   }
+  },
+  {
+   "id": "WX13",
+   "title": "Invalid threshold: rain 0 mm is ALERT_THRESHOLD_INVALID on value",
+   "request": {
+    "method": "POST",
+    "path": "/farm/alert-thresholds/1",
+    "body": {
+     "value": 0
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "ALERT_THRESHOLD_INVALID",
+     "field": "value"
+    }
+   }
+  },
+  {
+   "id": "WX14",
+   "title": "Invalid threshold: unknown level",
+   "request": {
+    "method": "POST",
+    "path": "/farm/alert-thresholds/3",
+    "body": {
+     "level": "extreme"
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "ALERT_THRESHOLD_INVALID",
+     "field": "level"
+    }
+   }
+  },
+  {
+   "id": "WX15",
+   "title": "Invalid threshold: frost (minimum) 33 C is not below heat (maximum) 33 C",
+   "request": {
+    "method": "POST",
+    "path": "/farm/alert-thresholds/4",
+    "body": {
+     "value": 33
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "ALERT_THRESHOLD_INVALID",
+     "field": "value"
+    }
+   }
+  },
+  {
+   "id": "WX16",
+   "title": "Invalid threshold: two decimals",
+   "request": {
+    "method": "POST",
+    "path": "/farm/alert-thresholds/3",
+    "body": {
+     "value": 33.25
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "ALERT_THRESHOLD_INVALID",
+     "field": "value"
+    }
+   }
+  },
+  {
+   "id": "WX17",
+   "title": "Frost edge: threshold 12.0 C",
+   "request": {
+    "method": "POST",
+    "path": "/farm/alert-thresholds/4",
+    "body": {
+     "value": 12
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "value": 12
+    }
+   }
+  },
+  {
+   "id": "WX18",
+   "title": "Frost edge: a minimum of exactly 12 C (Day 7) triggers frost (<=)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/alerts/refresh",
+    "body": {
+     "farmId": 1
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "created": 1,
+     "alerts": {
+      "$contains": {
+       "alertType": "frost",
+       "dayNo": 7,
+       "message": "Frost Day 7, 12.0 C",
+       "forecastDate": "2026-10-30"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "WX19",
+   "title": "Frost edge: threshold 11.9 C",
+   "request": {
+    "method": "POST",
+    "path": "/farm/alert-thresholds/4",
+    "body": {
+     "value": 11.9
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "value": 11.9
+    }
+   }
+  },
+  {
+   "id": "WX20",
+   "title": "Frost edge: 12 C is above 11.9, so the frost alert expires",
+   "request": {
+    "method": "POST",
+    "path": "/farm/alerts/refresh",
+    "body": {
+     "farmId": 1
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "created": 0,
+     "expired": 1,
+     "alerts": {
+      "$length": 4
+     }
+    }
+   }
+  },
+  {
+   "id": "WX21",
+   "title": "Frost threshold back to 2.0 C",
+   "request": {
+    "method": "POST",
+    "path": "/farm/alert-thresholds/4",
+    "body": {
+     "value": 2
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "value": 2
+    }
+   }
+  },
+  {
+   "id": "WX22",
+   "title": "Acknowledge alert 1 (Heat Day 2)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/alerts/1/ack",
+    "body": {
+     "actor": "farmer"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "alertId": 1,
+     "status": "acknowledged",
+     "message": "Heat Day 2, 33.0 C"
+    }
+   }
+  },
+  {
+   "id": "WX23",
+   "title": "Acknowledge twice: 409 ALREADY_DECIDED",
+   "request": {
+    "method": "POST",
+    "path": "/farm/alerts/1/ack",
+    "body": {}
+   },
+   "expect": {
+    "status": 409,
+    "body": {
+     "error": "ALREADY_DECIDED"
+    }
+   }
+  },
+  {
+   "id": "WX24",
+   "title": "Acknowledge an unknown alert: 404 ALERT_NOT_FOUND",
+   "request": {
+    "method": "POST",
+    "path": "/farm/alerts/999/ack",
+    "body": {}
+   },
+   "expect": {
+    "status": 404,
+    "body": {
+     "error": "ALERT_NOT_FOUND"
+    }
+   }
+  },
+  {
+   "id": "WX25",
+   "title": "Open alerts for farm 1: 3 left after the acknowledgement",
+   "request": {
+    "method": "GET",
+    "path": "/farm/alerts?farmId=1&status=open"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "alerts": {
+      "$length": 3
+     }
+    }
+   }
+  },
+  {
+   "id": "WX26",
+   "title": "Alerts need a farmId (400)",
+   "request": {
+    "method": "GET",
+    "path": "/farm/alerts"
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "farmId"
+    }
+   }
+  },
+  {
+   "id": "WX27",
+   "title": "Thresholds list: 4 rows, rain warning at 10 mm",
+   "request": {
+    "method": "GET",
+    "path": "/farm/alert-thresholds"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "thresholds": {
+      "$contains": {
+       "thresholdId": 1,
+       "alertType": "rain",
+       "op": ">=",
+       "value": 10,
+       "level": "warning",
+       "active": true
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "WX28",
+   "title": "Audit: the refresh, the threshold change and the acknowledgement were written",
+   "request": {
+    "method": "GET",
+    "path": "/farm/audit?limit=60"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "events": {
+      "$contains": {
+       "event": "weather_alert_acknowledged"
+      }
+     }
+    }
+   }
   }
  ]
 }

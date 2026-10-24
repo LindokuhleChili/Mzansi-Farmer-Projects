@@ -127,6 +127,8 @@ Co-op rules (members, credit, harvest lots, buyer contracts, pro-rata allocation
 
 The **community harvest-day market** (farmers list a market day with produce priced below the retail-buyer price, optional reservations, optional link to a co-op lot) is in the same OpenEdge program and has its own screens under Market. See `docs/MARKET.md`.
 
+**Weather alerts** (no AI): OpenEdge checks a synthetic example 7-day forecast against the farmer's alert levels for heavy rain, heat and frost, writes the alerts and the audit, and the farmer acknowledges them. See `docs/WEATHER.md`.
+
 ## Demo script
 
 Use this order for a live demo. Times in the seed data are fixed to 23 October 2026, so you need a fresh reading to get an irrigation proposal (step 2 does this).
@@ -205,6 +207,7 @@ For real translation with Gemini, set in your local `.env` only: `AI_PROVIDER=ht
 | [`docs/OE-CONTRACT.md`](docs/OE-CONTRACT.md) | Contract between the API and OpenEdge |
 | [`docs/COOP.md`](docs/COOP.md) | Co-op rules, endpoints, and how to run them on OpenEdge 12.8 |
 | [`docs/MARKET.md`](docs/MARKET.md) | Harvest-day market: decisions, rules, endpoints, screens, isiZulu drafts |
+| [`docs/WEATHER.md`](docs/WEATHER.md) | Weather alerts: example forecast, ABL rules, thresholds, endpoints, live schema steps |
 | [`docs/ESP32.md`](docs/ESP32.md) | Firmware, wiring and simulator |
 | `docs/screens/` | Approved demo screens (design mockups) and photo credits |
 | `docs/UI.md` | The web interface: pages, token handling, demo tools, isiZulu, photo credits |
