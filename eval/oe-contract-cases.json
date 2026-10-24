@@ -432,9 +432,9 @@
      "deviceId": "esp32-01",
      "plotId": 1,
      "timestamp": "2026-10-23T08:09:00Z",
-     "soilMoisturePct": 17.0,
+     "soilMoisturePct": 17,
      "temperatureC": 29.4,
-     "humidityPct": 41.0
+     "humidityPct": 41
     }
    },
    "expect": {
@@ -454,9 +454,9 @@
      "deviceId": "esp32-01",
      "plotId": 1,
      "timestamp": "2026-10-23T08:09:00Z",
-     "soilMoisturePct": 17.0,
+     "soilMoisturePct": 17,
      "temperatureC": 29.4,
-     "humidityPct": 41.0
+     "humidityPct": 41
     }
    },
    "expect": {
@@ -479,7 +479,7 @@
      "timestamp": "2026-10-23T08:11:00Z",
      "soilMoisturePct": 140,
      "temperatureC": 29.4,
-     "humidityPct": 41.0
+     "humidityPct": 41
     }
    },
    "expect": {
@@ -499,9 +499,9 @@
     "body": {
      "deviceId": "esp32-01",
      "plotId": 1,
-     "soilMoisturePct": 17.0,
+     "soilMoisturePct": 17,
      "temperatureC": 29.4,
-     "humidityPct": 41.0
+     "humidityPct": 41
     }
    },
    "expect": {
@@ -522,9 +522,9 @@
      "deviceId": "esp32-01",
      "plotId": 1,
      "timestamp": "yesterday",
-     "soilMoisturePct": 17.0,
+     "soilMoisturePct": 17,
      "temperatureC": 29.4,
-     "humidityPct": 41.0
+     "humidityPct": 41
     }
    },
    "expect": {
@@ -545,9 +545,9 @@
      "deviceId": "esp32-01",
      "plotId": 99,
      "timestamp": "2026-10-23T08:12:00Z",
-     "soilMoisturePct": 17.0,
+     "soilMoisturePct": 17,
      "temperatureC": 29.4,
-     "humidityPct": 41.0
+     "humidityPct": 41
     }
    },
    "expect": {
@@ -1000,6 +1000,47 @@
    }
   },
   {
+   "id": "AUD03",
+   "title": "Audit rows carry the hash chain: rowHash is 64 hex chars and links to the previous row",
+   "request": {
+    "method": "GET",
+    "path": "/farm/audit?limit=2"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "events": [
+      {
+       "rowHash": "$hex64",
+       "prevHash": "$hex64"
+      },
+      {
+       "rowHash": "$hex64"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "AUD04",
+   "title": "Audit chain verifies: ok, nothing bad, head hash returned",
+   "request": {
+    "method": "GET",
+    "path": "/farm/audit/verify"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "ok": true,
+     "firstBadId": null,
+     "reason": null,
+     "legacy": 0,
+     "checked": "$num",
+     "headHash": "$hex64"
+    }
+   }
+  },
+  {
    "id": "MISC01",
    "title": "Unknown route is 404",
    "request": {
@@ -1157,9 +1198,9 @@
      "deviceId": "esp32-01",
      "plotId": 1,
      "timestamp": "2026-02-31T08:20:00Z",
-     "soilMoisturePct": 17.0,
+     "soilMoisturePct": 17,
      "temperatureC": 29.4,
-     "humidityPct": 41.0
+     "humidityPct": 41
     }
    },
    "expect": {
@@ -1180,9 +1221,9 @@
      "deviceId": "esp32-01",
      "plotId": 1,
      "timestamp": "2026-02-29T08:20:00Z",
-     "soilMoisturePct": 17.0,
+     "soilMoisturePct": 17,
      "temperatureC": 29.4,
-     "humidityPct": 41.0
+     "humidityPct": 41
     }
    },
    "expect": {
@@ -1203,9 +1244,9 @@
      "deviceId": "esp32-01",
      "plotId": 1,
      "timestamp": "2026-04-31T08:20:00Z",
-     "soilMoisturePct": 17.0,
+     "soilMoisturePct": 17,
      "temperatureC": 29.4,
-     "humidityPct": 41.0
+     "humidityPct": 41
     }
    },
    "expect": {
@@ -1226,9 +1267,9 @@
      "deviceId": "esp32-01",
      "plotId": 1,
      "timestamp": "2100-02-29T08:20:00Z",
-     "soilMoisturePct": 17.0,
+     "soilMoisturePct": 17,
      "temperatureC": 29.4,
-     "humidityPct": 41.0
+     "humidityPct": 41
     }
    },
    "expect": {
@@ -1249,9 +1290,9 @@
      "deviceId": "esp32-05",
      "plotId": 5,
      "timestamp": "2024-02-29T08:20:00Z",
-     "soilMoisturePct": 17.0,
+     "soilMoisturePct": 17,
      "temperatureC": 29.4,
-     "humidityPct": 41.0
+     "humidityPct": 41
     }
    },
    "expect": {
@@ -1268,9 +1309,9 @@
      "deviceId": "esp32-05",
      "plotId": 5,
      "timestamp": "2000-02-29T08:20:00Z",
-     "soilMoisturePct": 17.0,
+     "soilMoisturePct": 17,
      "temperatureC": 29.4,
-     "humidityPct": 41.0
+     "humidityPct": 41
     }
    },
    "expect": {
@@ -1287,9 +1328,9 @@
      "deviceId": "esp32-01",
      "plotId": 1,
      "timestamp": "2026-10-23T08:20:00+25:00",
-     "soilMoisturePct": 17.0,
+     "soilMoisturePct": 17,
      "temperatureC": 29.4,
-     "humidityPct": 41.0
+     "humidityPct": 41
     }
    },
    "expect": {
@@ -5056,6 +5097,22 @@
        "event": "weather_alert_acknowledged"
       }
      }
+    }
+   }
+  },
+  {
+   "id": "AUD05",
+   "title": "After every other case (rule checks, decisions, co-op, market) the audit chain still verifies",
+   "request": {
+    "method": "GET",
+    "path": "/farm/audit/verify"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "ok": true,
+     "firstBadId": null,
+     "headHash": "$hex64"
     }
    }
   }

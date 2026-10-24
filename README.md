@@ -9,6 +9,19 @@ An ESP32 soil sensor sends readings to a Node API. An AI model proposes an actio
 
 **All data in this repository is fictional example data.** Nothing here is a real farm, a real person or advice to act on.
 
+## Status (hackathon wrap-up, 24 Oct 2026)
+
+| Area | State |
+|---|---|
+| Irrigation loop (sensor -> AI proposal -> ABL rules -> two-step farmer approval -> audit) | Built, tested on real OpenEdge 12.8 |
+| Co-op rules (members, input credit, harvest lots, fair allocation, payouts) | Built (HTTP API), CO01-CO76 pass on real ABL |
+| Community harvest-day market (feature 16) | Merged; schema `004-market.df` loaded in the live demo DB; MK01-MK51 pass on real ABL |
+| AI translation into all 11 official languages | Merged; picker in the UI, hand-written isiZulu first, AI for the rest (mock offline, Gemini via `AI_PROVIDER=http`); see [docs/TRANSLATION.md](docs/TRANSLATION.md) |
+| Weather alerts (17) and tamper-evident audit hash chain (21) | **Built** (code and scratch-DB tests); the live DB needs 005-audit-chain.df and 006-weather.df loaded, see [docs/AUDIT.md](docs/AUDIT.md) and [docs/WEATHER.md](docs/WEATHER.md) |
+| Planned features 18, 19, 20 (rest), 22 | **Not built yet**; ideas and plans in [docs/OLD-APP-IDEAS-PLAN.md](docs/OLD-APP-IDEAS-PLAN.md) |
+
+Tests: `npm test` 380 passed, 0 failed, 3 intentional failures (by design). Real ABL (scratch database): 187 contract cases passed plus the intentional FAIL01.
+
 ```
 ESP32 or simulator --POST /api/v1/readings--> Node API (Fastify, port 3000)
                                                 |  reads plot limits, latest reading and 7-day water use from OpenEdge
@@ -206,6 +219,7 @@ For real translation with Gemini, set in your local `.env` only: `AI_PROVIDER=ht
 | [`docs/API.md`](docs/API.md) | HTTP API |
 | [`docs/OE-CONTRACT.md`](docs/OE-CONTRACT.md) | Contract between the API and OpenEdge |
 | [`docs/COOP.md`](docs/COOP.md) | Co-op rules, endpoints, and how to run them on OpenEdge 12.8 |
+| [`docs/AUDIT.md`](docs/AUDIT.md) | Tamper-evident audit log: hash chain, verify endpoint, tamper test, live schema load |
 | [`docs/MARKET.md`](docs/MARKET.md) | Harvest-day market: decisions, rules, endpoints, screens, isiZulu drafts |
 | [`docs/WEATHER.md`](docs/WEATHER.md) | Weather alerts: example forecast, ABL rules, thresholds, endpoints, live schema steps |
 | [`docs/ESP32.md`](docs/ESP32.md) | Firmware, wiring and simulator |

@@ -110,6 +110,7 @@ export function buildApp({ config, oe, provider, clock = () => new Date() }) {
   app.get(`${PREFIX}/suggestions`, passthrough('oe.list_suggestions', (req) => `/farm/suggestions${req.query.status ? '?status=' + encodeURIComponent(req.query.status) : ''}`));
   app.get(`${PREFIX}/suggestions/:id`, passthrough('oe.get_suggestion', (req) => { const id = intId(req.params.id); return id === null ? null : `/farm/suggestions/${id}`; }));
   app.get(`${PREFIX}/audit`, passthrough('oe.list_audit', (req) => `/farm/audit${req.query.limit ? '?limit=' + encodeURIComponent(req.query.limit) : ''}`));
+  app.get(`${PREFIX}/audit/verify`, passthrough('oe.verify_audit', () => '/farm/audit/verify'));   // hash chain check (feature 21)
 
   // ---- 3. advise: AI proposes, ABL validates
   app.post(`${PREFIX}/plots/:id/advise`, async (req, reply) => {

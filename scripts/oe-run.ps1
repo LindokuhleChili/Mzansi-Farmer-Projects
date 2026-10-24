@@ -4,6 +4,7 @@
    .\scripts\oe-run.ps1 -Action load-schema      # fresh db, server STOPPED: 002-farm-ops.df, 003-coop.df then 004-market.df
    .\scripts\oe-run.ps1 -Action load-coop        # existing farm db that already has 002: load 003-coop.df only (server STOPPED)
    .\scripts\oe-run.ps1 -Action load-market      # existing farm db that already has 003: load 004-market.df only (server STOPPED)
+.\scripts\oe-run.ps1 -Action load-audit-chain # existing farm db that already has 004: load 005-audit-chain.df only (server STOPPED)
 .\scripts\oe-run.ps1 -Action load-weather      # existing farm db that already has 004: load 006-weather.df only (server STOPPED), then seed
    .\scripts\oe-run.ps1 -Action seed             # db server running on port 20000; loads seed.json, coop-seed.json and market-seed.json
    .\scripts\oe-run.ps1 -Action test             # reseed, then every contract case (including CO01-CO76) in batch mode
@@ -16,7 +17,7 @@
                                                   # Never touches the farm database or PASOE; safe while they run.
 #>
 param(
-  [ValidateSet('load-schema','load-coop','load-market','load-weather','scratch-schema','scratch-test','seed','test','test-coop','test-market','test-http','test-http-coop','test-http-market','start-db','stop-db')][string]$Action = 'test',
+  [ValidateSet('load-schema','load-coop','load-market','load-audit-chain','load-weather','scratch-schema','scratch-test','seed','test','test-coop','test-market','test-http','test-http-coop','test-http-market','start-db','stop-db')][string]$Action = 'test',
   [string]$Dlc = $(if ($env:DLC) { $env:DLC } else { 'C:\Progress\OpenEdge' }),
   [string]$DbDir = $(if ($env:FARM_DB_DIR) { $env:FARM_DB_DIR } else { 'C:\OpenEdge\WRK\farm' }),
   [int]$Port = 20000
@@ -42,7 +43,7 @@ function New-ScratchDb {
   Remove-Item $scratchDir -Recurse -Force -ErrorAction SilentlyContinue; New-Item -ItemType Directory $scratchDir | Out-Null
   Push-Location $scratchDir; & (Join-Path $Dlc 'bin\prodb.exe') scratch empty | Out-Null; Pop-Location
   Remove-Item (Join-Path $src 'scratch.e') -ErrorAction SilentlyContinue
-  foreach ($df in '001-farm.df','002-farm-ops.df','003-coop.df','004-market.df','006-weather.df') {
+  foreach ($df in '001-farm.df','002-farm-ops.df','003-coop.df','004-market.df','005-audit-chain.df','006-weather.df') {
     Invoke-Abl 'load-schema.p' (Join-Path $repo "openedge\schema\$df") @('-b','-db',(Join-Path $scratchDir 'scratch'),'-1')
     Assert-SchemaLoaded 'scratch'
   }
@@ -64,10 +65,14 @@ switch ($Action) {
     Invoke-Abl 'run-contract.p' ((Join-Path $repo 'eval\oe-contract-cases.json') + '|' + $out) $sc
     & node (Join-Path $repo 'eval\compare-oe.mjs') $out
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+    # audit hash chain on real ABL: parity with Node, verify, tamper detection (edits a row, so scratch only)
+    $t = Invoke-Abl 'audit-tamper-test.p' 'scratch' $sc
+    $t
+    if (-not ($t -match 'AUDIT TAMPER TEST DONE: 0 failed')) { exit 1 }
   }
   'stop-db'  { & (Join-Path $Dlc 'bin\proshut.bat') (Join-Path $DbDir 'farm') -by }
   'load-schema' {
-    foreach ($df in 'openedge\schema\002-farm-ops.df','openedge\schema\003-coop.df','openedge\schema\004-market.df','openedge\schema\006-weather.df') {
+    foreach ($df in 'openedge\schema\002-farm-ops.df','openedge\schema\003-coop.df','openedge\schema\004-market.df','openedge\schema\005-audit-chain.df','openedge\schema\006-weather.df') {
       Invoke-Abl 'load-schema.p' (Join-Path $repo $df) @('-b','-db',(Join-Path $DbDir 'farm'),'-1')
       Assert-SchemaLoaded 'farm'
     }
@@ -79,6 +84,11 @@ switch ($Action) {
   'load-market' {
     Remove-Item (Join-Path $src 'farm.e') -ErrorAction SilentlyContinue
     Invoke-Abl 'load-schema.p' (Join-Path $repo 'openedge\schema\004-market.df') @('-b','-db',(Join-Path $DbDir 'farm'),'-1')
+    Assert-SchemaLoaded 'farm'
+  }
+  'load-audit-chain' {
+    Remove-Item (Join-Path $src 'farm.e') -ErrorAction SilentlyContinue
+    Invoke-Abl 'load-schema.p' (Join-Path $repo 'openedge\schema\005-audit-chain.df') @('-b','-db',(Join-Path $DbDir 'farm'),'-1')
     Assert-SchemaLoaded 'farm'
   }
   'load-weather' {

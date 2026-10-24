@@ -27,6 +27,8 @@ This is a hackathon prototype. It shows one idea: an AI model may propose, OpenE
 
 - **Translation.** Languages other than English and the reviewed isiZulu lines are machine-translated by the AI on demand. Quality varies by language and is not reviewed; numbers/prices/placeholders are checked, wording is not. The caches are in memory (server) and localStorage (browser). With the mock provider the "translation" is `[code] English`. Irrigation advice reasons are translated the same way after they are generated in English, so the wording of safety-relevant advice in those languages is unreviewed AI text; the numbers, litres and rule decisions come from OpenEdge and are not changed. See docs/TRANSLATION.md.
 
+- **Audit hash chain** is tamper-evident, not tamper-proof: someone with direct database access could recompute every hash after an edit. Rows from before `005-audit-chain.df` are not covered (`legacy`). See docs/AUDIT.md.
+
 ## OpenEdge and the demo setup
 
 - **The demo PASOE instance allows anonymous access.** `/web/**` is set to `permitAll()` (see `openedge/pasoe/README.md`). This is acceptable only because the instance listens on the laptop and the Node API is the only caller. For anything real, use basic or form login and set `OE_AUTH`.
@@ -65,6 +67,9 @@ This is a hackathon prototype. It shows one idea: an AI model may propose, OpenE
 - No licence has been chosen for this repository yet.
 
 ## Not built
+
+- Planned features 17-22, including weather alerts from a 7-day forecast and a tamper-evident hash chain on the audit log (see docs/OLD-APP-IDEAS-PLAN.md)
+- Native-speaker review of the AI translations (only the hand-written isiZulu lines were drafted by hand, and they still need review)
 
 - A co-op screen (the rules are HTTP only; see `docs/COOP.md`)
 - A native mobile app (the web interface works in a phone browser)

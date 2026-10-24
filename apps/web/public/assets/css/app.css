@@ -398,6 +398,7 @@ table.t td.n{font-variant-numeric:tabular-nums;color:var(--mut)}
 .ai-note{display:flex;align-items:center;gap:8px;font-size:11.5px;color:#5d6f63;padding:6px 24px 0}
 .ai-note[hidden]{display:none}
 .ai-note button{font-size:11.5px;text-decoration:underline;color:#33463b;background:none;border:0;padding:0;cursor:pointer}
+.chain.bad{background:#FBEDEA}.chain code{font-size:11px}
 
 /* weather alerts */
 .wx-days{display:grid;grid-template-columns:repeat(7,minmax(0,1fr));gap:8px}

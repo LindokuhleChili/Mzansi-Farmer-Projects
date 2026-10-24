@@ -2,13 +2,9 @@
 // Forecast rows are FICTIONAL EXAMPLE DATA (openedge/data/weather-seed.json, from the synthetic forecast CSV).
 import { readFileSync } from 'node:fs';
 import { iso } from './time.js';
+import { appendAudit } from './audit-chain.js';   // hash chain (feature 21)
 
 const WEATHER_SEED_PATH = new URL('../openedge/data/weather-seed.json', import.meta.url);
-function appendAudit(store, requestId, actor, event, detail, at) {
-  const row = { auditId: ++store.seq.audit, at, requestId: requestId || '', actor: actor || 'api', event, detail: (detail || '').slice(0, 4000) };
-  store.audit.push(row);
-  return row;
-}
 const LEVELS = ['watch', 'warning', 'severe'];
 const TYPES = { rain: { unit: 'mm', field: 'rainMm', label: 'Heavy rain' }, heat: { unit: 'C', field: 'tempMaxC', label: 'Heat' }, frost: { unit: 'C', field: 'tempMinC', label: 'Frost' } };
 const err = (status, error, message, field) => ({ status, body: { error, message, ...(field ? { field } : {}) } });

@@ -1,0 +1,23 @@
+ADD FIELD "PrevHash" OF "AuditLog" AS character
+  DESCRIPTION "Hash chain: RowHash of the previous audit row (64 hex chars); empty on rows written before 005"
+  FORMAT "x(64)"
+  INITIAL ""
+  LABEL "Prev hash"
+  POSITION 8
+  MAX-WIDTH 128
+  ORDER 70
+
+ADD FIELD "RowHash" OF "AuditLog" AS character
+  DESCRIPTION "Hash chain: SHA-256 hex of PrevHash|AuditId|LoggedAt|RequestId|Actor|Event|Detail"
+  FORMAT "x(64)"
+  INITIAL ""
+  LABEL "Row hash"
+  POSITION 9
+  MAX-WIDTH 128
+  ORDER 80
+
+.
+PSC
+cpstream=ISO8859-1
+.
+0000000000

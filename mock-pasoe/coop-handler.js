@@ -1,5 +1,6 @@
 // Co-op routes of the OpenEdge REST contract (docs/OE-CONTRACT.md, docs/COOP.md). Called from handler.js; returns null when the path is not a co-op route.
 // Same behaviour as openedge/src/coop.i (included by farm-api.p).
+import { appendAudit } from './audit-chain.js';
 import { MAX_AMOUNT_RAND, MAX_KG } from './constants.js';
 import { parseIso, iso } from './time.js';
 import {
@@ -36,11 +37,7 @@ const allocJson = (a) => ({ allocationId: a.allocationId, lotId: a.lotId, contra
 const payoutJson = (p) => ({ payoutId: p.payoutId, lotId: p.lotId, memberId: p.memberId, grossAmount: rand(p.grossCents), creditDeducted: rand(p.creditDeductedCents), netAmount: rand(p.grossCents - p.creditDeductedCents),
   status: p.status, verdict: p.verdict, rejectReasons: p.rejectReasons, createdAt: iso(p.createdAt), decidedAt: iso(p.decidedAt), requestId: p.requestId });
 
-function addAudit(store, requestId, actor, event, detail, at) {
-  const row = { auditId: ++store.seq.audit, at, requestId: requestId || '', actor: actor || 'api', event, detail: (detail || '').slice(0, 4000) };
-  store.audit.push(row);
-  return row;
-}
+const addAudit = (store, requestId, actor, event, detail, at) => appendAudit(store, requestId, actor, event, detail, at);   // hash chain: audit-chain.js
 const money = (c) => `R${(c / 100).toFixed(2)}`;
 function common(body, clock) {
   const requestId = isStr(body.requestId) ? body.requestId : '';
