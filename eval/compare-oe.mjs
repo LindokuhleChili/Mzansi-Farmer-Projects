@@ -1,15 +1,17 @@
-// Compare the shared OpenEdge contract cases (irrigation + co-op CO01-CO76) with real ABL output.
+// Compare the shared OpenEdge contract cases (irrigation + co-op CO01-CO76 + market MK01-MK51) with real ABL output.
 //
 // Batch, after openedge/src/run-contract.p has written a results file (reseed first; the cases are stateful):
 //   node eval/compare-oe.mjs eval/abl-results.json
 //   node eval/compare-oe.mjs eval/abl-results.json --coop
+//   node eval/compare-oe.mjs eval/abl-results.json --market
 //
 // HTTP, against PASOE (web/FarmHandler.cls -> farm-api.p) or mock-pasoe. Reseed first.
 //   node eval/compare-oe.mjs --http http://localhost:8820/web
 //   node eval/compare-oe.mjs --http http://localhost:8820/web --coop
 //   node eval/compare-oe.mjs --http                 # OE_BASE_URL, else http://localhost:8820/web
 //
-// --coop keeps only case ids that start with CO. A full run already includes those cases and prints a co-op subtotal.
+// --coop keeps only case ids that start with CO, --market only MK (harvest-day market, docs/MARKET.md).
+// A full run already includes those cases and prints a co-op and a market subtotal.
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { checkCase, report } from './match.mjs';
@@ -22,8 +24,14 @@ export function isCoopCase(c) {
   return typeof c.id === 'string' && c.id.startsWith('CO');
 }
 
-export function selectCases(cases, coopOnly) {
-  return coopOnly ? cases.filter(isCoopCase) : cases;
+export function isMarketCase(c) {
+  return typeof c.id === 'string' && c.id.startsWith('MK');
+}
+
+export function selectCases(cases, coopOnly, marketOnly = false) {
+  if (coopOnly) return cases.filter(isCoopCase);
+  if (marketOnly) return cases.filter(isMarketCase);
+  return cases;
 }
 
 export function tally(cases, resultsById) {
@@ -80,32 +88,42 @@ function printCoopSubtotal(cases, results) {
   console.log(`co-op cases CO01-CO76: ${t.pass} passed, ${t.fail} failed, ${t.intentional} intentional failure(s) confirmed, ${t.unexpectedPass} unexpected pass(es) (${coop.length} cases)`);
 }
 
+function printMarketSubtotal(cases, results) {
+  const mk = cases.filter(isMarketCase);
+  if (mk.length === 0) return;
+  const t = tally(mk, results);
+  console.log(`market cases MK01-MK${String(mk.length).padStart(2, '0')}: ${t.pass} passed, ${t.fail} failed, ${t.intentional} intentional failure(s) confirmed, ${t.unexpectedPass} unexpected pass(es) (${mk.length} cases)`);
+}
+
 async function main() {
   const argv = process.argv.slice(2);
   const coopOnly = argv.includes('--coop');
+  const marketOnly = argv.includes('--market');
   const base = httpBase(argv);
   const file = argv.find((a, i) => !a.startsWith('--') && argv[i - 1] !== '--http');
   const all = loadCases();
-  const cases = selectCases(all, coopOnly);
+  const cases = selectCases(all, coopOnly, marketOnly);
+  const only = coopOnly ? ', co-op only' : marketOnly ? ', market only' : '';
   let results;
   let label;
   if (base) {
     const auth = process.env.OE_AUTH ? { Authorization: 'Basic ' + Buffer.from(process.env.OE_AUTH).toString('base64') } : {};
     results = await fetchHttpResults(cases, base, auth);
-    label = `OpenEdge contract over HTTP (${base}${coopOnly ? ', co-op only' : ''})`;
+    label = `OpenEdge contract over HTTP (${base}${only})`;
   } else if (file) {
     results = resultsFromFile(file);
-    label = `OpenEdge ABL contract (${file}${coopOnly ? ', co-op only' : ''})`;
+    label = `OpenEdge ABL contract (${file}${only})`;
   } else {
-    console.error('Usage: node eval/compare-oe.mjs <results.json> [--coop]');
-    console.error('       node eval/compare-oe.mjs --http [baseUrl] [--coop]');
+    console.error('Usage: node eval/compare-oe.mjs <results.json> [--coop|--market]');
+    console.error('       node eval/compare-oe.mjs --http [baseUrl] [--coop|--market]');
     process.exit(2);
   }
   const r = report(label, cases, results);
-  if (!coopOnly) printCoopSubtotal(all, results);
-  const coop = tally(all.filter(isCoopCase), results);
-  const coopBad = !coopOnly && (coop.fail > 0 || coop.unexpectedPass > 0);
-  process.exit(r.fail === 0 && r.unexpectedPass === 0 && !coopBad ? 0 : 1);
+  const full = !coopOnly && !marketOnly;
+  if (full) { printCoopSubtotal(all, results); printMarketSubtotal(all, results); }
+  const coop = tally(all.filter(isCoopCase), results), mk = tally(all.filter(isMarketCase), results);
+  const subBad = full && (coop.fail > 0 || coop.unexpectedPass > 0 || mk.fail > 0 || mk.unexpectedPass > 0);
+  process.exit(r.fail === 0 && r.unexpectedPass === 0 && !subBad ? 0 : 1);
 }
 
 if (process.argv[1] && import.meta.url === pathToFileURL(process.argv[1]).href) {

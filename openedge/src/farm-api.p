@@ -22,6 +22,12 @@
   Nothing is applied without an explicit approve/deliver decision. Every check writes AuditLog.
   See docs/COOP.md.
 
+  MARKET RULES (market.i, compiled into this program; same results as mock-pasoe/market-rules.js):
+    EVENT_NOT_IN_FUTURE, NO_REFERENCE_PRICE, PRICE_NOT_BELOW_RETAIL, LOT_CROP_MISMATCH,
+    LOT_STOCK_EXCEEDED, EVENT_NOT_OPEN, RESERVATIONS_CLOSED, RESERVE_CAP_EXCEEDED, RESERVE_STOCK_EXCEEDED
+  A harvest-day event is only published after the farmer approves it (the rules run again).
+  See docs/MARKET.md.
+
   EXAMPLE DATA ONLY: the farm, plots, members, lots and contracts are fictional.
 ------------------------------------------------------------------------*/
 USING Progress.Json.ObjectModel.JsonObject.
@@ -42,6 +48,10 @@ DEFINE OUTPUT PARAMETER pcResponse AS LONGCHAR  NO-UNDO.
 /* Co-op sanity limits. Keep identical to mock-pasoe/constants.js (MAX_AMOUNT_RAND, MAX_KG). */
 &SCOPED-DEFINE MAX_AMOUNT_RAND 10000000
 &SCOPED-DEFINE MAX_KG 10000000
+/* Harvest-day market. Keep identical to mock-pasoe/constants.js (MARKET_MAX_ITEMS, RESERVE_CAP_KG, RESERVE_SHARE_PCT). */
+&SCOPED-DEFINE MARKET_MAX_ITEMS 20
+&SCOPED-DEFINE RESERVE_CAP_KG 50
+&SCOPED-DEFINE RESERVE_SHARE_PCT 50
 
 /* Pro-rata scratch (largest remainder). Shared by payout shares and fair allocation; never nested. */
 DEFINE TEMP-TABLE ttDist NO-UNDO
@@ -184,6 +194,7 @@ END FUNCTION.
 /* Co-op rules, JSON builders and /farm/members|credits|lots|contracts|allocations|payouts handlers.
    Included here so it is part of farm-api.p (the only program PASOE and run-contract.p run). */
 {coop.i}
+{market.i}
 
 /* ---------- THE RULES ---------- */
 PROCEDURE do-validate:
@@ -743,6 +754,10 @@ PROCEDURE dispatch:
             ELSE IF n = 2 AND ENTRY(1, cP, "/") = "allocations" THEN RUN h-coop-allocation (fPathId(ENTRY(2, cP, "/"))).
             ELSE IF cP = "payouts" THEN RUN h-coop-payouts.
             ELSE IF n = 2 AND ENTRY(1, cP, "/") = "payouts" THEN RUN h-coop-payout (fPathId(ENTRY(2, cP, "/"))).
+            ELSE IF cP = "market/prices" THEN RUN h-mk-prices.
+            ELSE IF cP = "market/events" THEN RUN h-mk-events.
+            ELSE IF n = 3 AND ENTRY(1, cP, "/") = "market" AND ENTRY(2, cP, "/") = "events" THEN RUN h-mk-event (fPathId(ENTRY(3, cP, "/"))).
+            ELSE IF cP = "market/reservations" THEN RUN h-mk-reservations.
             ELSE RUN reply-error (404, "NOT_FOUND", "Unknown route.", ?).
         END.
         WHEN "POST" THEN DO:
@@ -763,6 +778,14 @@ PROCEDURE dispatch:
             ELSE IF cP = "payouts" THEN RUN h-coop-payout-create.
             ELSE IF n = 3 AND ENTRY(1, cP, "/") = "payouts" AND ENTRY(3, cP, "/") = "decision"
                 THEN RUN h-coop-payout-decide (fPathId(ENTRY(2, cP, "/"))).
+            ELSE IF cP = "market/events" THEN RUN h-mk-event-save (0, TRUE).
+            ELSE IF n = 3 AND ENTRY(1, cP, "/") = "market" AND ENTRY(2, cP, "/") = "events"
+                THEN RUN h-mk-event-save (fPathId(ENTRY(3, cP, "/")), FALSE).
+            ELSE IF n = 4 AND ENTRY(1, cP, "/") = "market" AND ENTRY(2, cP, "/") = "events" AND ENTRY(4, cP, "/") = "decision"
+                THEN RUN h-mk-event-decide (fPathId(ENTRY(3, cP, "/"))).
+            ELSE IF cP = "market/reservations" THEN RUN h-mk-res-create.
+            ELSE IF n = 4 AND ENTRY(1, cP, "/") = "market" AND ENTRY(2, cP, "/") = "reservations" AND ENTRY(4, cP, "/") = "decision"
+                THEN RUN h-mk-res-decide (fPathId(ENTRY(3, cP, "/"))).
             ELSE RUN reply-error (404, "NOT_FOUND", "Unknown route.", ?).
         END.
         OTHERWISE RUN reply-error (405, "METHOD_NOT_ALLOWED", "Method not allowed.", ?).

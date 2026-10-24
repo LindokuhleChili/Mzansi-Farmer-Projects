@@ -84,6 +84,7 @@ All photos are **Pexels License** (free to use and modify, attribution not requi
 | `avatar-nomsa.jpg` | avatar of the made-up user "Nomsa" | Andrea Piacquadio | Happy African American female smiling at camera (3959954) | studio portrait; stands in for a made-up user |
 | `plot-beans.jpg` | Beans plot | Faisal Ahammad | Close-up of Green Beans on Plant in Garden (37270950) | not stated; see note above |
 | `plot-spinach.jpg` | Spinach plot | Sayeed Chowdhury | Fresh Green Spinach Growing in Rows Outdoors (35252799) | not stated; see note above |
+| `market-stall.jpg` | harvest-day market list header, event header and confirm sheet (docs/MARKET.md) | LekePOV | African Market Stall with Fresh Produce (35726906) | not stated on the page; not South African |
 
 ## Tests
 

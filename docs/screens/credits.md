@@ -11,6 +11,7 @@ Only real photographs are used, all under the **Pexels License** (https://www.pe
 | plot-cabbage.jpg | Cabbage Plot C thumbnails | Mark Stebnicki | Cabbage Field in Countryside | https://www.pexels.com/photo/22156650/ | Pexels License | not verified |
 | farmer-inspecting-crops.jpg | Desktop sidebar card | mk_photoz | African Farmer Inspecting Crops in Field | https://www.pexels.com/photo/34411687/ | Pexels License | Nigeria (per the page description) |
 | avatar-nomsa.jpg | Avatar of the made-up example user "Nomsa" | Andrea Piacquadio | Happy African American female smiling at camera | https://www.pexels.com/photo/3959954/ | Pexels License | studio portrait |
+| market-stall.jpg | Harvest-day market screens (list, event, confirm sheet) | LekePOV | African Market Stall with Fresh Produce (photo 35726906) | https://www.pexels.com/photo/35726906/ | Pexels License | not stated on the page (not South African) |
 
 ## Notes
 - **Not South African.** I found no free Pexels photo that is clearly a South African maize field. The two maize photos have no location on their Pexels pages, so do not present them as South African. The storm photo is Kenya, the farmer in the sidebar is Nigeria. Swap in South African photos later if you find or take some.

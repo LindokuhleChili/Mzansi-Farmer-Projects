@@ -184,6 +184,88 @@ export function buildApp({ config, oe, provider, clock = () => new Date() }) {
     return reply.code(r.status).send(r.status < 400 ? r.body : { ...r.body, requestId: req.id });
   });
 
+  // ---- 5. harvest-day market (docs/MARKET.md): the farmer lists a market day, ABL checks prices and lot stock,
+  //         publishing and cancelling need the same two-step confirmation as approving a suggestion
+  const qsOf = (req, keys) => {
+    const p = keys.filter((k) => req.query[k] !== undefined).map((k) => `${k}=${encodeURIComponent(req.query[k])}`);
+    return p.length ? '?' + p.join('&') : '';
+  };
+  app.get(`${PREFIX}/market/prices`, passthrough('oe.market_prices', () => '/farm/market/prices'));
+  app.get(`${PREFIX}/market/events`, passthrough('oe.market_events', (req) => `/farm/market/events${qsOf(req, ['status'])}`));
+  app.get(`${PREFIX}/market/events/:id`, passthrough('oe.market_event', (req) => { const id = intId(req.params.id); return id === null ? null : `/farm/market/events/${id}`; }));
+  app.get(`${PREFIX}/market/reservations`, passthrough('oe.market_reservations', (req) => `/farm/market/reservations${qsOf(req, ['eventId', 'itemId', 'status'])}`));
+
+  const EVENT_FIELDS = ['farmId', 'eventName', 'venue', 'area', 'notes', 'startsAt', 'endsAt', 'items'];
+  const pick = (b, keys) => Object.fromEntries(keys.filter((k) => b && b[k] !== undefined).map((k) => [k, b[k]]));
+  const mkSummary = (r) => ({ status: r.status, eventId: r.body.eventId, newStatus: r.body.status, rejectReasons: (r.body.rejectReasons || []).map((x) => x.code) });
+  async function saveEvent(req, reply, id) {
+    if (!requireApp(req, reply)) return;
+    if (id === null) return fail(reply, req, 400, 'VALIDATION_ERROR', 'id must be an integer.', { field: 'id' });
+    const b = req.body;
+    if (!b || typeof b !== 'object' || Array.isArray(b)) return fail(reply, req, 400, 'VALIDATION_ERROR', 'Body must be a JSON object.', { field: 'body' });
+    const path = id === undefined ? '/farm/market/events' : `/farm/market/events/${id}`;
+    const r = await oeCall(req, id === undefined ? 'oe.market_create_event' : 'oe.market_edit_event', 'POST', path,
+      { ...pick(b, EVENT_FIELDS), actor: 'farmer', requestId: req.id, asOf: clock().toISOString() }, mkSummary);
+    return reply.code(r.status).send(r.status < 400 ? r.body : { ...r.body, requestId: req.id });
+  }
+  app.post(`${PREFIX}/market/events`, (req, reply) => saveEvent(req, reply, undefined));
+  app.post(`${PREFIX}/market/events/:id`, (req, reply) => saveEvent(req, reply, intId(req.params.id)));
+
+  async function marketGated(req, reply, action) {
+    if (!requireApp(req, reply)) return;
+    const id = intId(req.params.id);
+    if (id === null) return fail(reply, req, 400, 'VALIDATION_ERROR', 'id must be an integer.', { field: 'id' });
+    const cur = await oeCall(req, 'oe.market_event', 'GET', `/farm/market/events/${id}`);
+    if (cur.status !== 200) return reply.code(cur.status).send({ ...cur.body, requestId: req.id });
+    const e = cur.body;
+    const token = req.body && req.body.confirmToken;
+    if (token === undefined) {
+      if (action === 'approve' && e.status === 'rejected') return fail(reply, req, 409, 'NOT_APPROVABLE', 'The rules blocked this market day. Change it and save it again.', { rejectReasons: e.rejectReasons });
+      if (action === 'approve' && e.status !== 'pending_approval') return fail(reply, req, 409, 'ALREADY_DECIDED', `Market day is already ${e.status}.`);
+      if (action === 'cancel' && !['pending_approval', 'published'].includes(e.status)) return fail(reply, req, 409, 'NOT_CANCELLABLE', `A ${e.status} market day cannot be cancelled.`);
+      const confirmToken = 'cfm_' + crypto.randomBytes(12).toString('hex');
+      confirmations.set(confirmToken, { marketEventId: id, action, expiresAt: clock().getTime() + CONFIRM_TTL_SECONDS * 1000 });
+      const summary = action === 'approve'
+        ? `Publish ${e.eventName} at ${e.venue} (${e.items.length} item(s), ${e.totalKg} kg)`
+        : `Cancel ${e.eventName}${e.reservedKg ? ` and its reservations (${e.reservedKg} kg)` : ''}`;
+      await tool(req, 'api.request_confirmation', { marketEventId: id, action }, async () => true, () => ({ issued: true }));
+      return reply.code(202).send({ error: 'CONFIRMATION_REQUIRED', message: 'Send the same request again with this confirmToken to confirm.', confirmToken, summary, expiresInSeconds: CONFIRM_TTL_SECONDS, requestId: req.id });
+    }
+    const rec = typeof token === 'string' ? confirmations.get(token) : undefined;
+    if (!rec || rec.marketEventId !== id || rec.action !== action || rec.expiresAt < clock().getTime()) {
+      return fail(reply, req, 403, 'CONFIRMATION_INVALID', 'The confirmToken is wrong, expired or was already used.');
+    }
+    confirmations.delete(token);
+    const r = await oeCall(req, `oe.market_${action}_event`, 'POST', `/farm/market/events/${id}/decision`,
+      { decision: action, actor: 'farmer', requestId: req.id, asOf: clock().toISOString() }, mkSummary);
+    return reply.code(r.status).send(r.status < 400 ? r.body : { ...r.body, requestId: req.id });
+  }
+  app.post(`${PREFIX}/market/events/:id/publish`, (req, reply) => marketGated(req, reply, 'approve'));
+  app.post(`${PREFIX}/market/events/:id/cancel`, (req, reply) => marketGated(req, reply, 'cancel'));
+  app.post(`${PREFIX}/market/events/:id/decline`, async (req, reply) => {
+    if (!requireApp(req, reply)) return;
+    const id = intId(req.params.id);
+    if (id === null) return fail(reply, req, 400, 'VALIDATION_ERROR', 'id must be an integer.', { field: 'id' });
+    const r = await oeCall(req, 'oe.market_decline_event', 'POST', `/farm/market/events/${id}/decision`, { decision: 'reject', actor: 'farmer', requestId: req.id, asOf: clock().toISOString() }, mkSummary);
+    return reply.code(r.status).send(r.status < 400 ? r.body : { ...r.body, requestId: req.id });
+  });
+  app.post(`${PREFIX}/market/reservations`, async (req, reply) => {
+    if (!requireApp(req, reply)) return;
+    const b = req.body;
+    if (!b || typeof b !== 'object' || Array.isArray(b)) return fail(reply, req, 400, 'VALIDATION_ERROR', 'Body must be a JSON object.', { field: 'body' });
+    const r = await oeCall(req, 'oe.market_reserve', 'POST', '/farm/market/reservations',
+      { ...pick(b, ['itemId', 'buyerName', 'quantityKg']), actor: 'buyer', requestId: req.id, asOf: clock().toISOString() },
+      (x) => ({ status: x.status, reservationId: x.body.reservationId, newStatus: x.body.status, rejectReasons: (x.body.rejectReasons || []).map((c) => c.code) }));
+    return reply.code(r.status).send(r.status < 400 ? r.body : { ...r.body, requestId: req.id });
+  });
+  app.post(`${PREFIX}/market/reservations/:id/cancel`, async (req, reply) => {
+    if (!requireApp(req, reply)) return;
+    const id = intId(req.params.id);
+    if (id === null) return fail(reply, req, 400, 'VALIDATION_ERROR', 'id must be an integer.', { field: 'id' });
+    const r = await oeCall(req, 'oe.market_cancel_reservation', 'POST', `/farm/market/reservations/${id}/decision`, { decision: 'cancel', actor: 'farmer', requestId: req.id, asOf: clock().toISOString() });
+    return reply.code(r.status).send(r.status < 400 ? r.body : { ...r.body, requestId: req.id });
+  });
+
   if (config.uiEnabled) registerUi(app, { config, oe, provider, clock, oeCall, fail });
 
   return app;

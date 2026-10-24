@@ -3014,6 +3014,1470 @@
      "verdict": "approved_by_rules"
     }
    }
+  },
+  {
+   "id": "MK01",
+   "title": "Market: retail-buyer reference prices list five crops, sorted by crop",
+   "request": {
+    "method": "GET",
+    "path": "/farm/market/prices"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "prices": [
+      {
+       "crop": "Beans",
+       "retailBuyerPricePerKg": 24
+      },
+      {
+       "crop": "Cabbage",
+       "retailBuyerPricePerKg": 6.5
+      },
+      {
+       "crop": "Maize",
+       "retailBuyerPricePerKg": 9.8
+      },
+      {
+       "crop": "Spinach",
+       "retailBuyerPricePerKg": 18
+      },
+      {
+       "crop": "Tomato",
+       "retailBuyerPricePerKg": 14
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "MK02",
+   "title": "Market: the three example harvest days are listed by start date (oldest first)",
+   "request": {
+    "method": "GET",
+    "path": "/farm/market/events"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "events": [
+      {
+       "eventId": 3,
+       "startsAt": "2026-10-17T06:00:00.000Z"
+      },
+      {
+       "eventId": 1,
+       "startsAt": "2026-10-31T06:00:00.000Z"
+      },
+      {
+       "eventId": 2,
+       "startsAt": "2026-11-14T07:00:00.000Z"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "MK03",
+   "title": "Market: event 1 shows its items with the retail-buyer price, the lot link and what can still be reserved",
+   "request": {
+    "method": "GET",
+    "path": "/farm/market/events/1"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "eventId": 1,
+     "status": "published",
+     "venue": "Dlamini farm gate (example)",
+     "totalKg": 620,
+     "reservedKg": 10,
+     "items": [
+      {
+       "itemId": 1,
+       "crop": "Maize",
+       "label": "Green mealies",
+       "quantityKg": 300,
+       "pricePerKg": 7.5,
+       "retailBuyerPricePerKg": 9.8,
+       "lotId": 2,
+       "reservedKg": 0,
+       "reservableKg": 150,
+       "walkUpKg": 300
+      },
+      {
+       "itemId": 2,
+       "crop": "Spinach",
+       "quantityKg": 120,
+       "pricePerKg": 12,
+       "lotId": null,
+       "reservedKg": 10,
+       "reservableKg": 50,
+       "walkUpKg": 110
+      },
+      {
+       "itemId": 3,
+       "crop": "Cabbage",
+       "quantityKg": 200,
+       "pricePerKg": 4.5
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "MK04",
+   "title": "Market: unknown event gives 404 EVENT_NOT_FOUND",
+   "request": {
+    "method": "GET",
+    "path": "/farm/market/events/99"
+   },
+   "expect": {
+    "status": 404,
+    "body": {
+     "error": "EVENT_NOT_FOUND",
+     "message": "No market event with id 99."
+    }
+   }
+  },
+  {
+   "id": "MK05",
+   "title": "Market: a valid harvest day below retail prices, 200 kg from lot 2, passes the rules and waits for the farmer",
+   "request": {
+    "method": "POST",
+    "path": "/farm/market/events",
+    "body": {
+     "eventName": "Harvest day (test)",
+     "venue": "Dlamini farm gate (example)",
+     "area": "Greytown, KZN (example)",
+     "startsAt": "2026-11-21T06:00:00Z",
+     "endsAt": "2026-11-21T10:00:00Z",
+     "items": [
+      {
+       "crop": "Maize",
+       "label": "Green mealies",
+       "quantityKg": 200,
+       "pricePerKg": 8,
+       "lotId": 2
+      },
+      {
+       "crop": "Cabbage",
+       "quantityKg": 50,
+       "pricePerKg": 5
+      }
+     ],
+     "requestId": "mk-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "eventId": 4,
+     "status": "pending_approval",
+     "verdict": "approved_by_rules",
+     "rejectReasons": [],
+     "decidedAt": null,
+     "items": [
+      {
+       "itemId": 7,
+       "lotId": 2,
+       "quantityKg": 200
+      },
+      {
+       "itemId": 8,
+       "label": "Cabbage",
+       "lotId": null
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "MK06",
+   "title": "Market: a price equal to the retail-buyer price is rejected with PRICE_NOT_BELOW_RETAIL and a suggested price of R9.79",
+   "request": {
+    "method": "POST",
+    "path": "/farm/market/events",
+    "body": {
+     "eventName": "Harvest day (test)",
+     "venue": "Dlamini farm gate (example)",
+     "area": "Greytown, KZN (example)",
+     "startsAt": "2026-11-21T06:00:00Z",
+     "endsAt": "2026-11-21T10:00:00Z",
+     "items": [
+      {
+       "crop": "Maize",
+       "quantityKg": 100,
+       "pricePerKg": 9.8
+      }
+     ],
+     "requestId": "mk-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "eventId": 5,
+     "status": "rejected",
+     "verdict": "rejected_by_rules",
+     "rejectReasons": [
+      {
+       "code": "PRICE_NOT_BELOW_RETAIL",
+       "item": 1,
+       "suggestedPricePerKg": 9.79,
+       "message": "Item 1: R9.80 per kg is not below the retail-buyer price of R9.80 per kg for Maize. Use R9.79 or less."
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "MK07",
+   "title": "Market: 600 kg from lot 2 when only 500 kg is free (300 kg listed by event 1, 200 kg by pending event 4) is LOT_STOCK_EXCEEDED, suggested 500 kg",
+   "request": {
+    "method": "POST",
+    "path": "/farm/market/events",
+    "body": {
+     "eventName": "Harvest day (test)",
+     "venue": "Dlamini farm gate (example)",
+     "area": "Greytown, KZN (example)",
+     "startsAt": "2026-11-21T06:00:00Z",
+     "endsAt": "2026-11-21T10:00:00Z",
+     "items": [
+      {
+       "crop": "Maize",
+       "quantityKg": 600,
+       "pricePerKg": 8,
+       "lotId": 2
+      }
+     ],
+     "requestId": "mk-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "eventId": 6,
+     "status": "rejected",
+     "rejectReasons": [
+      {
+       "code": "LOT_STOCK_EXCEEDED",
+       "item": 1,
+       "suggestedKg": 500
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "MK08",
+   "title": "Market: two items from the same lot count together (300 + 300 kg against 500 kg free): only the second item is over",
+   "request": {
+    "method": "POST",
+    "path": "/farm/market/events",
+    "body": {
+     "eventName": "Harvest day (test)",
+     "venue": "Dlamini farm gate (example)",
+     "area": "Greytown, KZN (example)",
+     "startsAt": "2026-11-21T06:00:00Z",
+     "endsAt": "2026-11-21T10:00:00Z",
+     "items": [
+      {
+       "crop": "Maize",
+       "quantityKg": 300,
+       "pricePerKg": 8,
+       "lotId": 2
+      },
+      {
+       "crop": "Maize",
+       "label": "Dry maize",
+       "quantityKg": 300,
+       "pricePerKg": 7,
+       "lotId": 2
+      }
+     ],
+     "requestId": "mk-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "eventId": 7,
+     "status": "rejected",
+     "rejectReasons": [
+      {
+       "code": "LOT_STOCK_EXCEEDED",
+       "item": 2,
+       "suggestedKg": 200
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "MK09",
+   "title": "Market: a beans item cannot draw on maize lot 2 (LOT_CROP_MISMATCH)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/market/events",
+    "body": {
+     "eventName": "Harvest day (test)",
+     "venue": "Dlamini farm gate (example)",
+     "area": "Greytown, KZN (example)",
+     "startsAt": "2026-11-21T06:00:00Z",
+     "endsAt": "2026-11-21T10:00:00Z",
+     "items": [
+      {
+       "crop": "Beans",
+       "quantityKg": 50,
+       "pricePerKg": 15,
+       "lotId": 2
+      }
+     ],
+     "requestId": "mk-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "eventId": 8,
+     "status": "rejected",
+     "rejectReasons": [
+      {
+       "code": "LOT_CROP_MISMATCH",
+       "item": 1,
+       "message": "Item 1: harvest lot HL-0043 is Maize, not Beans."
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "MK10",
+   "title": "Market: a crop with no retail-buyer reference price is NO_REFERENCE_PRICE",
+   "request": {
+    "method": "POST",
+    "path": "/farm/market/events",
+    "body": {
+     "eventName": "Harvest day (test)",
+     "venue": "Dlamini farm gate (example)",
+     "area": "Greytown, KZN (example)",
+     "startsAt": "2026-11-21T06:00:00Z",
+     "endsAt": "2026-11-21T10:00:00Z",
+     "items": [
+      {
+       "crop": "Pumpkin",
+       "quantityKg": 40,
+       "pricePerKg": 5
+      }
+     ],
+     "requestId": "mk-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "eventId": 9,
+     "status": "rejected",
+     "rejectReasons": [
+      {
+       "code": "NO_REFERENCE_PRICE",
+       "item": 1
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "MK11",
+   "title": "Market: a harvest day that already started is EVENT_NOT_IN_FUTURE",
+   "request": {
+    "method": "POST",
+    "path": "/farm/market/events",
+    "body": {
+     "eventName": "Harvest day (test)",
+     "venue": "Dlamini farm gate (example)",
+     "area": "Greytown, KZN (example)",
+     "startsAt": "2026-10-22T06:00:00Z",
+     "endsAt": "2026-10-22T10:00:00Z",
+     "items": [
+      {
+       "crop": "Cabbage",
+       "quantityKg": 40,
+       "pricePerKg": 5
+      }
+     ],
+     "requestId": "mk-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "eventId": 10,
+     "status": "rejected",
+     "rejectReasons": [
+      {
+       "code": "EVENT_NOT_IN_FUTURE"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "MK12",
+   "title": "Market: several broken rules are all reported in order",
+   "request": {
+    "method": "POST",
+    "path": "/farm/market/events",
+    "body": {
+     "eventName": "Harvest day (test)",
+     "venue": "Dlamini farm gate (example)",
+     "area": "Greytown, KZN (example)",
+     "startsAt": "2026-10-23T08:10:00Z",
+     "endsAt": "2026-10-23T09:00:00Z",
+     "items": [
+      {
+       "crop": "Spinach",
+       "quantityKg": 10,
+       "pricePerKg": 20
+      },
+      {
+       "crop": "Beans",
+       "quantityKg": 10,
+       "pricePerKg": 10,
+       "lotId": 1
+      }
+     ],
+     "requestId": "mk-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "eventId": 11,
+     "rejectReasons": [
+      {
+       "code": "EVENT_NOT_IN_FUTURE"
+      },
+      {
+       "code": "PRICE_NOT_BELOW_RETAIL",
+       "item": 1,
+       "suggestedPricePerKg": 17.99
+      },
+      {
+       "code": "LOT_CROP_MISMATCH",
+       "item": 2
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "MK13",
+   "title": "Market: endsAt before startsAt is a 400 VALIDATION_ERROR on endsAt",
+   "request": {
+    "method": "POST",
+    "path": "/farm/market/events",
+    "body": {
+     "eventName": "Harvest day (test)",
+     "venue": "Dlamini farm gate (example)",
+     "area": "Greytown, KZN (example)",
+     "startsAt": "2026-11-21T10:00:00Z",
+     "endsAt": "2026-11-21T06:00:00Z",
+     "items": [
+      {
+       "crop": "Cabbage",
+       "quantityKg": 40,
+       "pricePerKg": 5
+      }
+     ],
+     "requestId": "mk-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "endsAt"
+    }
+   }
+  },
+  {
+   "id": "MK14",
+   "title": "Market: an event with no items is a 400 VALIDATION_ERROR on items",
+   "request": {
+    "method": "POST",
+    "path": "/farm/market/events",
+    "body": {
+     "eventName": "Harvest day (test)",
+     "venue": "Dlamini farm gate (example)",
+     "area": "Greytown, KZN (example)",
+     "startsAt": "2026-11-21T06:00:00Z",
+     "endsAt": "2026-11-21T10:00:00Z",
+     "items": [],
+     "requestId": "mk-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "items",
+     "message": "items must be a list of 1 to 20 items."
+    }
+   }
+  },
+  {
+   "id": "MK15",
+   "title": "Market: 1.5 kg is a 400 VALIDATION_ERROR on items[0].quantityKg (whole kg only)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/market/events",
+    "body": {
+     "eventName": "Harvest day (test)",
+     "venue": "Dlamini farm gate (example)",
+     "area": "Greytown, KZN (example)",
+     "startsAt": "2026-11-21T06:00:00Z",
+     "endsAt": "2026-11-21T10:00:00Z",
+     "items": [
+      {
+       "crop": "Cabbage",
+       "quantityKg": 1.5,
+       "pricePerKg": 5
+      }
+     ],
+     "requestId": "mk-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "items[0].quantityKg"
+    }
+   }
+  },
+  {
+   "id": "MK16",
+   "title": "Market: a price with three decimals is a 400 VALIDATION_ERROR on items[1].pricePerKg",
+   "request": {
+    "method": "POST",
+    "path": "/farm/market/events",
+    "body": {
+     "eventName": "Harvest day (test)",
+     "venue": "Dlamini farm gate (example)",
+     "area": "Greytown, KZN (example)",
+     "startsAt": "2026-11-21T06:00:00Z",
+     "endsAt": "2026-11-21T10:00:00Z",
+     "items": [
+      {
+       "crop": "Cabbage",
+       "quantityKg": 5,
+       "pricePerKg": 5
+      },
+      {
+       "crop": "Maize",
+       "quantityKg": 5,
+       "pricePerKg": 5.555
+      }
+     ],
+     "requestId": "mk-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "items[1].pricePerKg"
+    }
+   }
+  },
+  {
+   "id": "MK17",
+   "title": "Market: a missing event name is a 400 VALIDATION_ERROR on eventName",
+   "request": {
+    "method": "POST",
+    "path": "/farm/market/events",
+    "body": {
+     "eventName": "",
+     "venue": "Dlamini farm gate (example)",
+     "area": "Greytown, KZN (example)",
+     "startsAt": "2026-11-21T06:00:00Z",
+     "endsAt": "2026-11-21T10:00:00Z",
+     "items": [
+      {
+       "crop": "Cabbage",
+       "quantityKg": 5,
+       "pricePerKg": 5
+      }
+     ],
+     "requestId": "mk-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "eventName"
+    }
+   }
+  },
+  {
+   "id": "MK18",
+   "title": "Market: an unknown harvest lot is 404 LOT_NOT_FOUND",
+   "request": {
+    "method": "POST",
+    "path": "/farm/market/events",
+    "body": {
+     "eventName": "Harvest day (test)",
+     "venue": "Dlamini farm gate (example)",
+     "area": "Greytown, KZN (example)",
+     "startsAt": "2026-11-21T06:00:00Z",
+     "endsAt": "2026-11-21T10:00:00Z",
+     "items": [
+      {
+       "crop": "Maize",
+       "quantityKg": 5,
+       "pricePerKg": 5,
+       "lotId": 99
+      }
+     ],
+     "requestId": "mk-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 404,
+    "body": {
+     "error": "LOT_NOT_FOUND",
+     "message": "No harvest lot with id 99."
+    }
+   }
+  },
+  {
+   "id": "MK19",
+   "title": "Market: an unknown farm is 404 FARM_NOT_FOUND",
+   "request": {
+    "method": "POST",
+    "path": "/farm/market/events",
+    "body": {
+     "eventName": "Harvest day (test)",
+     "venue": "Dlamini farm gate (example)",
+     "area": "Greytown, KZN (example)",
+     "startsAt": "2026-11-21T06:00:00Z",
+     "endsAt": "2026-11-21T10:00:00Z",
+     "items": [
+      {
+       "crop": "Maize",
+       "quantityKg": 5,
+       "pricePerKg": 5
+      }
+     ],
+     "requestId": "mk-test",
+     "asOf": "2026-10-23T08:10:00Z",
+     "farmId": 42
+    }
+   },
+   "expect": {
+    "status": 404,
+    "body": {
+     "error": "FARM_NOT_FOUND"
+    }
+   }
+  },
+  {
+   "id": "MK20",
+   "title": "Market: the farmer publishes event 4; the rules run again and pass",
+   "request": {
+    "method": "POST",
+    "path": "/farm/market/events/4/decision",
+    "body": {
+     "decision": "approve",
+     "actor": "farmer",
+     "requestId": "mk-test",
+     "asOf": "2026-10-23T08:20:00Z"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "eventId": 4,
+     "status": "published",
+     "decidedAt": "2026-10-23T08:20:00.000Z"
+    }
+   }
+  },
+  {
+   "id": "MK21",
+   "title": "Market: publishing event 4 again is 409 ALREADY_DECIDED",
+   "request": {
+    "method": "POST",
+    "path": "/farm/market/events/4/decision",
+    "body": {
+     "decision": "approve",
+     "actor": "farmer",
+     "requestId": "mk-test",
+     "asOf": "2026-10-23T08:20:00Z"
+    }
+   },
+   "expect": {
+    "status": 409,
+    "body": {
+     "error": "ALREADY_DECIDED"
+    }
+   }
+  },
+  {
+   "id": "MK22",
+   "title": "Market: an event rejected by the rules cannot be published (409 NOT_APPROVABLE)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/market/events/6/decision",
+    "body": {
+     "decision": "approve",
+     "actor": "farmer",
+     "requestId": "mk-test",
+     "asOf": "2026-10-23T08:20:00Z"
+    }
+   },
+   "expect": {
+    "status": 409,
+    "body": {
+     "error": "NOT_APPROVABLE"
+    }
+   }
+  },
+  {
+   "id": "MK23",
+   "title": "Market: editing rejected event 6 down to 500 kg passes the rules and waits for approval again (its own old items do not count)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/market/events/6",
+    "body": {
+     "eventName": "Harvest day (test, edited)",
+     "venue": "Dlamini farm gate (example)",
+     "area": "Greytown, KZN (example)",
+     "startsAt": "2026-11-21T06:00:00Z",
+     "endsAt": "2026-11-21T10:00:00Z",
+     "items": [
+      {
+       "crop": "Maize",
+       "label": "Green mealies",
+       "quantityKg": 500,
+       "pricePerKg": 8,
+       "lotId": 2
+      }
+     ],
+     "requestId": "mk-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "eventId": 6,
+     "eventName": "Harvest day (test, edited)",
+     "status": "pending_approval",
+     "verdict": "approved_by_rules",
+     "rejectReasons": [],
+     "items": [
+      {
+       "itemId": 18,
+       "quantityKg": 500
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "MK24",
+   "title": "Market: lot 2 is now fully listed (300 + 200 + 500 kg), so a further 1 kg is LOT_STOCK_EXCEEDED with suggested 0 kg",
+   "request": {
+    "method": "POST",
+    "path": "/farm/market/events",
+    "body": {
+     "eventName": "Harvest day (test)",
+     "venue": "Dlamini farm gate (example)",
+     "area": "Greytown, KZN (example)",
+     "startsAt": "2026-11-21T06:00:00Z",
+     "endsAt": "2026-11-21T10:00:00Z",
+     "items": [
+      {
+       "crop": "Maize",
+       "quantityKg": 1,
+       "pricePerKg": 8,
+       "lotId": 2
+      }
+     ],
+     "requestId": "mk-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "eventId": 12,
+     "rejectReasons": [
+      {
+       "code": "LOT_STOCK_EXCEEDED",
+       "suggestedKg": 0
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "MK25",
+   "title": "Market: the farmer declines event 6; its 500 kg are free again",
+   "request": {
+    "method": "POST",
+    "path": "/farm/market/events/6/decision",
+    "body": {
+     "decision": "reject",
+     "actor": "farmer",
+     "requestId": "mk-test",
+     "asOf": "2026-10-23T08:20:00Z"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "status": "declined"
+    }
+   }
+  },
+  {
+   "id": "MK26",
+   "title": "Market: after the decline, 500 kg from lot 2 pass again",
+   "request": {
+    "method": "POST",
+    "path": "/farm/market/events",
+    "body": {
+     "eventName": "Harvest day (test)",
+     "venue": "Dlamini farm gate (example)",
+     "area": "Greytown, KZN (example)",
+     "startsAt": "2026-10-24T06:00:00Z",
+     "endsAt": "2026-10-24T10:00:00Z",
+     "items": [
+      {
+       "crop": "Maize",
+       "quantityKg": 500,
+       "pricePerKg": 8,
+       "lotId": 2
+      }
+     ],
+     "requestId": "mk-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "eventId": 13,
+     "status": "pending_approval"
+    }
+   }
+  },
+  {
+   "id": "MK27",
+   "title": "Market: approval re-runs the rules: event 13 starts at 08:00 on 24 Oct, so approving at 09:00 that day is blocked (EVENT_NOT_IN_FUTURE)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/market/events/13/decision",
+    "body": {
+     "decision": "approve",
+     "actor": "farmer",
+     "requestId": "mk-test",
+     "asOf": "2026-10-24T09:00:00Z"
+    }
+   },
+   "expect": {
+    "status": 409,
+    "body": {
+     "eventId": 13,
+     "status": "rejected",
+     "error": "NOT_APPROVABLE",
+     "rejectReasons": [
+      {
+       "code": "EVENT_NOT_IN_FUTURE"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "MK28",
+   "title": "Market: an event with reservations cannot be edited (409 HAS_RESERVATIONS)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/market/events/1",
+    "body": {
+     "eventName": "Harvest day (test)",
+     "venue": "Dlamini farm gate (example)",
+     "area": "Greytown, KZN (example)",
+     "startsAt": "2026-11-21T06:00:00Z",
+     "endsAt": "2026-11-21T10:00:00Z",
+     "items": [
+      {
+       "crop": "Cabbage",
+       "quantityKg": 5,
+       "pricePerKg": 5
+      }
+     ],
+     "requestId": "mk-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 409,
+    "body": {
+     "error": "HAS_RESERVATIONS"
+    }
+   }
+  },
+  {
+   "id": "MK29",
+   "title": "Market: unknown decision is a 400 VALIDATION_ERROR",
+   "request": {
+    "method": "POST",
+    "path": "/farm/market/events/1/decision",
+    "body": {
+     "decision": "publish",
+     "actor": "farmer",
+     "requestId": "mk-test",
+     "asOf": "2026-10-23T08:20:00Z"
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "decision"
+    }
+   }
+  },
+  {
+   "id": "MK30",
+   "title": "Reservation: 20 kg of green mealies on published event 1 is confirmed",
+   "request": {
+    "method": "POST",
+    "path": "/farm/market/reservations",
+    "body": {
+     "itemId": 1,
+     "buyerName": "Ayanda Mthembu (example)",
+     "quantityKg": 20,
+     "requestId": "mk-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "reservationId": 2,
+     "eventId": 1,
+     "itemId": 1,
+     "quantityKg": 20,
+     "status": "confirmed",
+     "verdict": "approved_by_rules"
+    }
+   }
+  },
+  {
+   "id": "MK31",
+   "title": "Reservation: 60 kg is above the 50 kg cap per reservation (RESERVE_CAP_EXCEEDED, suggested 50 kg)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/market/reservations",
+    "body": {
+     "itemId": 1,
+     "buyerName": "Ayanda Mthembu (example)",
+     "quantityKg": 60,
+     "requestId": "mk-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "reservationId": 3,
+     "status": "rejected",
+     "rejectReasons": [
+      {
+       "code": "RESERVE_CAP_EXCEEDED",
+       "suggestedKg": 50
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "MK32",
+   "title": "Reservation: 45 kg of spinach fits (half of 120 kg may be reserved; 10 kg already is)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/market/reservations",
+    "body": {
+     "itemId": 2,
+     "buyerName": "Ayanda Mthembu (example)",
+     "quantityKg": 45,
+     "requestId": "mk-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "reservationId": 4,
+     "status": "confirmed"
+    }
+   }
+  },
+  {
+   "id": "MK33",
+   "title": "Reservation: only 5 kg of spinach is left to reserve; 10 kg is RESERVE_STOCK_EXCEEDED, suggested 5 kg, the rest is kept for walk-up buyers",
+   "request": {
+    "method": "POST",
+    "path": "/farm/market/reservations",
+    "body": {
+     "itemId": 2,
+     "buyerName": "Ayanda Mthembu (example)",
+     "quantityKg": 10,
+     "requestId": "mk-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "reservationId": 5,
+     "status": "rejected",
+     "rejectReasons": [
+      {
+       "code": "RESERVE_STOCK_EXCEEDED",
+       "suggestedKg": 5,
+       "message": "Only 5 kg of Spinach bunches can still be reserved. The rest is kept for walk-up buyers."
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "MK34",
+   "title": "Reservation: spinach now shows 55 kg reserved, 5 kg still reservable and 65 kg kept for walk-up buyers",
+   "request": {
+    "method": "GET",
+    "path": "/farm/market/events/1"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "reservedKg": 75,
+     "items": [
+      {
+       "reservedKg": 20,
+       "reservableKg": 130
+      },
+      {
+       "reservedKg": 55,
+       "reservableKg": 5,
+       "walkUpKg": 65
+      },
+      {
+       "reservedKg": 0
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "MK35",
+   "title": "Reservation: an item of a past harvest day is RESERVATIONS_CLOSED",
+   "request": {
+    "method": "POST",
+    "path": "/farm/market/reservations",
+    "body": {
+     "itemId": 6,
+     "buyerName": "Ayanda Mthembu (example)",
+     "quantityKg": 5,
+     "requestId": "mk-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "reservationId": 6,
+     "status": "rejected",
+     "rejectReasons": [
+      {
+       "code": "RESERVATIONS_CLOSED"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "MK36",
+   "title": "Reservation: an item of an event that is not published is EVENT_NOT_OPEN",
+   "request": {
+    "method": "POST",
+    "path": "/farm/market/reservations",
+    "body": {
+     "itemId": 12,
+     "buyerName": "Ayanda Mthembu (example)",
+     "quantityKg": 5,
+     "requestId": "mk-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "reservationId": 7,
+     "status": "rejected",
+     "rejectReasons": [
+      {
+       "code": "EVENT_NOT_OPEN"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "MK37",
+   "title": "Reservation: unknown item is 404 ITEM_NOT_FOUND",
+   "request": {
+    "method": "POST",
+    "path": "/farm/market/reservations",
+    "body": {
+     "itemId": 999,
+     "buyerName": "Ayanda Mthembu (example)",
+     "quantityKg": 5,
+     "requestId": "mk-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 404,
+    "body": {
+     "error": "ITEM_NOT_FOUND",
+     "message": "No market item with id 999."
+    }
+   }
+  },
+  {
+   "id": "MK38",
+   "title": "Reservation: an empty buyer name is a 400 VALIDATION_ERROR on buyerName",
+   "request": {
+    "method": "POST",
+    "path": "/farm/market/reservations",
+    "body": {
+     "itemId": 1,
+     "buyerName": "",
+     "quantityKg": 5,
+     "requestId": "mk-test",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "buyerName"
+    }
+   }
+  },
+  {
+   "id": "MK39",
+   "title": "Reservation: cancelling reservation 2 frees its 20 kg",
+   "request": {
+    "method": "POST",
+    "path": "/farm/market/reservations/2/decision",
+    "body": {
+     "decision": "cancel",
+     "actor": "farmer",
+     "requestId": "mk-test",
+     "asOf": "2026-10-23T08:20:00Z"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "reservationId": 2,
+     "status": "cancelled",
+     "decidedAt": "2026-10-23T08:20:00.000Z"
+    }
+   }
+  },
+  {
+   "id": "MK40",
+   "title": "Reservation: cancelling it again is 409 ALREADY_DECIDED",
+   "request": {
+    "method": "POST",
+    "path": "/farm/market/reservations/2/decision",
+    "body": {
+     "decision": "cancel",
+     "actor": "farmer",
+     "requestId": "mk-test",
+     "asOf": "2026-10-23T08:20:00Z"
+    }
+   },
+   "expect": {
+    "status": 409,
+    "body": {
+     "error": "ALREADY_DECIDED"
+    }
+   }
+  },
+  {
+   "id": "MK41",
+   "title": "Reservation: list by event shows every reservation of event 1, oldest first",
+   "request": {
+    "method": "GET",
+    "path": "/farm/market/reservations?eventId=1"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "reservations": [
+      {
+       "reservationId": 1,
+       "status": "confirmed"
+      },
+      {
+       "reservationId": 2,
+       "status": "cancelled"
+      },
+      {
+       "reservationId": 3,
+       "status": "rejected"
+      },
+      {
+       "reservationId": 4,
+       "status": "confirmed"
+      },
+      {
+       "reservationId": 5,
+       "status": "rejected"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "MK42",
+   "title": "Market: cancelling event 1 also cancels its two confirmed reservations",
+   "request": {
+    "method": "POST",
+    "path": "/farm/market/events/1/decision",
+    "body": {
+     "decision": "cancel",
+     "actor": "farmer",
+     "requestId": "mk-test",
+     "asOf": "2026-10-23T08:20:00Z"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "eventId": 1,
+     "status": "cancelled",
+     "reservedKg": 0
+    }
+   }
+  },
+  {
+   "id": "MK43",
+   "title": "Market: a declined event cannot be cancelled (409 NOT_CANCELLABLE)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/market/events/6/decision",
+    "body": {
+     "decision": "cancel",
+     "actor": "farmer",
+     "requestId": "mk-test",
+     "asOf": "2026-10-23T08:20:00Z"
+    }
+   },
+   "expect": {
+    "status": 409,
+    "body": {
+     "error": "NOT_CANCELLABLE"
+    }
+   }
+  },
+  {
+   "id": "MK44",
+   "title": "Market: only published events are listed with status=published",
+   "request": {
+    "method": "GET",
+    "path": "/farm/market/events?status=published"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "events": [
+      {
+       "eventId": 3
+      },
+      {
+       "eventId": 2
+      },
+      {
+       "eventId": 4
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "MK45",
+   "title": "Audit: the blocked event wrote a market_rule_check row",
+   "request": {
+    "method": "GET",
+    "path": "/farm/audit?limit=500"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "events": {
+      "$contains": {
+       "event": "market_rule_check",
+       "actor": "abl-rules",
+       "detail": "event 5 1 item(s) => rejected_by_rules"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "MK46",
+   "title": "Audit: publishing wrote a market_event_published row",
+   "request": {
+    "method": "GET",
+    "path": "/farm/audit?limit=500"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "events": {
+      "$contains": {
+       "event": "market_event_published",
+       "actor": "farmer",
+       "detail": "event 4"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "MK47",
+   "title": "Audit: the blocked approval wrote a market_publish_blocked_by_rules row",
+   "request": {
+    "method": "GET",
+    "path": "/farm/audit?limit=500"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "events": {
+      "$contains": {
+       "event": "market_publish_blocked_by_rules",
+       "detail": "event 13"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "MK48",
+   "title": "Audit: the edit wrote a market_event_edited row",
+   "request": {
+    "method": "GET",
+    "path": "/farm/audit?limit=500"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "events": {
+      "$contains": {
+       "event": "market_event_edited",
+       "detail": "event 6"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "MK49",
+   "title": "Audit: reservations wrote reservation_rule_check rows",
+   "request": {
+    "method": "GET",
+    "path": "/farm/audit?limit=500"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "events": {
+      "$contains": {
+       "event": "reservation_rule_check",
+       "actor": "abl-rules",
+       "detail": "reservation 5 item 2 10 kg => rejected_by_rules"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "MK50",
+   "title": "Audit: cancelling the event wrote market_event_cancelled with the number of reservations",
+   "request": {
+    "method": "GET",
+    "path": "/farm/audit?limit=500"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "events": {
+      "$contains": {
+       "event": "market_event_cancelled",
+       "detail": "event 1: 2 reservation(s) cancelled"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "MK51",
+   "title": "Audit: cancelling a reservation wrote reservation_cancelled",
+   "request": {
+    "method": "GET",
+    "path": "/farm/audit?limit=500"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "events": {
+      "$contains": {
+       "event": "reservation_cancelled",
+       "detail": "reservation 2"
+      }
+     }
+    }
+   }
   }
  ]
 }

@@ -72,6 +72,33 @@ const en = {
   e_UNAUTHORIZED: 'The app token was not accepted.', e_OE_UNAVAILABLE: 'OpenEdge is not reachable right now. Nothing was changed.', e_OE_TIMEOUT: 'OpenEdge took too long to answer. Nothing was changed.',
   e_CONFIRMATION_INVALID: 'The confirmation expired or was already used. Press Approve to start again.', e_NOT_APPROVABLE: 'The rules blocked this suggestion, so it cannot be approved.', e_ALREADY_DECIDED: 'This suggestion was already decided.',
   e_WATER_BUDGET_EXCEEDED: 'The weekly water budget would be exceeded.',
+  // ---- harvest-day market (docs/MARKET.md)
+  mk_nav: 'Market', mk_title: 'Harvest-day market', mk_sub: 'Sell straight to your community on market day, below what big retail buyers pay you.',
+  mk_new: 'New market day', mk_edit: 'Edit market day', mk_none: 'No market days here yet.', mk_hero_t: 'Your next market day', mk_hero_none: 'Plan a market day and tell your community.',
+  mk_f_upcoming: 'Upcoming', mk_f_waiting: 'Waiting for you', mk_f_blocked: 'Blocked by rules', mk_f_past: 'Past & cancelled',
+  mk_st_pending_approval: 'Waiting for you', mk_st_published: 'Published', mk_st_rejected: 'Blocked by a rule', mk_st_declined: 'Declined', mk_st_cancelled: 'Cancelled',
+  mk_items_n: '{n} items', mk_items_1: '1 item', mk_kg_total: '{kg} kg on sale', mk_reserved_kg: '{kg} kg reserved',
+  mk_when: 'When', mk_where: 'Where', mk_notes: 'Notes', mk_produce: 'Produce on sale', mk_time: '{a} – {b}',
+  mk_col_item: 'Item', mk_col_kg: 'Kg', mk_col_price: 'Your price', mk_col_retail: 'Retail buyer pays', mk_col_reserve: 'Can reserve', mk_col_walk: 'Not reserved yet',
+  mk_below: 'R{d} below', mk_per_kg: 'R{p}/kg', mk_lot: 'Co-op lot {id}', mk_no_ref: 'no reference price',
+  mk_rules: 'OpenEdge rule check', mk_rules_ok: 'Passed all rules', mk_rules_bad: 'Blocked by rules', mk_item_n: 'Item {n}',
+  mk_publish: 'Publish', mk_decline: 'Decline', mk_cancel_event: 'Cancel market day', mk_edit_btn: 'Edit',
+  mk_publish_hint: 'Publishing asks you to confirm once more. The rules run again when you confirm.',
+  mk_has_res: 'This market day has reservations, so it cannot be edited. Cancel it and make a new one.',
+  mk_confirm_publish: 'Confirm and publish', mk_confirm_cancel: 'Confirm and cancel', mk_you_publishing: 'You are publishing', mk_you_cancelling: 'You are cancelling',
+  mk_published: 'Published. Your community can see it now.', mk_cancelled: 'Market day cancelled. Reservations were cancelled too.', mk_declined: 'Declined. It stays in the audit log.',
+  mk_res_title: 'Reservations', mk_res_hint: 'Optional. Up to {cap} kg per buyer, and at most half of each item, so walk-up buyers always find produce.',
+  mk_res_none: 'No reservations yet. Buyers can still just walk up on the day.', mk_res_closed: 'Reservations are closed. Walk up on the day.',
+  mk_res_buyer: 'Buyer name', mk_res_item: 'Item', mk_res_kg: 'Kg', mk_res_add: 'Reserve', mk_res_ok: 'Reserved {kg} kg for {name}.', mk_res_cancel: 'Cancel reservation', mk_res_cancelled: 'Reservation cancelled.',
+  mk_form_name: 'Name of the market day', mk_form_venue: 'Place', mk_form_area: 'Area (optional)', mk_form_date: 'Date', mk_form_start: 'Starts', mk_form_end: 'Ends', mk_form_notes: 'Notes for buyers (optional)',
+  mk_form_items: 'Produce', mk_form_crop: 'Crop', mk_form_label: 'Label (optional)', mk_form_kg: 'Kg', mk_form_price: 'Price per kg (R)', mk_form_lot: 'Co-op lot (optional)',
+  mk_form_ref: 'Retail buyer pays R{p}/kg. Your price must be lower.', mk_form_add: 'Add produce', mk_form_remove: 'Remove', mk_form_save: 'Save and check the rules', mk_form_hint: 'OpenEdge checks every price against the retail buyer price and every lot against its free stock. Then you publish.',
+  mk_saved_ok: 'Saved. The rules passed. Publish it when you are ready.', mk_saved_bad: 'Saved, but the rules blocked it. See why below.',
+  mk_back: 'All market days', mk_example: 'Prices and events are example data.',
+  r_EVENT_NOT_IN_FUTURE: 'Starts in the future', r_NO_REFERENCE_PRICE: 'Has a retail reference price', r_PRICE_NOT_BELOW_RETAIL: 'Below the retail buyer price', r_LOT_CROP_MISMATCH: 'Same crop as the lot', r_LOT_STOCK_EXCEEDED: 'Within the lot’s free stock',
+  r_EVENT_NOT_OPEN: 'Market day is published', r_RESERVATIONS_CLOSED: 'Reservations still open', r_RESERVE_CAP_EXCEEDED: 'Within the per-buyer limit', r_RESERVE_STOCK_EXCEEDED: 'Enough left to reserve',
+  e_HAS_RESERVATIONS: 'This market day has reservations, so it cannot be edited.', e_NOT_CANCELLABLE: 'This market day cannot be cancelled.', e_EVENT_NOT_FOUND: 'Market day not found.', e_ITEM_NOT_FOUND: 'That item is not on this market day.', e_LOT_NOT_FOUND: 'That co-op lot does not exist.', e_VALIDATION_ERROR: 'Please check the form.',
+  ev_market_rule_check: 'Rules checked a market day', ev_market_event_published: 'Farmer published a market day', ev_market_event_declined: 'Farmer declined a market day', ev_market_event_cancelled: 'Market day cancelled', ev_market_event_edited: 'Market day edited', ev_market_publish_blocked_by_rules: 'Publishing blocked by rules', ev_reservation_rule_check: 'Rules checked a reservation', ev_reservation_cancelled: 'Reservation cancelled',
   credits: 'Photos: Pexels (free licence). See the photo credits in the docs. Names, plots and readings are fictional example data.',
   how_title: 'How this works', how_1: 'Sensors send readings to the API.', how_2: 'The AI proposes an action.', how_3: 'OpenEdge rules approve or reject it.', how_4: 'You approve in two steps.',
 };
@@ -82,12 +109,30 @@ const zu = {
   confirm_title: 'Qinisekisa isinqumo sakho.',
   isizulu: 'isiZulu',
 };
+// Harvest-day market lines in isiZulu. DRAFT: written for this feature and not yet in the approved table, so they are kept apart
+// from `zu` above and must be reviewed by a native speaker before any demo (docs/MARKET.md lists every line). Keys not here stay in English.
+const zuMarket = {
+  mk_nav: 'Imakethe',
+  mk_title: 'Imakethe yosuku lokuvuna',
+  mk_new: 'Usuku olusha lwemakethe',
+  mk_f_upcoming: 'Ezizayo',
+  mk_st_published: 'Kushicilelwe',
+  mk_when: 'Nini',
+  mk_where: 'Kuphi',
+  mk_produce: 'Okuthengiswayo',
+  mk_publish: 'Shicilela',
+  mk_res_title: 'Ukubekisa',
+  mk_res_add: 'Bekisa',
+  mk_res_closed: 'Ukubekisa kuvaliwe. Woza ngosuku lwemakethe.',
+  mk_res_none: 'Akekho osebekisile. Abathengi bangafika nje ngosuku.',
+};
 export const t = (key, vars = {}) => {
-  const s = (lang === 'zu' && zu[key]) || en[key] || key;
+  const s = (lang === 'zu' && (zu[key] || zuMarket[key])) || en[key] || key;
   return s.replace(/\{(\w+)\}/g, (_, k) => (vars[k] === undefined ? `{${k}}` : String(vars[k])));
 };
 export const tEn = (key, vars = {}) => (en[key] || key).replace(/\{(\w+)\}/g, (_, k) => (vars[k] === undefined ? `{${k}}` : String(vars[k])));
-export const hasZu = (key) => key in zu;
+export const hasZu = (key) => key in zu || key in zuMarket;
+export const ZU_MARKET_KEYS = Object.keys(zuMarket);
 export const missingZuKeys = () => Object.keys(en).filter((k) => !(k in zu));
 
 // ---- approved isiZulu sentences that carry numbers or plot names. Return null when no approved sentence applies.

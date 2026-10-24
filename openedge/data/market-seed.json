@@ -1,0 +1,37 @@
+{
+  "label": "EXAMPLE DATA: fictional harvest-day market events, reservations and retail-buyer reference prices for the hackathon demo. No real people, buyers, venues or prices.",
+  "referenceTime": "2026-10-23T08:10:00Z",
+  "retailPrices": [
+    { "crop": "Beans", "pricePerKg": 24, "source": "Example reference: what a big retail buyer would pay the farmer (not a real quote)" },
+    { "crop": "Cabbage", "pricePerKg": 6.5, "source": "Example reference: what a big retail buyer would pay the farmer (not a real quote)" },
+    { "crop": "Maize", "pricePerKg": 9.8, "source": "Example reference: what a big retail buyer would pay the farmer (not a real quote)" },
+    { "crop": "Spinach", "pricePerKg": 18, "source": "Example reference: what a big retail buyer would pay the farmer (not a real quote)" },
+    { "crop": "Tomato", "pricePerKg": 14, "source": "Example reference: what a big retail buyer would pay the farmer (not a real quote)" }
+  ],
+  "events": [
+    { "eventName": "Saturday harvest day at the farm gate (example)", "venue": "Dlamini farm gate (example)", "area": "Greytown, KZN (example)",
+      "notes": "Bring your own bags. Cash and card. Example data.", "startsAt": "2026-10-31T06:00:00Z", "endsAt": "2026-10-31T11:00:00Z",
+      "status": "published", "createdAt": "2026-10-20T08:00:00Z", "decidedAt": "2026-10-20T08:05:00Z",
+      "items": [
+        { "crop": "Maize", "label": "Green mealies", "quantityKg": 300, "pricePerKg": 7.5, "lotId": 2 },
+        { "crop": "Spinach", "label": "Spinach bunches", "quantityKg": 120, "pricePerKg": 12 },
+        { "crop": "Cabbage", "label": "Cabbage heads", "quantityKg": 200, "pricePerKg": 4.5 }
+      ] },
+    { "eventName": "Tomato and bean day (example)", "venue": "Greytown community hall (example)", "area": "Greytown, KZN (example)",
+      "notes": "Example data.", "startsAt": "2026-11-14T07:00:00Z", "endsAt": "2026-11-14T12:00:00Z",
+      "status": "published", "createdAt": "2026-10-21T08:00:00Z", "decidedAt": "2026-10-21T08:05:00Z",
+      "items": [
+        { "crop": "Tomato", "label": "Tomatoes", "quantityKg": 150, "pricePerKg": 10 },
+        { "crop": "Beans", "label": "Sugar beans", "quantityKg": 80, "pricePerKg": 18 }
+      ] },
+    { "eventName": "Cabbage morning (example)", "venue": "Dlamini farm gate (example)", "area": "Greytown, KZN (example)",
+      "notes": "Example data.", "startsAt": "2026-10-17T06:00:00Z", "endsAt": "2026-10-17T10:00:00Z",
+      "status": "published", "createdAt": "2026-10-10T08:00:00Z", "decidedAt": "2026-10-10T08:05:00Z",
+      "items": [
+        { "crop": "Cabbage", "label": "Cabbage heads", "quantityKg": 100, "pricePerKg": 5 }
+      ] }
+  ],
+  "reservations": [
+    { "eventIndex": 1, "itemIndex": 2, "buyerName": "Lindiwe Zulu (example)", "quantityKg": 10, "createdAt": "2026-10-22T09:00:00Z" }
+  ]
+}

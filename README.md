@@ -92,6 +92,8 @@ The database is called `farm`. The project ran it as a multi-user server on port
 .\scripts\oe-run.ps1 -Action seed         # reset to the example data, including the co-op seed (before each test run and before the demo)
 .\scripts\oe-run.ps1 -Action test         # every contract case, including CO01-CO76, against the ABL code in batch mode
 .\scripts\oe-run.ps1 -Action test-coop    # reseed, then only the 76 co-op cases
+.\scripts\oe-run.ps1 -Action test-market  # reseed, then only the 51 market cases
+.\scripts\oe-run.ps1 -Action scratch-test # every case on a throw-away database (never touches farm or PASOE)
 # Start the PASOE instance `farmops` (tcman.bat start), then:
 $env:OE_BASE_URL = 'http://localhost:8820/web'
 .\scripts\oe-run.ps1 -Action test-http    # reseed, then every case over HTTP through FarmHandler.cls
@@ -100,7 +102,7 @@ $env:OE_MODE = 'pasoe'; npm start         # API backed by the real database
 npm run demo
 ```
 
-Stop the database server before a schema load. An existing database that already has `002-farm-ops.df`: `.\scripts\oe-run.ps1 -Action load-coop` (loads `003-coop.df` only). A database that does not have `002` yet: `.\scripts\oe-run.ps1 -Action load-schema` (`002` then `003`). Then start the server and run `seed`. Co-op rules and the full steps are in `docs/COOP.md`. The PASOE PROPATH points at this repository's `openedge/src`. After you change ABL code, run `compile-check.p` (`farm-api.p` includes `coop.i`) and refresh the agent sessions if needed.
+Stop the database server before a schema load. An existing database that already has `002-farm-ops.df`: `.\scripts\oe-run.ps1 -Action load-coop` (loads `003-coop.df` only). A database that does not have `002` yet: `.\scripts\oe-run.ps1 -Action load-schema` (`002` then `003`). Then start the server and run `seed`. Co-op rules and the full steps are in `docs/COOP.md`. The PASOE PROPATH points at this repository's `openedge/src`. After you change ABL code, run `compile-check.p` (`farm-api.p` includes `coop.i` and `market.i`) and refresh the agent sessions if needed.
 
 The API must run on the same machine as PASOE, or be given an `OE_BASE_URL` it can reach. A cloud machine cannot reach the laptop's localhost.
 
@@ -122,6 +124,8 @@ All failing rules are reported, not only the first. `hold` and `notify` skip the
 The seed data has five fictional plots (Maize A, Beans B, Spinach C, Tomato D, Cabbage E) on one fictional farm.
 
 Co-op rules (members, credit, harvest lots, buyer contracts, pro-rata allocation, payouts) are in the same OpenEdge program. They are described in `docs/COOP.md`. A create does not approve anything. The farmer or an admin approves in a separate call. There is no co-op screen.
+
+The **community harvest-day market** (farmers list a market day with produce priced below the retail-buyer price, optional reservations, optional link to a co-op lot) is in the same OpenEdge program and has its own screens under Market. See `docs/MARKET.md`.
 
 ## Demo script
 
@@ -194,6 +198,7 @@ Three cases are designed to fail (`FAIL01` and `E20`, the last in two modes). Th
 | [`docs/API.md`](docs/API.md) | HTTP API |
 | [`docs/OE-CONTRACT.md`](docs/OE-CONTRACT.md) | Contract between the API and OpenEdge |
 | [`docs/COOP.md`](docs/COOP.md) | Co-op rules, endpoints, and how to run them on OpenEdge 12.8 |
+| [`docs/MARKET.md`](docs/MARKET.md) | Harvest-day market: decisions, rules, endpoints, screens, isiZulu drafts |
 | [`docs/ESP32.md`](docs/ESP32.md) | Firmware, wiring and simulator |
 | `docs/screens/` | Approved demo screens (design mockups) and photo credits |
 | `docs/UI.md` | The web interface: pages, token handling, demo tools, isiZulu, photo credits |

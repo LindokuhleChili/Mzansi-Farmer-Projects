@@ -39,6 +39,7 @@ export const ICONS = {
   spark: p('<path d="M12 3l1.8 5.2L19 10l-5.2 1.8L12 17l-1.8-5.2L5 10l5.2-1.8z"/>'),
   sensor: p('<path d="M5 12.5a10 10 0 0 1 14 0M8.5 16a5 5 0 0 1 7 0M12 20h.01"/>'),
   leaf: `<svg class="ic" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" aria-hidden="true"><path d="M12 21v-9"/><path d="M12 12c0-4 3-6 7-6 0 4-3 6-7 6z"/><path d="M12 15c0-3-2.5-5-6-5 0 3 2.5 5 6 5z"/></svg>`,
+  basket: p('<path d="M4 9h16l-1.5 10a2 2 0 0 1-2 1.7h-9a2 2 0 0 1-2-1.7z"/><path d="m8 9 3-5M16 9l-3-5"/>'),
   send: p('<path d="M21 3 10 14M21 3l-7 18-4-7-7-4z"/>'),
 };
 export const icon = (name, size) => raw(size ? ICONS[name].replace('width="18" height="18"', `width="${size}" height="${size}"`) : ICONS[name]);

@@ -2,6 +2,7 @@
 import { html, raw, $, $$, icon, num, shortName, fmtDayLong, fmtDayNoYear, fmtHM, photoUrl, photoStyle, ageMinutes } from './util.js';
 import { t, getLang, setLang, zuHello } from './i18n.js';
 import { api, demo, facts as apiFacts, loadSession, getSession, setToken, needsToken, FRESH_MINUTES } from './api.js';
+import { marketPage, marketEventPage, marketFormPage, marketClick, marketSubmit, marketChange } from './market.js';
 import { plotCardD, plotCardM, plotState, lineChart, readingsTable, sugRow, sugTitle, reviewView, confirmSheet, fmtSecs, langToggle, auditRow, bg, metricsBlock, lvl } from './views.js';
 
 const viewEl = $('#view'), overlay = $('#overlay'), toastRoot = $('#toast-root');
@@ -39,13 +40,14 @@ function busy(btn, on, label) {
 }
 
 // ---------- chrome ----------
-const NAV = [['dashboard', '/', 'grid', 'nav_dashboard'], ['plots', '/plots', 'plots', 'nav_plots'], ['suggestions', '/suggestions', 'list', 'nav_suggestions'], ['audit', '/audit', 'book', 'nav_audit'], ['settings', '/settings', 'gear', 'nav_settings']];
+const NAV = [['dashboard', '/', 'grid', 'nav_dashboard'], ['plots', '/plots', 'plots', 'nav_plots'], ['suggestions', '/suggestions', 'list', 'nav_suggestions'], ['market', '/market', 'basket', 'mk_nav'], ['audit', '/audit', 'book', 'nav_audit'], ['settings', '/settings', 'gear', 'nav_settings']];
 function renderChrome(active, plain = true) {
   const s = getSession() || {};
   document.body.classList.toggle('plain', plain);
   const badge = state.pending ? html`<span class="badge">${state.pending}</span>` : '';
   draw($('#sidenav'), html`${NAV.map(([k, h, ic, lbl]) => html`<a href="#${h}" class="${k === active ? 'on' : ''}" ${k === active ? raw('aria-current="page"') : ''}>${icon(ic, 18)}<span>${t(lbl)}</span>${k === 'suggestions' ? badge : ''}</a>`)}`);
-  const TAB = [['dashboard', '/', 'home', 'nav_home'], ['plots', '/plots', 'plots', 'nav_plots'], ['suggestions', '/suggestions', 'list', 'nav_suggestions'], ['audit', '/audit', 'book', 'nav_audit'], ['settings', '/settings', 'dots', 'nav_more']];
+  // phone: five tabs fit, so Market takes the Audit slot; the audit log is linked from More (Settings)
+  const TAB = [['dashboard', '/', 'home', 'nav_home'], ['plots', '/plots', 'plots', 'nav_plots'], ['suggestions', '/suggestions', 'list', 'nav_suggestions'], ['market', '/market', 'basket', 'mk_nav'], ['settings', '/settings', 'dots', 'nav_more']];
   draw($('#tabbar'), html`${TAB.map(([k, h, ic, lbl]) => html`<a href="#${h}" class="${k === active ? 'on' : ''}" aria-label="${t(lbl)}" ${k === active ? raw('aria-current="page"') : ''}>${icon(ic, 20)}<span class="tl">${t(lbl)}</span>${k === 'suggestions' ? badge : ''}</a>`)}`);
   const mock = s.oeMode === 'mock';
   draw($('#top'), html`<div class="brand">${icon('leaf', 22)}MZANSI FARMER</div>
@@ -256,6 +258,7 @@ function settingsPage() {
         <div class="kv"><span>${t('set_oe')}</span><b>${s.oeMode === 'mock' ? t('set_oe_mock') : t('set_oe_real')}</b></div>
         <div class="kv"><span>${t('set_ai')}</span><b>${s.aiProvider === 'mock' ? t('set_ai_mock') : t('set_ai_real')}</b></div>
         <div class="kv"><span>${t('set_session')}</span><b style="text-align:right;max-width:60%">${s.mode === 'token' ? t('set_session_token') : t('set_session_proxy')}</b></div></div>
+      <a class="card pad row sp" href="#/audit"><span class="row g8">${icon('book', 18)}<b>${t('nav_audit')}</b></span>${icon('chev', 18)}</a>
     </div></div>`);
 }
 
@@ -271,13 +274,19 @@ function loginPage(msg = '') {
 async function route() {
   clearInterval(state.timer);
   const me = ++state.nav, alive = () => me === state.nav;
-  const [, a, b] = (location.hash.replace(/^#/, '') || '/').split('/');
+  const [, a, b, c] = (location.hash.replace(/^#/, '') || '/').split('/');
   closeSheet();
   try {
     if (needsToken()) return loginPage();
     if (!a) await dashboardPage(alive);
     else if (a === 'plots') await (b ? plotPage(Number(b), alive) : plotsPage(alive));
     else if (a === 'suggestions') await (b ? reviewPage(Number(b), alive) : suggestionsPage(alive));
+    else if (a === 'market') {
+      const mctx = [alive, renderChrome, draw, viewEl, need];
+      if (b === 'new') await marketFormPage(null, ...mctx);
+      else if (b && c === 'edit') await marketFormPage(Number(b), ...mctx);
+      else await (b ? marketEventPage(Number(b), ...mctx) : marketPage(...mctx));
+    }
     else if (a === 'audit') await auditPage(alive);
     else if (a === 'settings') settingsPage();
     else { location.hash = '#/'; }
@@ -359,6 +368,7 @@ document.addEventListener('click', async (ev) => {
   if (a === 'bell') { state.sugFilter = 'waiting'; return; }
   if (a === 'sug-filter') { state.sugFilter = el.dataset.f; return route(); }
   if (a === 'audit-filter') { state.auditFilter = el.dataset.f; return route(); }
+  if (a.startsWith('mk-')) return marketClick(a, el, { route, toast, busy, errText, overlay, draw });
   if (a === 'preset') { const p = PRESETS[el.dataset.preset]; $('#f-soil').value = p.soil; $('#f-temp').value = p.temp; $('#f-hum').value = p.hum; $('#f-rain').checked = p.rain; return; }
   if (a === 'ai-mode') {
     const r = await demo('demo/ai-behaviour', { behaviour: el.dataset.mode });
@@ -366,8 +376,10 @@ document.addEventListener('click', async (ev) => {
     else toast(r.body.message || t('err_load'), true);
   }
 });
+document.addEventListener('change', marketChange);
 document.addEventListener('submit', async (ev) => {
   ev.preventDefault();
+  if (await marketSubmit(ev, { route, toast, busy, errText })) return;
   if (ev.target.id === 'login') {
     setToken($('#tok').value.trim());
     return route();
