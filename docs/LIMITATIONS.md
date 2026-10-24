@@ -8,8 +8,8 @@ This is a hackathon prototype. It shows one idea: an AI model may propose, OpenE
 
 | Piece | Status |
 |---|---|
-| OpenEdge database, schema, ABL rules, PASOE WebHandler | Real. Tested on OpenEdge 12.8: the original 47 contract cases in batch mode and over HTTP through PASOE (46 pass plus 1 case designed to fail). API suites also passed against real PASOE. The demo has been run against it. 14 contract cases were added with the QA bug fixes (see `docs/NOTES.md` 6a): all 61 pass on real OpenEdge too (60 pass plus 1 designed to fail, in batch mode and over HTTP). |
-| `mock-pasoe` (Node port of the ABL rules) | A stand-in. `npm test` uses it so the repository can be tested anywhere. The same 61 cases run against both and must agree. |
+| OpenEdge database, schema, ABL rules, PASOE WebHandler | Real for irrigation. Tested on OpenEdge 12.8: the original 47 contract cases in batch mode and over HTTP through PASOE (46 pass plus 1 case designed to fail). API suites also passed against real PASOE. The demo has been run against it. 14 contract cases were added with the QA bug fixes (see `docs/NOTES.md` 6a): those 61 pass on real OpenEdge too (60 pass plus 1 designed to fail, in batch mode and over HTTP). Co-op rules are in `openedge/src/coop.i` (included by `farm-api.p`) and schema `003-coop.df`. That ABL was written to match the Node rules and the 76 cases `CO01` to `CO76`. It has **not** been compiled or run on OpenEdge yet. See `docs/COOP.md`. |
+| `mock-pasoe` (Node port of the ABL rules) | A stand-in. `npm test` uses it so the repository can be tested anywhere. The irrigation cases and the 76 co-op cases run against it. `eval/compare-oe.mjs` is what compares a real OpenEdge batch file or a live PASOE HTTP response with those cases. |
 | Node API, confirmation steps, audit log, fallback logic | Real code, tested in-process and over HTTP. |
 | AI model | Real Gemini (`gemini-3.5-flash`) in `npm run test:gemini` and when `.env` sets `AI_PROVIDER=http`. All automated tests use a deterministic mock so results can be repeated. |
 | ESP32 firmware | Compiled and unit-tested on a host computer only. It has not been run on a physical board in this project's tests. |
@@ -32,7 +32,9 @@ This is a hackathon prototype. It shows one idea: an AI model may propose, OpenE
 - **Only the OpenEdge side is a real rules engine.** Mock mode uses a Node copy of the rules. The two are tested against the same cases, but the copy could drift if one side is changed without the other.
 - **Seed data is dated 23 October 2026.** The seed readings are old compared with the rule that readings must be 15 minutes old or less. Without a fresh reading, the system proposes `notify` instead of irrigation. The seed history also counts toward the 7-day water budget (plot 1 has 1000 litres approved on 21 October), so the room left in the budget depends on the date and on earlier demo runs. Reset the data before each run.
 - **The weekly budget counts only approved suggestions** in a rolling 7 days.
-- **The rules are simple.** They cover freshness, dryness, rain, litres and a weekly budget per plot. They do not model soil type, crop stage, weather forecasts, water restrictions, or equipment limits.
+- **The irrigation rules are simple.** They cover freshness, dryness, rain, litres and a weekly budget per plot. They do not model soil type, crop stage, weather forecasts, water restrictions, or equipment limits.
+- **Co-op rules are a second set on the same database** (`docs/COOP.md`): credit limit, lot versus contract, pro-rata shares, payouts, and a fair-allocation plan. They do not move money, call a bank, or update a buyer's system. A create stores a pending or rejected row. Approval is a separate call.
+- **There is no co-op screen.** The web UI is still the irrigation demo. Co-op is the OpenEdge HTTP contract only.
 
 ## Data, devices and hardware
 
@@ -51,7 +53,7 @@ This is a hackathon prototype. It shows one idea: an AI model may propose, OpenE
 ## Testing
 
 - Error handling is tested for the cases in `eval/*.json`, not for every possible network failure.
-- The count of 184 offline checks was taken at the last run and uses the mock AI and the mock OpenEdge. The real OpenEdge and real Gemini results were recorded on the team's laptop and are not repeated by `npm test`.
+- The offline count in `docs/NOTES.md` section 6b is from `npm test` on this branch (mock AI, mock OpenEdge). The real OpenEdge irrigation results and the real Gemini result were recorded on the team's laptop and are not repeated by `npm test`. The co-op ABL has not been executed on OpenEdge yet.
 - Three cases are designed to fail so the test runner can be seen to report failures. A run that shows "3 intentional failures confirmed" is a pass.
 
 ## Content and licence
@@ -62,6 +64,7 @@ This is a hackathon prototype. It shows one idea: an AI model may propose, OpenE
 
 ## Not built
 
+- A co-op screen (the rules are HTTP only; see `docs/COOP.md`)
 - A native mobile app (the web interface works in a phone browser)
 - Retrieval from farming documents (RAG)
 - Real-time actuation (the system records an approval; it does not open a valve)

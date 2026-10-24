@@ -4,9 +4,16 @@
 // "approve re-runs the rules", and "every co-op action writes an audit row".
 import test from 'node:test';
 import assert from 'node:assert/strict';
+import { mkdtempSync, readFileSync, writeFileSync } from 'node:fs';
+import { tmpdir } from 'node:os';
+import { join } from 'node:path';
+import { spawn, spawnSync } from 'node:child_process';
+import { fileURLToPath } from 'node:url';
 import { createStore } from '../mock-pasoe/store.js';
+import { createMockServer } from '../mock-pasoe/server.js';
 import { handle } from '../mock-pasoe/handler.js';
 import { distribute, planFairAllocation, checkCredit, checkAllocation } from '../mock-pasoe/coop-rules.js';
+import { loadCases, isCoopCase } from './compare-oe.mjs';
 
 const T0 = '2026-10-23T08:10:00Z';
 const call = (store, method, path, body = {}) => { const r = handle(store, method, path, body); return { status: r.status, body: JSON.parse(JSON.stringify(r.body)) }; };
@@ -228,4 +235,114 @@ test('audit rows are append-only in the co-op code: ids only grow and old rows a
   call(s, 'POST', '/farm/credits/4/decision', { decision: 'approve', asOf: T0 });
   assert.equal(JSON.stringify(s.audit[0]), first);
   assert.deepEqual(s.audit.map((a) => a.auditId), [1, 2]);
+});
+
+// ---------------- ABL source and the OpenEdge compare harness (no OpenEdge required)
+const readRepo = (rel) => readFileSync(new URL(rel, import.meta.url), 'utf8');
+const compareScript = fileURLToPath(new URL('./compare-oe.mjs', import.meta.url));
+
+function writeResults(cases, file) {
+  const store = createStore();
+  const results = [];
+  for (const c of cases) {
+    const r = handle(store, c.request.method, c.request.path, c.request.body ?? {});
+    results.push({ id: c.id, status: r.status, body: JSON.parse(JSON.stringify(r.body)) });
+  }
+  writeFileSync(file, JSON.stringify({ target: 'mock', results }));
+  return file;
+}
+
+test('ABL co-op source has the rule codes, audit events, routes, limits and OpenEdge run steps', () => {
+  const api = readRepo('../openedge/src/farm-api.p');
+  const coop = readRepo('../openedge/src/coop.i');
+  const seed = readRepo('../openedge/src/seed.p');
+  const run = readRepo('../openedge/src/run-contract.p');
+  const ps1 = readRepo('../scripts/oe-run.ps1');
+  const handlers = readRepo('../openedge/pasoe/ROOT.handlers');
+  const doc = readRepo('../docs/COOP.md');
+  for (const code of ['CREDIT_LIMIT_EXCEEDED', 'CROP_MISMATCH', 'CONTRACT_CLOSED', 'LOT_EXCEEDS_CONTRACT', 'LOT_STOCK_EXCEEDED', 'MEMBER_NOT_IN_LOT', 'PAYOUT_NOT_DELIVERED', 'PAYOUT_NOTHING_DUE', 'PAYOUT_EXCEEDS_SHARE', 'CREDIT_DEDUCTION_INVALID', 'CREDIT_NOT_DEDUCTED']) {
+    assert.ok(coop.includes(`"${code}"`), code);
+  }
+  for (const ev of ['credit_rule_check', 'credit_approved', 'credit_declined', 'credit_approve_blocked_by_rules', 'allocation_rule_check', 'allocation_approved', 'allocation_delivered', 'allocation_declined', 'allocation_approve_blocked_by_rules', 'payout_rule_check', 'payout_approved', 'payout_declined', 'payout_approve_blocked_by_rules', 'credit_repaid_by_payout', 'fair_allocation_committed']) {
+    assert.ok(coop.includes(`"${ev}"`), ev);
+  }
+  assert.match(api, /&SCOPED-DEFINE MAX_AMOUNT_RAND 10000000/);
+  assert.match(api, /&SCOPED-DEFINE MAX_KG 10000000/);
+  assert.match(api, /\{coop\.i\}/);
+  assert.equal(coop.includes('&1'), false);
+  assert.match(coop, /FUNCTION fPlain/);
+  assert.doesNotMatch(coop, /STRING\(piKg\)|STRING\(iNew\)|STRING\(iWhole\)/);
+  for (const route of ['h-coop-credit-create', 'h-coop-credit-decide', 'h-coop-alloc-create', 'h-coop-alloc-decide', 'h-coop-fair', 'h-coop-payout-create', 'h-coop-payout-decide']) {
+    assert.ok(api.includes(`RUN ${route}`), route);
+  }
+  assert.match(seed, /coop-seed\.json/);
+  assert.match(seed, /CURRENT-VALUE\(MemberSeq\) = 0/);
+  assert.match(seed, /CURRENT-VALUE\(CreditSeq\) = 0/);
+  assert.match(run, /cPrefix/);
+  for (const action of ['load-coop', 'test-coop', 'test-http', 'test-http-coop', '003-coop.df']) assert.ok(ps1.includes(action), action);
+  assert.ok(handlers.includes('/farm/{*}'));
+  assert.ok(handlers.includes('web.FarmHandler'));
+  assert.match(doc, /^## 5\. Payout rules/m);
+  assert.equal(loadCases().filter(isCoopCase).length, 76);
+});
+
+test('compare-oe batch mode agrees with mock-pasoe for the full file and for CO01-CO76 only', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'coop-cmp-'));
+  const all = loadCases();
+  const full = writeResults(all, join(dir, 'full.json'));
+  const coopOnly = writeResults(all.filter(isCoopCase), join(dir, 'coop.json'));
+  const fullRun = spawnSync(process.execPath, [compareScript, full], { encoding: 'utf8' });
+  assert.equal(fullRun.status, 0, fullRun.stdout + fullRun.stderr);
+  assert.match(fullRun.stdout, /co-op cases CO01-CO76: 76 passed, 0 failed/);
+  const coopRun = spawnSync(process.execPath, [compareScript, coopOnly, '--coop'], { encoding: 'utf8' });
+  assert.equal(coopRun.status, 0, coopRun.stdout + coopRun.stderr);
+  assert.match(coopRun.stdout, /76 passed, 0 failed/);
+});
+
+test('compare-oe exits 1 when a co-op result is wrong and exits 2 with no arguments', () => {
+  const dir = mkdtempSync(join(tmpdir(), 'coop-bad-'));
+  const file = writeResults(loadCases().filter(isCoopCase), join(dir, 'coop.json'));
+  const parsed = JSON.parse(readFileSync(file, 'utf8'));
+  parsed.results[0].status = 500;
+  writeFileSync(file, JSON.stringify(parsed));
+  const bad = spawnSync(process.execPath, [compareScript, file, '--coop'], { encoding: 'utf8' });
+  assert.equal(bad.status, 1);
+  assert.match(bad.stdout, /FAIL\s+CO01/);
+  const usage = spawnSync(process.execPath, [compareScript], { encoding: 'utf8' });
+  assert.equal(usage.status, 2);
+});
+
+function runCompare(args) {
+  return new Promise((resolve) => {
+    const child = spawn(process.execPath, [compareScript, ...args], { stdio: ['ignore', 'pipe', 'pipe'] });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.on('data', (d) => { stdout += d; });
+    child.stderr.on('data', (d) => { stderr += d; });
+    child.on('close', (status) => resolve({ status, stdout, stderr }));
+  });
+}
+
+async function withFreshMock(fn) {
+  const server = createMockServer();
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  try {
+    return await fn(`http://127.0.0.1:${server.address().port}/web`);
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+  }
+}
+
+test('compare-oe --http matches mock-pasoe for every contract case and for --coop alone', async () => {
+  // The child must run while this process can still serve HTTP, so this is spawn, not spawnSync.
+  await withFreshMock(async (base) => {
+    const coop = await runCompare(['--http', base, '--coop']);
+    assert.equal(coop.status, 0, coop.stdout + coop.stderr);
+    assert.match(coop.stdout, /76 passed, 0 failed/);
+  });
+  await withFreshMock(async (base) => {
+    const full = await runCompare(['--http', base]);
+    assert.equal(full.status, 0, full.stdout + full.stderr);
+    assert.match(full.stdout, /co-op cases CO01-CO76: 76 passed, 0 failed/);
+  });
 });

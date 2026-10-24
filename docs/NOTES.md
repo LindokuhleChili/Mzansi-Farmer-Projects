@@ -21,8 +21,8 @@ ESP32 / simulator --POST /api/v1/readings--> Node API (Fastify, :3000)
 | OpenEdge (database, ABL, PAS for OpenEdge) | 12.8, Windows, `C:\Progress\OpenEdge`; Developer Studio installed; PASOE instance `farmops` (HTTP 8820, HTTPS 8821, shutdown 8822) |
 | Java for PASOE / Developer Studio | Eclipse Temurin 17.0.20.1 |
 | OpenEdge database | `farm` (single-user for schema load; multi-user server on port 20000 with `-minport 3100 -maxport 3199` so it never takes port 3000) |
-| Tables | `Farm`, `Plot`, `SensorReading` (unique index DeviceId+ReadAt), `AiSuggestion`, `AuditLog`, sequences `ReadingSeq`, `SuggestionSeq`, `AuditSeq` (`openedge/schema/*.df`) |
-| ABL code | `openedge/src/farm-api.p` (all rules and data access), `web/FarmHandler.cls` (thin PASOE WebHandler), `seed.p`, `load-schema.p`, `run-contract.p` (batch test runner), `compile-check.p` |
+| Tables | `Farm`, `Plot`, `SensorReading` (unique index DeviceId+ReadAt), `AiSuggestion`, `AuditLog`, sequences `ReadingSeq`, `SuggestionSeq`, `AuditSeq` (`002-farm-ops.df`). Co-op: `Member`, `InputCredit`, `HarvestLot`, `LotContribution`, `BuyerContract`, `Allocation`, `Payout` and their sequences (`003-coop.df`) |
+| ABL code | `openedge/src/farm-api.p` (irrigation rules, data access, and the route dispatcher), `openedge/src/coop.i` (co-op rules, included by `farm-api.p`), `web/FarmHandler.cls` (thin PASOE WebHandler), `seed.p`, `load-schema.p`, `run-contract.p` (batch test runner), `compile-check.p` |
 | API | Node.js 20+ (tested on 20.19 and 24), Fastify 5.12, Ajv 8.20. Only two runtime dependencies. |
 | AI | Any OpenAI-compatible `/chat/completions` endpoint. Real config: Google Gemini `gemini-3.5-flash` via `https://generativelanguage.googleapis.com/v1beta/openai`. Default: deterministic mock provider (no key, no network). |
 | Firmware | PlatformIO, Arduino framework on ESP32 (espressif32 platform 8.0.0), DHT22 + analog soil sensor |
@@ -44,6 +44,8 @@ ESP32 / simulator --POST /api/v1/readings--> Node API (Fastify, :3000)
 Every failing rule is reported, not just the first. `notify` and `hold` need no water checks. Approving **re-runs** the rules at approval time (the data may have changed).
 
 Example plots (seed): Maize A max 500 L / dry below 35% / 1500 L per week; Beans B 300 / 40 / 900; Spinach C 200 / 45 / 600; Tomato D 250 / 40 / 400; Cabbage E 300 / 40 / 900.
+
+Co-op rules (credit limit, allocation, pro-rata fair split, payouts) are in `openedge/src/coop.i` and `mock-pasoe/coop-rules.js`. Definitions, the approval gate and the OpenEdge steps are in `docs/COOP.md`. Section 5 of that file is the payout rules.
 
 Other thresholds in the API (`apps/api/src/config.js`): AI timeout 8 s, OpenEdge timeout 5 s (audit write after a call: 1 s, and skipped when OpenEdge itself just failed), confirmation token lifetime 120 s and single use, reading timestamp at most 5 min in the future, soil/humidity 0 to 100, temperature -20 to 60 C, model explanation may only use numbers that came from OpenEdge.
 
@@ -84,7 +86,7 @@ Optional checks:
 | Command | What it does |
 |---|---|
 | `npm run test:gemini` | one live call to the real model (English and isiZulu). **Skipped** (exit 0) unless `AI_PROVIDER=http` and the three AI variables are set |
-| `npm run test:oe-http` | the 61 OpenEdge contract cases over HTTP against a running PASOE (`OE_BASE_URL`); reseed first |
+| `npm run test:oe-http` | every OpenEdge contract case, including `CO01` to `CO76`, over HTTP against a running PASOE (`OE_BASE_URL`); reseed first |
 | `npm run test:api-real-oe` | the API suites (device + api cases) against real PASOE |
 | `node mock-pasoe/server.js` | mock PASOE as a standalone HTTP server on :8820 |
 | `node sim/esp32-sim.js --scenario drought --url http://localhost:3000` | feed the API like the ESP32 (needs `DEVICE_TOKEN`, see `docs/ESP32.md`) |
@@ -97,16 +99,19 @@ Details and the exact configuration are in `openedge/pasoe/README.md`. Short ver
 
 ```powershell
 .\scripts\oe-run.ps1 -Action start-db      # farm database server on port 20000 (once; database already loaded)
-.\scripts\oe-run.ps1 -Action seed          # reset to the example data (do this before each test run and before the demo)
-.\scripts\oe-run.ps1 -Action test          # 61 contract cases against the real ABL code in batch mode
+.\scripts\oe-run.ps1 -Action seed          # reset to the example data, including coop-seed.json (do this before each test run and before the demo)
+.\scripts\oe-run.ps1 -Action test          # every contract case, including CO01-CO76, against the real ABL code in batch mode
+.\scripts\oe-run.ps1 -Action test-coop     # reseed, then only CO01-CO76 in batch mode
 # PASOE instance `farmops` must be running (tcman.bat start); then:
 $env:OE_BASE_URL = 'http://localhost:8820/web'
-npm run test:oe-http                       # same 61 cases over HTTP through FarmHandler.cls
+.\scripts\oe-run.ps1 -Action test-http     # reseed, then every case over HTTP through FarmHandler.cls
+.\scripts\oe-run.ps1 -Action test-http-coop
+npm run test:oe-http                       # same HTTP cases; this command does not reseed
 $env:OE_MODE = 'pasoe'; npm start          # API on :3000 backed by the real database
 npm run demo
 ```
 
-Fresh database: `.\scripts\oe-run.ps1 -Action load-schema` (database server stopped; loads `openedge/schema/002-farm-ops.df`; `001-farm.df` is the original `Farm` table), then start the server and `seed`.
+Schema, with the database server stopped. An existing farm database that already has `002-farm-ops.df`: `.\scripts\oe-run.ps1 -Action load-coop` (loads `003-coop.df` only). A database that does not have `002` yet: `.\scripts\oe-run.ps1 -Action load-schema` (`002-farm-ops.df` then `003-coop.df`). `001-farm.df` is the original `Farm` table and is not loaded by `load-schema`. Then start the server and `seed`. The exact co-op steps are in `docs/COOP.md` section 10.
 The PASOE PROPATH points at this repo's `openedge/src`, so after changing ABL code, run `compile-check.p` (see `scripts/oe-run.ps1`/`openedge/src/compile-check.p`) and, if needed, restart or refresh the agent sessions.
 The API must run on the same machine as PASOE (or be given a reachable `OE_BASE_URL`); a cloud/Linux box cannot reach the laptop's localhost. For the ESP32, allow inbound TCP **3000** in Windows Firewall and use the laptop's LAN IP (or phone-hotspot IP) in `config.h`.
 
@@ -114,8 +119,8 @@ The API must run on the same machine as PASOE (or be given a reachable `OE_BASE_
 
 | Piece | Status |
 |---|---|
-| OpenEdge database, schema, ABL rules, PASOE WebHandler | **Real.** Tested on OpenEdge 12.8: the original 47 contract cases passed in batch mode and over HTTP through PASOE and the API suites (32 cases) passed against real PASOE; `npm run demo` completed against it. The 14 contract cases and 7 API cases added with the bug fixes (section 6a) are verified on mock-pasoe; see 6a for the real-OpenEdge status |
-| `mock-pasoe` (Node port of the ABL rules) | **Mock** stand-in used by `npm test` so the repo is testable anywhere. The same 61 cases run against both and must agree (`eval/compare-oe.mjs`) |
+| OpenEdge database, schema, ABL rules, PASOE WebHandler | **Real** for irrigation. Tested on OpenEdge 12.8: the original 47 contract cases passed in batch mode and over HTTP through PASOE and the API suites passed against real PASOE; `npm run demo` completed against it. See 6a. **Co-op ABL** (`coop.i` inside `farm-api.p`, schema `003-coop.df`) is written and matched to the Node rules, but it has **not** been compiled or run on OpenEdge yet |
+| `mock-pasoe` (Node port of the ABL rules) | **Mock** stand-in used by `npm test` so the repo is testable anywhere. Irrigation and co-op cases (`CO01` to `CO76`) run here. `eval/compare-oe.mjs` checks the same cases against a real batch file or PASOE HTTP (`--coop` for the co-op cases only) |
 | Node API, confirmation gates, audit, fallback logic | **Real** code; tested in-process and over HTTP |
 | AI model | **Real** Gemini (`gemini-3.5-flash`) in `npm run test:gemini` and when `.env` says `AI_PROVIDER=http`. **Mock** (deterministic) in all automated tests so results are repeatable |
 | ESP32 firmware | **Compiled only** (`pio run -e esp32dev` succeeds; 15 native unit tests pass). It has **not** been run on a physical board in this repo's tests |
@@ -126,7 +131,8 @@ The API must run on the same machine as PASOE (or be given a reachable `OE_BASE_
 
 ## 6. Test results (at the time of writing)
 
-- `npm test` (offline): **184 passed, 0 failed, 3 intentional failures confirmed**, 0 unexpected passes. Breakdown: OpenEdge contract on mock-pasoe 60, API suites on `OE_MODE=mock` 38, same over the PASOE HTTP client path 38, simulator unit tests 33, simulator against API 5, bug-fix tests (`eval/fixes.test.mjs`) 10. (Before the bug fixes it was 146: 46 + 31 + 31 + 33 + 5.) Each of the three suites with an intentional failure contains exactly one case that is *designed to fail* (OE `FAIL01`, API `E20` in two modes) to show the checker reports failures honestly.
+- Current offline total: see section 6b. The figure of 184 passed was the count before the co-op cases, the co-op unit tests and the web UI suite were in `npm test`.
+- Earlier breakdown, kept so the bug-fix note stays readable: OpenEdge contract on mock-pasoe 60, API suites on `OE_MODE=mock` 38, same over the PASOE HTTP client path 38, simulator unit tests 33, simulator against API 5, bug-fix tests (`eval/fixes.test.mjs`) 10. (Before the bug fixes it was 146: 46 + 31 + 31 + 33 + 5.) Each of the three suites with an intentional failure contains exactly one case that is *designed to fail* (OE `FAIL01`, API `E20` in two modes) to show the checker reports failures honestly.
 - Real OpenEdge over HTTP, before the bug fixes: 46 passed + 1 intentional failure. API suites vs real PASOE: 31 passed + 1 intentional failure. After the fixes (61 contract cases, 38 API cases): 60 + 1 intentional failure, and 17 + 21 + 1 intentional failure; see 6a.
 
 ### 6a. QA bug fixes (2026-10-23)
@@ -138,6 +144,11 @@ The API must run on the same machine as PASOE (or be given a reachable `OE_BASE_
 - `npm run test:gemini`: passed (English and isiZulu, real model used, no fallback).
 - Firmware native tests: 15 passed. Firmware compiles for `esp32dev`.
 - Required case types covered: a case that must fail (`FAIL01`, `E20`), and a case that needs human approval (`E05`, `E07`, `E17`, `E18`).
+
+### 6b. Co-op rules (2026-10-24)
+
+- `npm test` (offline, this branch): **301 passed, 0 failed, 3 intentional failures confirmed**, 0 unexpected passes. The three intentional failures are still `FAIL01` and `E20` in two modes. Breakdown: OpenEdge contract on mock-pasoe 136 passed (the earlier 60 plus `CO01` to `CO76`) and 1 intentional failure, API device + API cases on `OE_MODE=mock` 17 + 21 and the same 17 + 21 over the PASOE HTTP client path (each API suite has the one intentional `E20`), simulator unit tests 33, simulator against API 5, bug-fix tests 10, web UI tests 13, co-op unit tests (`eval/coop.test.mjs`) 28. Those 28 cover pro rata, approval re-check, payouts, audit, and checks that `coop.i` and `eval/compare-oe.mjs` are present. `compare-oe` is also run from those tests against mock-pasoe in batch mode and over HTTP, including `--coop`.
+- **Real OpenEdge status of the co-op ABL:** not run. This environment has no OpenEdge, and none was installed. `docs/COOP.md` section 10 is the exact load and run sequence for the laptop (OpenEdge 12.8, farm database on port 20000). Expect 76 co-op passes in batch mode and again over HTTP, and the existing 60 + 1 intentional failure for the irrigation cases.
 
 ## 7. Known limitations (be honest about these)
 
@@ -154,6 +165,7 @@ The API must run on the same machine as PASOE (or be given a reachable `OE_BASE_
 - The photos in `docs/screens/` are Pexels stock photos (see `credits.md`), not South African fields, and the example user avatar is a stock portrait.
 - The screens use illustrative plot names that differ slightly from the seed data (the API data has five plots: Maize A, Beans B, Spinach C, Tomato D, Cabbage E).
 - Error handling is tested for the cases in `eval/*.json`, not for every possible network failure.
+- The co-op ABL (`openedge/src/coop.i`) has not been compiled or executed on OpenEdge. The Node copy is what `npm test` runs. There is no co-op screen.
 
 ## 8. Repository map
 
@@ -161,6 +173,7 @@ The API must run on the same machine as PASOE (or be given a reachable `OE_BASE_
 |---|---|
 | `docs/API.md` | HTTP API contract (farmer app and device) |
 | `docs/OE-CONTRACT.md` | internal contract between the API and OpenEdge |
+| `docs/COOP.md` | co-op rules, approval gate, endpoints, and how to run `CO01` to `CO76` on OpenEdge 12.8 |
 | `docs/ESP32.md` | firmware, wiring, simulator usage |
 | `docs/screens/` | approved demo screens, `credits.md`, `api-fields.md` |
 | `apps/api/` | Fastify API and AI layer (`src/ai/advise.js`, `src/ai/provider.js`) |

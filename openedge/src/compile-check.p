@@ -1,4 +1,5 @@
 /* compile-check.p - compile every program in this folder and print all compiler messages (no output files kept).
+   Compiling farm-api.p also compiles coop.i (the co-op rules), which is an include, not a separate program.
    Usage: _progres -b -db farm -H localhost -S 20000 -p compile-check.p */
 DEFINE VARIABLE cFile AS CHARACTER NO-UNDO EXTENT 5 INITIAL ["farm-api.p","seed.p","run-contract.p","web/FarmHandler.cls","load-schema.p"].
 /* the OpenEdge.Web classes live in OpenEdge.Net.pl, which is not on the default PROPATH */

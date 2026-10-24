@@ -1,4 +1,4 @@
-// Co-op rules: the same rules as openedge/src/coop-api.p. See docs/COOP.md for the precise definitions.
+// Co-op rules: the same rules as openedge/src/coop.i (included by farm-api.p). See docs/COOP.md.
 // Money is integer cents, quantities are whole kg. Every check returns { reasons: [{code, message, suggested*}], facts }.
 // "Committed" statuses (they reserve credit or kg): credit pending_approval + approved; allocation pending_approval + approved + delivered.
 

@@ -7,7 +7,7 @@ The Node API never calculates farm numbers or decides what is allowed. It calls 
 | **ABL** `openedge/src/farm-api.p` (real OpenEdge database `farm`) | Windows laptop with OpenEdge 12.8 | run in batch (`scripts/oe-run.ps1`) or behind the PASOE WEB handler `openedge/src/web/FarmHandler.cls` at `/web/farm/*` |
 | **mock-pasoe** `mock-pasoe/` (Node port of the same rules, in-memory data) | anywhere | in-process (`OE_MODE=mock`) or over HTTP (`npm run mock-pasoe`, then `OE_MODE=pasoe OE_BASE_URL=http://127.0.0.1:8820/web`) |
 
-Both are tested with the same cases: `eval/oe-contract-cases.json` (60 normal cases + 1 intentional failure).
+Both are tested with the same cases: `eval/oe-contract-cases.json` (the irrigation cases, including 1 intentional failure, plus co-op cases `CO01` to `CO76`). `eval/compare-oe.mjs` checks a batch results file or a live HTTP server. `--coop` keeps only the co-op cases. Co-op routes are implemented in `openedge/src/coop.i` (included by `farm-api.p`) and in `mock-pasoe/coop-handler.js`. The precise rules are in `docs/COOP.md`.
 
 All paths below are relative to `/web` (e.g. `GET /web/farm/plots`). Bodies are JSON; errors are `{ "error": CODE, "message": text, "field"?: name }`.
 Time values are ISO 8601 UTC with `Z` (`2026-10-23T08:06:00.000Z`). `asOf` (optional ISO string in a POST body) overrides "now" so tests are deterministic.
@@ -34,3 +34,17 @@ Every failing rule is reported (not only the first), in that order, so the farme
 
 `001-farm.df` (existing `Farm` table), `002-farm-ops.df`: `Plot`, `SensorReading`, `AiSuggestion`, `AuditLog` and sequences `ReadingSeq`, `SuggestionSeq`, `AuditSeq`.
 `SensorReading` has a unique index on (`DeviceId`, `ReadAt`) which enforces the duplicate rule in the database itself.
+`003-coop.df`: `Member`, `InputCredit`, `HarvestLot`, `LotContribution`, `BuyerContract`, `Allocation`, `Payout` and sequences `MemberSeq`, `CreditSeq`, `LotSeq`, `ContractSeq`, `AllocationSeq`, `PayoutSeq`.
+
+## Co-op routes
+
+Same host and the same `/farm` prefix. Money in JSON is Rand with two decimals. Quantities are whole kilograms. Create returns 201 with `facts` and stores `pending_approval` or `rejected`. Approve, reject and deliver are separate POSTs. The full list, the rule codes and the OpenEdge 12.8 steps are in `docs/COOP.md`.
+
+| Method and path | Success |
+|---|---|
+| `GET /farm/members`, `GET /farm/members/{id}` | 200, or 404 `MEMBER_NOT_FOUND` |
+| `GET /farm/credits`, `GET /farm/credits/{id}`, `POST /farm/credits`, `POST /farm/credits/{id}/decision` | 200 / 201, or 404 / 409 |
+| `GET /farm/lots`, `GET /farm/lots/{id}`, `POST /farm/lots/{id}/fair-allocation` | 200 plan, or 201 when `commit` is true |
+| `GET /farm/contracts`, `GET /farm/contracts/{id}` | 200, or 404 `CONTRACT_NOT_FOUND` |
+| `GET /farm/allocations`, `GET /farm/allocations/{id}`, `POST /farm/allocations`, `POST /farm/allocations/{id}/decision` | 200 / 201, or 404 / 409. `decision` is `approve`, `reject` or `deliver` |
+| `GET /farm/payouts`, `GET /farm/payouts/{id}`, `POST /farm/payouts`, `POST /farm/payouts/{id}/decision` | 200 / 201, or 404 / 409 |
