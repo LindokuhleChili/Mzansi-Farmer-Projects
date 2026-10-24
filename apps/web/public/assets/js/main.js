@@ -1,6 +1,6 @@
 // Router, data loading and actions. No framework, no build step.
 import { html, raw, $, $$, icon, num, shortName, fmtDayLong, fmtDayNoYear, fmtHM, photoUrl, photoStyle, ageMinutes } from './util.js';
-import { t, getLang, setLang, zuHello } from './i18n.js';
+import { t, getLang, setLang, zuHello, beginRender, renderUsedAi, takeMissing, storeAi, toggleOriginal, isShowingOriginal } from './i18n.js';
 import { api, demo, facts as apiFacts, loadSession, getSession, setToken, needsToken, FRESH_MINUTES } from './api.js';
 import { marketPage, marketEventPage, marketFormPage, marketClick, marketSubmit, marketChange } from './market.js';
 import { plotCardD, plotCardM, plotState, lineChart, readingsTable, sugRow, sugTitle, reviewView, confirmSheet, fmtSecs, langToggle, auditRow, bg, metricsBlock, lvl } from './views.js';
@@ -146,7 +146,7 @@ async function dashboardPage(alive, silent) {
   const d = await loadDashboardData();
   if (!alive()) return;
   drawDashboard(d);
-  state.timer = setInterval(() => { if (!document.hidden && alive() && !overlay.firstChild) loadDashboardData().then((x) => alive() && drawDashboard(x)).catch(() => {}); }, 30000);
+  state.timer = setInterval(() => { if (!document.hidden && alive() && !overlay.firstChild) loadDashboardData().then((x) => { if (alive()) { drawDashboard(x); afterLiveDraw(); } }).catch(() => {}); }, 30000);
 }
 
 async function plotsPage(alive) {
@@ -198,7 +198,7 @@ async function plotPage(id, alive) {
           <p class="xs mut">${t('ai_greedy_hint')}</p></div>` : ''}
       </div></div></div>`);
   drawPlotLive(plot, readings);
-  state.timer = setInterval(async () => { if (document.hidden || !alive()) return; try { drawPlotLive(plot, await getReadings(id, 20)); } catch { /* keep the old data */ } }, 30000);
+  state.timer = setInterval(async () => { if (document.hidden || !alive()) return; try { const rd = await getReadings(id, 20); if (!alive()) return; drawPlotLive(plot, rd); afterLiveDraw(); } catch { /* keep the old data */ } }, 30000);
 }
 
 async function suggestionsPage(alive) {
@@ -271,7 +271,45 @@ function loginPage(msg = '') {
 }
 
 // ---------- router ----------
+// ---- AI translation: after each render, send the English strings that had no translation to POST /translate (batched),
+// cache the answers, and redraw once. Failures are remembered for the session so the page never loops or breaks.
+let trBusy = false;
+async function fillTranslations() {
+  const lang = getLang();
+  if (trBusy || lang === 'en' || isShowingOriginal()) return;
+  const todo = takeMissing().filter((s) => s.length <= 500);
+  if (!todo.length) return;
+  trBusy = true;
+  let changed = false;
+  try {
+    for (let i = 0; i < todo.length; i += 60) {
+      const batch = todo.slice(i, i + 60);
+      let r = null;
+      try { r = await api('POST', '/translate', { texts: batch, target: lang }); } catch { r = null; }
+      const tr = r?.status === 200 ? r.body.translations : null;
+      storeAi(lang, batch.map((s, j) => [s, tr?.[j]?.translated ? tr[j].text : null]));
+      if (tr?.some((x) => x.translated)) changed = true;
+    }
+  } finally { trBusy = false; }
+  if (changed && getLang() === lang) await route();
+}
+function aiNote() {
+  const box = $('#ai-note');
+  if (!box) return;
+  const on = getLang() !== 'en' && (renderUsedAi() || isShowingOriginal());
+  box.hidden = !on;
+  if (on) draw(box, html`<span>${icon('spark', 12)} ${t('ai_note')}</span><button type="button" data-act="ai-orig">${isShowingOriginal() ? t('ai_show_tr') : t('ai_show_orig')}</button>`);
+}
+
 async function route() {
+  beginRender();
+  await routeInner();
+  afterLiveDraw();
+}
+// also called after the 30 s live refreshes: new strings (a new suggestion, a new reason) are queued for translation.
+// Cheap: cached strings never reach the API again and failed ones are not retried, so a refresh cannot loop.
+function afterLiveDraw() { aiNote(); fillTranslations(); }
+async function routeInner() {
   clearInterval(state.timer);
   const me = ++state.nav, alive = () => me === state.nav;
   const [, a, b, c] = (location.hash.replace(/^#/, '') || '/').split('/');
@@ -318,7 +356,7 @@ function openSheet({ summary, token, secs, id }) {
 async function ask(plotId, btn) {
   busy(btn, true, t('asking_ai'));
   try {
-    const r = await api('POST', `/plots/${plotId}/advise`, { lang: getLang() });
+    const r = await api('POST', `/plots/${plotId}/advise`, { lang: getLang() === 'zu' ? 'zu' : 'en' });
     if (r.status !== 200) { toast(r.body?.message || t('err_load'), true); return; }
     writeCache(r.body.suggestionId, { facts: r.body.facts, lang: getLang(), ai: r.body.ai });
     location.hash = `#/suggestions/${r.body.suggestionId}`;
@@ -357,7 +395,7 @@ document.addEventListener('click', async (ev) => {
   const a = el.dataset.act;
   if (a === 'sheet-bg') { if (ev.target === el) closeSheet(); return; }
   if (a === 'sheet-cancel') return closeSheet();
-  if (a === 'lang') { setLang(el.dataset.lang); return route(); }
+  if (a === 'ai-orig') { toggleOriginal(); return route(); }
   if (a === 'ask') return ask(Number(el.dataset.plot), el);
   if (a === 'approve') return approve(Number(el.dataset.id), el);
   if (a === 'confirm') return confirm(Number(el.dataset.id), el.dataset.token, el);
@@ -376,7 +414,7 @@ document.addEventListener('click', async (ev) => {
     else toast(r.body.message || t('err_load'), true);
   }
 });
-document.addEventListener('change', marketChange);
+document.addEventListener('change', (ev) => { if (ev.target.dataset?.act === 'lang-pick') { setLang(ev.target.value); route(); return; } marketChange(ev); });
 document.addEventListener('submit', async (ev) => {
   ev.preventDefault();
   if (await marketSubmit(ev, { route, toast, busy, errText })) return;

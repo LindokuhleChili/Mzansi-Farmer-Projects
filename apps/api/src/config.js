@@ -32,6 +32,7 @@ export function loadConfig(env = process.env) {
     aiBaseUrl: env.AI_BASE_URL || '',
     aiApiKey: env.AI_API_KEY || '',
     aiModel: env.AI_MODEL || '',
+    aiTranslateTimeoutMs: Number.isInteger(+env.AI_TRANSLATE_TIMEOUT_MS) && +env.AI_TRANSLATE_TIMEOUT_MS >= 100 ? +env.AI_TRANSLATE_TIMEOUT_MS : AI_TRANSLATE_TIMEOUT_MS,   // translation only; advice keeps AI_TIMEOUT_MS
     appToken, registry,
     logDir: env.LOG_DIR || 'logs',
     logLevel: env.LOG_LEVEL || 'warn',
@@ -40,3 +41,7 @@ export function loadConfig(env = process.env) {
     problems,
   };
 }
+export const TRANSLATE_MAX_TEXTS = 60;      // max strings per POST /api/v1/translate
+export const TRANSLATE_MAX_CHARS = 500;     // max characters per string (market notes are max 500)
+export const AI_TRANSLATE_TIMEOUT_MS = 20000; // default max wait for one translation batch (override with AI_TRANSLATE_TIMEOUT_MS)
+export const TRANSLATE_CACHE_MAX = 5000;    // in-memory translation cache entries (oldest dropped first)

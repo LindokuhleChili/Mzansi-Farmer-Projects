@@ -1,7 +1,8 @@
 // AI providers. The model only PROPOSES; it never supplies facts. Providers return raw text (JSON expected).
 //  - mock: deterministic, no key, no network. AI_MOCK_BEHAVIOUR (or provider.behaviour) simulates failures for tests/demo.
 //  - http: any OpenAI-compatible /chat/completions endpoint. Key from AI_API_KEY (never committed).
-import { AI_TIMEOUT_MS, LITRES_PER_PCT_DEFICIT } from '../config.js';
+import { AI_TIMEOUT_MS, AI_TRANSLATE_TIMEOUT_MS, LITRES_PER_PCT_DEFICIT } from '../config.js';
+import { TRANSLATE_SYSTEM_PROMPT, buildTranslatePrompt } from './translate.js';
 
 export class AiError extends Error {
   constructor(kind, message) { super(message); this.kind = kind; } // kind: timeout | http | network
@@ -46,13 +47,39 @@ export function createMockProvider({ behaviour = process.env.AI_MOCK_BEHAVIOUR |
         default: return JSON.stringify(deterministicProposal(ctx, lang));
       }
     },
+    // Mock translation: deterministic and offline. Prefixes "[code]" and leaves the text (with its numbers, prices, names) unchanged.
+    // AI_MOCK_BEHAVIOUR=timeout simulates an outage; translate-mangle changes numbers (the translator must reject that).
+    async translate(texts, target) {
+      if (p.behaviour === 'timeout') throw new AiError('timeout', 'AI did not answer (simulated)');
+      if (p.behaviour === 'translate-mangle') return JSON.stringify({ translations: texts.map((s) => `[${target}] ` + s.replace(/\d/g, '9')) });
+      return JSON.stringify({ translations: texts.map((s) => `[${target}] ${s}`) });
+    },
   };
   return p;
 }
 
 export function createHttpProvider(config) {
+  async function chat(system, user, timeoutMs = AI_TIMEOUT_MS) {
+    const ctl = new AbortController();
+    const timer = setTimeout(() => ctl.abort(), timeoutMs);
+    try {
+      const res = await fetch(config.aiBaseUrl.replace(/\/+$/, '') + '/chat/completions', {
+        method: 'POST', signal: ctl.signal,
+        headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${config.aiApiKey}` },
+        body: JSON.stringify({ model: config.aiModel, temperature: 0, response_format: { type: 'json_object' }, messages: [{ role: 'system', content: system }, { role: 'user', content: user }] }),
+      });
+      if (!res.ok) throw new AiError('http', `AI provider returned HTTP ${res.status}`);
+      const data = await res.json();
+      return data?.choices?.[0]?.message?.content ?? '';
+    } catch (e) {
+      if (e instanceof AiError) throw e;
+      if (e.name === 'AbortError') throw new AiError('timeout', `AI did not answer within ${timeoutMs} ms`);
+      throw new AiError('network', `AI provider not reachable: ${e.cause?.code || e.message}`);
+    } finally { clearTimeout(timer); }
+  }
   return {
     name: 'http',
+    translate: (texts, target) => chat(TRANSLATE_SYSTEM_PROMPT, buildTranslatePrompt(texts, target), config.aiTranslateTimeoutMs || AI_TRANSLATE_TIMEOUT_MS),
     async propose(ctx, lang) {
       const ctl = new AbortController();
       const timer = setTimeout(() => ctl.abort(), AI_TIMEOUT_MS);
