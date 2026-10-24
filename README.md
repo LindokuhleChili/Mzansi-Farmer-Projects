@@ -9,6 +9,18 @@ An ESP32 soil sensor sends readings to a Node API. An AI model proposes an actio
 
 **All data in this repository is fictional example data.** Nothing here is a real farm, a real person or advice to act on.
 
+## Status (hackathon wrap-up, 24 Oct 2026)
+
+| Area | State |
+|---|---|
+| Irrigation loop (sensor -> AI proposal -> ABL rules -> two-step farmer approval -> audit) | Built, tested on real OpenEdge 12.8 |
+| Co-op rules (members, input credit, harvest lots, fair allocation, payouts) | Built (HTTP API), CO01-CO76 pass on real ABL |
+| Community harvest-day market (feature 16) | Merged; schema `004-market.df` loaded in the live demo DB; MK01-MK51 pass on real ABL |
+| AI translation into all 11 official languages | Merged; picker in the UI, hand-written isiZulu first, AI for the rest (mock offline, Gemini via `AI_PROVIDER=http`); see [docs/TRANSLATION.md](docs/TRANSLATION.md) |
+| Planned features 17-22 (e.g. weather alerts from a 7-day forecast, audit-log hash chain) | **Not built yet**; ideas and plans in [docs/OLD-APP-IDEAS-PLAN.md](docs/OLD-APP-IDEAS-PLAN.md) |
+
+Tests: `npm test` 380 passed, 0 failed, 3 intentional failures (by design). Real ABL (scratch database): 187 contract cases passed plus the intentional FAIL01.
+
 ```
 ESP32 or simulator --POST /api/v1/readings--> Node API (Fastify, port 3000)
                                                 |  reads plot limits, latest reading and 7-day water use from OpenEdge
