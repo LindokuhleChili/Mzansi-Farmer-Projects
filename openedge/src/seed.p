@@ -64,7 +64,7 @@ ELSE DO:
 END.
 IF NUM-ENTRIES(cArgs, "|") >= 5 THEN cDoctor = ENTRY(5, cArgs, "|").
 ELSE DO:
-    iSlash = MAXIMUM(R-INDEX(cFile, "\\"), R-INDEX(cFile, "/")).
+    iSlash = MAXIMUM(R-INDEX(cFile, "\"), R-INDEX(cFile, "/")).
     IF iSlash = 0 THEN cDoctor = "doctor-seed.json".
     ELSE cDoctor = SUBSTRING(cFile, 1, iSlash) + "doctor-seed.json".
 END.
