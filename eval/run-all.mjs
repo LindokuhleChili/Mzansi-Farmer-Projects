@@ -8,6 +8,7 @@
 //  9. eval/market.test.mjs: harvest-day market rule edges and the /api/v1/market routes (two-step publish and cancel). Cases MK01 to MK51 are part of suite 1.
 // 11. eval/audit-chain.test.mjs: audit hash chain (feature 21). AUD03-AUD05 are part of suite 1.
 // 10. eval/translate.test.mjs: dynamic AI translation (11 languages), cache, fallback, the language picker.
+// 13. eval/doctor.test.mjs: plant doctor (mock AI): photo limits, server dose strip, fallback, DOSE_BLOCKED via OpenEdge, approval. Cases DR01 to DR31 are part of suite 1.
 // 12. eval/weather.test.mjs: weather alerts (no AI): seed labelling, rule edges, /api/v1 weather routes. Cases WX01 to WX28 are part of suite 1.
 //  8. eval/coop.test.mjs: co-op rule unit tests (pro rata rounding, caps, approve re-check, payouts, audit). The co-op contract cases CO01 to CO76 are part of suite 1.
 // The same contract cases run against the REAL ABL code on Windows with scripts\oe-run.ps1 -Action test (see docs/NOTES.md).
@@ -92,6 +93,13 @@ const wxPass = Number((/^# pass (\d+)/m.exec(wxTests.stdout) || [])[1] || 0), wx
 for (const m of wxTests.stdout.matchAll(/^(not ok|ok) \d+ - (.*)$/gm)) console.log(`  ${m[1] === 'ok' ? 'PASS' : 'FAIL'}  ${m[2]}`);
 console.log(`  weather tests: ${wxPass} passed, ${wxFail} failed`);
 totals.pass += wxPass; totals.fail += wxFail + (wxTests.status === 0 ? 0 : (wxFail ? 0 : 1));
+
+console.log('\n=== 13. Plant doctor: photos, server check, DOSE_BLOCKED, fallback, farmer approval (eval/doctor.test.mjs, node:test) ===');
+const drTests = spawnSync(process.execPath, ['--test', '--test-reporter=tap', fileURLToPath(new URL('./doctor.test.mjs', import.meta.url))], { encoding: 'utf8' });
+const drPass = Number((/^# pass (\d+)/m.exec(drTests.stdout) || [])[1] || 0), drFail = Number((/^# fail (\d+)/m.exec(drTests.stdout) || [])[1] || 0);
+for (const m of drTests.stdout.matchAll(/^(not ok|ok) \d+ - (.*)$/gm)) console.log(`  ${m[1] === 'ok' ? 'PASS' : 'FAIL'}  ${m[2]}`);
+console.log(`  plant doctor tests: ${drPass} passed, ${drFail} failed`);
+totals.pass += drPass; totals.fail += drFail + (drTests.status === 0 ? 0 : (drFail ? 0 : 1));
 
 console.log(`\nTOTAL: ${totals.pass} passed, ${totals.fail} failed, ${totals.intentional} intentional failures confirmed (by design), ${totals.unexpected} unexpected passes of intentional cases`);
 process.exit(totals.fail === 0 && totals.unexpected === 0 ? 0 : 1);

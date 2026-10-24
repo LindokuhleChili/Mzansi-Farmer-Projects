@@ -23,7 +23,7 @@ const SECURITY_HEADERS = {
   'Referrer-Policy': 'no-referrer',
   'Content-Security-Policy': "default-src 'self'; img-src 'self' data:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
 };
-const PROXY_PATH = /^(plots|suggestions|audit|market|translate|farms|forecast|alerts|alert-thresholds)(\/[A-Za-z0-9_-]+)*$/;   // never /readings (device ingestion) and never /health
+const PROXY_PATH = /^(plots|suggestions|audit|market|translate|farms|forecast|alerts|alert-thresholds|doctor)(\/[A-Za-z0-9_-]+)*$/;   // never /readings (device ingestion) and never /health
 const LOCAL_HOST = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i;
 const isLoopback = (ip = '') => ip === '127.0.0.1' || ip === '::1' || ip.startsWith('::ffff:127.');
 export const AI_DEMO_BEHAVIOURS = ['normal', 'greedy'];
@@ -89,7 +89,7 @@ export function registerUi(app, { config, oe, provider, clock, oeCall, fail }) {
 
   // ---- proxy to /api/v1 with the server-side app token (GET, POST, DELETE on plots / suggestions / audit / market only)
   app.route({
-    method: ['GET', 'POST', 'DELETE'], url: '/ui/api/v1/*',
+    method: ['GET', 'POST', 'DELETE'], url: '/ui/api/v1/*', bodyLimit: 12 * 1024 * 1024,   // plant doctor photos
     handler: async (req, reply) => {
       if (!guard(req, reply)) return;
       const rest = req.params['*'];

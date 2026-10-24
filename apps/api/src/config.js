@@ -32,6 +32,7 @@ export function loadConfig(env = process.env) {
     aiBaseUrl: env.AI_BASE_URL || '',
     aiApiKey: env.AI_API_KEY || '',
     aiModel: env.AI_MODEL || '',
+    aiDoctorTimeoutMs: Number.isInteger(+env.AI_DOCTOR_TIMEOUT_MS) && +env.AI_DOCTOR_TIMEOUT_MS >= 100 ? +env.AI_DOCTOR_TIMEOUT_MS : 30000,   // plant doctor (photos take longer)
     aiTranslateTimeoutMs: Number.isInteger(+env.AI_TRANSLATE_TIMEOUT_MS) && +env.AI_TRANSLATE_TIMEOUT_MS >= 100 ? +env.AI_TRANSLATE_TIMEOUT_MS : AI_TRANSLATE_TIMEOUT_MS,   // translation only; advice keeps AI_TIMEOUT_MS
     appToken, registry,
     logDir: env.LOG_DIR || 'logs',
