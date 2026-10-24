@@ -67,7 +67,7 @@ FUNCTION fPlain RETURNS CHARACTER (INPUT pi AS INT64):
     DO WHILE i > 0:
         iDig = INTEGER(i MODULO 10).
         c = SUBSTRING("0123456789", iDig + 1, 1) + c.
-        i = i / 10.
+        i = TRUNCATE(i / 10, 0).
     END.
     RETURN cSign + c.
 END FUNCTION.
@@ -81,7 +81,7 @@ FUNCTION fRand RETURNS CHARACTER (INPUT piCents AS INT64):
     DEFINE VARIABLE cSign  AS CHARACTER NO-UNDO INITIAL "".
     IF piCents < 0 THEN ASSIGN cSign = "-" iAbs = - piCents.
     ELSE iAbs = piCents.
-    iWhole = iAbs / 100.
+    iWhole = TRUNCATE(iAbs / 100, 0).
     iFrac = INTEGER(iAbs MODULO 100).
     cFrac = fPlain(iFrac).
     IF LENGTH(cFrac) < 2 THEN cFrac = "0" + cFrac.
