@@ -1,5 +1,5 @@
 // Co-op routes of the OpenEdge REST contract (docs/OE-CONTRACT.md, docs/COOP.md). Called from handler.js; returns null when the path is not a co-op route.
-// Same behaviour as openedge/src/coop-api.p.
+// Same behaviour as openedge/src/coop.i (included by farm-api.p).
 import { MAX_AMOUNT_RAND, MAX_KG } from './constants.js';
 import { parseIso, iso } from './time.js';
 import {

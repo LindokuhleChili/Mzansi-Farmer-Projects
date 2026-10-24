@@ -8,6 +8,7 @@ Instance `farmops` was created with `pasman create` (HTTP 8820, HTTPS 8821, shut
    - `[AppServer.Agent.farmops]` `PROPATH=<repo>/openedge/src,...` (put the repo's `openedge/src` first)
 2. Copy `ROOT.handlers` (this folder) to `webapps/ROOT/WEB-INF/adapters/web/ROOT/ROOT.handlers`.
    It maps `/web/farm/...` to `web.FarmHandler` (`openedge/src/web/FarmHandler.cls`), which calls `farm-api.p`.
+   The same `/farm` and `/farm/{*}` handlers cover the co-op routes (`/web/farm/members`, credits, lots, contracts, allocations, payouts). `farm-api.p` includes `coop.i`, so there is no second handler class.
    After changing it: `tcman.bat jmx refreshWeb -appname farmops -webappname ROOT`.
 3. **Demo-only security relaxation:** in `webapps/ROOT/WEB-INF/oeablSecurity.csv` the line for `/web/**` was changed from
    `hasAnyRole('ROLE_PSCUser')` to `permitAll()` (login model is `anonymous`). This is acceptable only because the instance

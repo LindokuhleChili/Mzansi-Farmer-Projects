@@ -11,7 +11,18 @@
   RULES (all numbers come from the OpenEdge database, never from the AI):
     PLOT_NOT_FOUND, ACTION_NOT_ALLOWED, LITRES_OUT_OF_RANGE, NO_SENSOR_DATA,
     SENSOR_STALE, SOIL_NOT_DRY, RAIN_DETECTED, WATER_BUDGET_EXCEEDED
-  EXAMPLE DATA ONLY: the farm, plots and readings are fictional.
+
+  CO-OP RULES (coop.i, compiled into this program; same results as mock-pasoe/coop-rules.js):
+    CREDIT_LIMIT_EXCEEDED,
+    CROP_MISMATCH, CONTRACT_CLOSED, LOT_EXCEEDS_CONTRACT, LOT_STOCK_EXCEEDED,
+    MEMBER_NOT_IN_LOT, PAYOUT_NOT_DELIVERED, PAYOUT_NOTHING_DUE, PAYOUT_EXCEEDS_SHARE,
+    CREDIT_DEDUCTION_INVALID, CREDIT_NOT_DEDUCTED
+  Fair allocation is pro rata by the contract's remaining kg (largest remainder), unless the
+  lot covers every open contract of that crop, in which case each contract is filled in full.
+  Nothing is applied without an explicit approve/deliver decision. Every check writes AuditLog.
+  See docs/COOP.md.
+
+  EXAMPLE DATA ONLY: the farm, plots, members, lots and contracts are fictional.
 ------------------------------------------------------------------------*/
 USING Progress.Json.ObjectModel.JsonObject.
 USING Progress.Json.ObjectModel.JsonArray.
@@ -28,6 +39,24 @@ DEFINE OUTPUT PARAMETER pcResponse AS LONGCHAR  NO-UNDO.
 &SCOPED-DEFINE STALE_READING_MINUTES 15
 &SCOPED-DEFINE BUDGET_WINDOW_DAYS 7
 &SCOPED-DEFINE ALLOWED_ACTIONS "irrigate,hold,notify"
+/* Co-op sanity limits. Keep identical to mock-pasoe/constants.js (MAX_AMOUNT_RAND, MAX_KG). */
+&SCOPED-DEFINE MAX_AMOUNT_RAND 10000000
+&SCOPED-DEFINE MAX_KG 10000000
+
+/* Pro-rata scratch (largest remainder). Shared by payout shares and fair allocation; never nested. */
+DEFINE TEMP-TABLE ttDist NO-UNDO
+    FIELD itemId  AS INTEGER
+    FIELD weight  AS INT64
+    FIELD baseAmt AS INT64
+    FIELD frac    AS INT64
+    INDEX idxItem IS UNIQUE PRIMARY itemId.
+
+DEFINE TEMP-TABLE ttFair NO-UNDO
+    FIELD contractId   AS INTEGER
+    FIELD contractCode AS CHARACTER
+    FIELD remainKg     AS INTEGER
+    FIELD allocKg      AS INTEGER
+    INDEX idxFair IS UNIQUE PRIMARY contractId.
 
 DEFINE VARIABLE giStatus AS INTEGER    NO-UNDO.
 DEFINE VARIABLE goResp   AS JsonObject NO-UNDO.
@@ -151,6 +180,10 @@ FUNCTION fSuggJson RETURNS JsonObject (INPUT piId AS INTEGER):
     jo:Add("requestId", AiSuggestion.RequestId).
     RETURN jo.
 END FUNCTION.
+
+/* Co-op rules, JSON builders and /farm/members|credits|lots|contracts|allocations|payouts handlers.
+   Included here so it is part of farm-api.p (the only program PASOE and run-contract.p run). */
+{coop.i}
 
 /* ---------- THE RULES ---------- */
 PROCEDURE do-validate:
@@ -698,6 +731,18 @@ PROCEDURE dispatch:
             ELSE IF cP = "suggestions" THEN RUN h-list-suggestions.
             ELSE IF n = 2 AND ENTRY(1, cP, "/") = "suggestions" THEN RUN h-get-suggestion (INTEGER(ENTRY(2, cP, "/"))).
             ELSE IF cP = "audit" THEN RUN h-list-audit.
+            ELSE IF cP = "members" THEN RUN h-coop-members.
+            ELSE IF n = 2 AND ENTRY(1, cP, "/") = "members" THEN RUN h-coop-member (fPathId(ENTRY(2, cP, "/"))).
+            ELSE IF cP = "credits" THEN RUN h-coop-credits.
+            ELSE IF n = 2 AND ENTRY(1, cP, "/") = "credits" THEN RUN h-coop-credit (fPathId(ENTRY(2, cP, "/"))).
+            ELSE IF cP = "lots" THEN RUN h-coop-lots.
+            ELSE IF n = 2 AND ENTRY(1, cP, "/") = "lots" THEN RUN h-coop-lot (fPathId(ENTRY(2, cP, "/"))).
+            ELSE IF cP = "contracts" THEN RUN h-coop-contracts.
+            ELSE IF n = 2 AND ENTRY(1, cP, "/") = "contracts" THEN RUN h-coop-contract (fPathId(ENTRY(2, cP, "/"))).
+            ELSE IF cP = "allocations" THEN RUN h-coop-allocations.
+            ELSE IF n = 2 AND ENTRY(1, cP, "/") = "allocations" THEN RUN h-coop-allocation (fPathId(ENTRY(2, cP, "/"))).
+            ELSE IF cP = "payouts" THEN RUN h-coop-payouts.
+            ELSE IF n = 2 AND ENTRY(1, cP, "/") = "payouts" THEN RUN h-coop-payout (fPathId(ENTRY(2, cP, "/"))).
             ELSE RUN reply-error (404, "NOT_FOUND", "Unknown route.", ?).
         END.
         WHEN "POST" THEN DO:
@@ -707,6 +752,17 @@ PROCEDURE dispatch:
             ELSE IF n = 3 AND ENTRY(1, cP, "/") = "suggestions" AND ENTRY(3, cP, "/") = "decision"
                 THEN RUN h-decision (INTEGER(ENTRY(2, cP, "/"))).
             ELSE IF cP = "audit" THEN RUN h-post-audit.
+            ELSE IF cP = "credits" THEN RUN h-coop-credit-create.
+            ELSE IF n = 3 AND ENTRY(1, cP, "/") = "credits" AND ENTRY(3, cP, "/") = "decision"
+                THEN RUN h-coop-credit-decide (fPathId(ENTRY(2, cP, "/"))).
+            ELSE IF cP = "allocations" THEN RUN h-coop-alloc-create.
+            ELSE IF n = 3 AND ENTRY(1, cP, "/") = "allocations" AND ENTRY(3, cP, "/") = "decision"
+                THEN RUN h-coop-alloc-decide (fPathId(ENTRY(2, cP, "/"))).
+            ELSE IF n = 3 AND ENTRY(1, cP, "/") = "lots" AND ENTRY(3, cP, "/") = "fair-allocation"
+                THEN RUN h-coop-fair (fPathId(ENTRY(2, cP, "/"))).
+            ELSE IF cP = "payouts" THEN RUN h-coop-payout-create.
+            ELSE IF n = 3 AND ENTRY(1, cP, "/") = "payouts" AND ENTRY(3, cP, "/") = "decision"
+                THEN RUN h-coop-payout-decide (fPathId(ENTRY(2, cP, "/"))).
             ELSE RUN reply-error (404, "NOT_FOUND", "Unknown route.", ?).
         END.
         OTHERWISE RUN reply-error (405, "METHOD_NOT_ALLOWED", "Method not allowed.", ?).

@@ -89,16 +89,18 @@ The database is called `farm`. The project ran it as a multi-user server on port
 
 ```powershell
 .\scripts\oe-run.ps1 -Action start-db     # database server on port 20000
-.\scripts\oe-run.ps1 -Action seed         # reset to the example data (before each test run and before the demo)
-.\scripts\oe-run.ps1 -Action test         # 61 contract cases against the ABL code in batch mode
+.\scripts\oe-run.ps1 -Action seed         # reset to the example data, including the co-op seed (before each test run and before the demo)
+.\scripts\oe-run.ps1 -Action test         # every contract case, including CO01-CO76, against the ABL code in batch mode
+.\scripts\oe-run.ps1 -Action test-coop    # reseed, then only the 76 co-op cases
 # Start the PASOE instance `farmops` (tcman.bat start), then:
 $env:OE_BASE_URL = 'http://localhost:8820/web'
-npm run test:oe-http                      # the same 61 cases over HTTP through FarmHandler.cls
+.\scripts\oe-run.ps1 -Action test-http    # reseed, then every case over HTTP through FarmHandler.cls
+npm run test:oe-http                      # the same HTTP cases; reseed first, this command does not
 $env:OE_MODE = 'pasoe'; npm start         # API backed by the real database
 npm run demo
 ```
 
-To create a fresh database, stop the database server, run `.\scripts\oe-run.ps1 -Action load-schema`, then start the server and run `seed`. The PASOE PROPATH points at this repository's `openedge/src`. After you change ABL code, run `compile-check.p` and refresh the agent sessions if needed.
+Stop the database server before a schema load. An existing database that already has `002-farm-ops.df`: `.\scripts\oe-run.ps1 -Action load-coop` (loads `003-coop.df` only). A database that does not have `002` yet: `.\scripts\oe-run.ps1 -Action load-schema` (`002` then `003`). Then start the server and run `seed`. Co-op rules and the full steps are in `docs/COOP.md`. The PASOE PROPATH points at this repository's `openedge/src`. After you change ABL code, run `compile-check.p` (`farm-api.p` includes `coop.i`) and refresh the agent sessions if needed.
 
 The API must run on the same machine as PASOE, or be given an `OE_BASE_URL` it can reach. A cloud machine cannot reach the laptop's localhost.
 
@@ -118,6 +120,8 @@ The API must run on the same machine as PASOE, or be given an `OE_BASE_URL` it c
 All failing rules are reported, not only the first. `hold` and `notify` skip the water checks. Approval re-runs the rules at approval time, because the data may have changed.
 
 The seed data has five fictional plots (Maize A, Beans B, Spinach C, Tomato D, Cabbage E) on one fictional farm.
+
+Co-op rules (members, credit, harvest lots, buyer contracts, pro-rata allocation, payouts) are in the same OpenEdge program. They are described in `docs/COOP.md`. A create does not approve anything. The farmer or an admin approves in a separate call. There is no co-op screen.
 
 ## Demo script
 
@@ -160,8 +164,8 @@ Edit `config.h` with your Wi-Fi name and password, the laptop's address, the dev
 
 | Command | What it does |
 |---|---|
-| `npm test` | Everything that works offline. At the last run: 184 passed, 0 failed, 3 intentional failures confirmed. |
-| `npm run test:oe-http` | The 61 OpenEdge contract cases over HTTP against a running PASOE. |
+| `npm test` | Everything that works offline. At the last run: 301 passed, 0 failed, 3 intentional failures confirmed. |
+| `npm run test:oe-http` | Every OpenEdge contract case, including `CO01` to `CO76`, over HTTP against a running PASOE. Reseed first. |
 | `npm run test:api-real-oe` | The API test suites against real PASOE. |
 | `npm run test:gemini` | One live call to the real model. Skipped without the AI variables. |
 | `cd firmware/esp32 && pio test -e native` | Firmware payload-builder unit tests. Needs PlatformIO and a host C++ compiler. |
@@ -189,6 +193,7 @@ Three cases are designed to fail (`FAIL01` and `E20`, the last in two modes). Th
 | [`docs/NOTES.md`](docs/NOTES.md) | Stack versions, rules, environment variables, test results |
 | [`docs/API.md`](docs/API.md) | HTTP API |
 | [`docs/OE-CONTRACT.md`](docs/OE-CONTRACT.md) | Contract between the API and OpenEdge |
+| [`docs/COOP.md`](docs/COOP.md) | Co-op rules, endpoints, and how to run them on OpenEdge 12.8 |
 | [`docs/ESP32.md`](docs/ESP32.md) | Firmware, wiring and simulator |
 | `docs/screens/` | Approved demo screens (design mockups) and photo credits |
 | `docs/UI.md` | The web interface: pages, token handling, demo tools, isiZulu, photo credits |
