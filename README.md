@@ -17,7 +17,8 @@ An ESP32 soil sensor sends readings to a Node API. An AI model proposes an actio
 | Co-op rules (members, input credit, harvest lots, fair allocation, payouts) | Built (HTTP API), CO01-CO76 pass on real ABL |
 | Community harvest-day market (feature 16) | Merged; schema `004-market.df` loaded in the live demo DB; MK01-MK51 pass on real ABL |
 | AI translation into all 11 official languages | Merged; picker in the UI, hand-written isiZulu first, AI for the rest (mock offline, Gemini via `AI_PROVIDER=http`); see [docs/TRANSLATION.md](docs/TRANSLATION.md) |
-| Planned features 17-22 (e.g. weather alerts from a 7-day forecast, audit-log hash chain) | **Not built yet**; ideas and plans in [docs/OLD-APP-IDEAS-PLAN.md](docs/OLD-APP-IDEAS-PLAN.md) |
+| Weather alerts (17) and tamper-evident audit hash chain (21) | **Built** (code and scratch-DB tests); the live DB needs 005-audit-chain.df and 006-weather.df loaded, see [docs/AUDIT.md](docs/AUDIT.md) and [docs/WEATHER.md](docs/WEATHER.md) |
+| Planned features 18, 19, 20 (rest), 22 | **Not built yet**; ideas and plans in [docs/OLD-APP-IDEAS-PLAN.md](docs/OLD-APP-IDEAS-PLAN.md) |
 
 Tests: `npm test` 380 passed, 0 failed, 3 intentional failures (by design). Real ABL (scratch database): 187 contract cases passed plus the intentional FAIL01.
 
@@ -139,6 +140,8 @@ Co-op rules (members, credit, harvest lots, buyer contracts, pro-rata allocation
 
 The **community harvest-day market** (farmers list a market day with produce priced below the retail-buyer price, optional reservations, optional link to a co-op lot) is in the same OpenEdge program and has its own screens under Market. See `docs/MARKET.md`.
 
+**Weather alerts** (no AI): OpenEdge checks a synthetic example 7-day forecast against the farmer's alert levels for heavy rain, heat and frost, writes the alerts and the audit, and the farmer acknowledges them. See `docs/WEATHER.md`.
+
 ## Demo script
 
 Use this order for a live demo. Times in the seed data are fixed to 23 October 2026, so you need a fresh reading to get an irrigation proposal (step 2 does this).
@@ -218,6 +221,7 @@ For real translation with Gemini, set in your local `.env` only: `AI_PROVIDER=ht
 | [`docs/COOP.md`](docs/COOP.md) | Co-op rules, endpoints, and how to run them on OpenEdge 12.8 |
 | [`docs/AUDIT.md`](docs/AUDIT.md) | Tamper-evident audit log: hash chain, verify endpoint, tamper test, live schema load |
 | [`docs/MARKET.md`](docs/MARKET.md) | Harvest-day market: decisions, rules, endpoints, screens, isiZulu drafts |
+| [`docs/WEATHER.md`](docs/WEATHER.md) | Weather alerts: example forecast, ABL rules, thresholds, endpoints, live schema steps |
 | [`docs/ESP32.md`](docs/ESP32.md) | Firmware, wiring and simulator |
 | `docs/screens/` | Approved demo screens (design mockups) and photo credits |
 | `docs/UI.md` | The web interface: pages, token handling, demo tools, isiZulu, photo credits |

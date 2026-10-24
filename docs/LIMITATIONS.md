@@ -77,3 +77,8 @@ This is a hackathon prototype. It shows one idea: an AI model may propose, OpenE
 - Real-time actuation (the system records an approval; it does not open a valve)
 - Multi-farm or multi-user support
 - Production deployment, monitoring and backups
+
+## Weather alerts
+- The forecast is a synthetic example file (`openedge/data/weather-seed.json`), not a weather service. Only KwaZulu-Natal (and the example provinces in the file) have days. Other provinces return `noData`.
+- Alerts are refreshed when the farmer presses "Check forecast". There is no scheduled job and no push or SMS.
+- Alert levels apply to every farm. There are no per-farm or per-crop levels yet.

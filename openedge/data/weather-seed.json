@@ -1,0 +1,197 @@
+{
+ "label": "FICTIONAL EXAMPLE DATA: synthetic 7-day forecast from 10_mzansi_farmer_ai_synthetic_weather_forecast.csv. Not a real forecast.",
+ "baseDate": "2026-10-24",
+ "source": "example",
+ "farms": [
+  {
+   "farmId": 1,
+   "province": "KwaZulu-Natal"
+  },
+  {
+   "farmId": 2,
+   "farmName": "Example farm without a forecast (EXAMPLE DATA)",
+   "location": "Gauteng (example)",
+   "acreage": 1.0,
+   "province": "Gauteng"
+  }
+ ],
+ "thresholds": [
+  {
+   "alertType": "rain",
+   "op": ">=",
+   "value": 10.0,
+   "unit": "mm",
+   "level": "warning"
+  },
+  {
+   "alertType": "rain",
+   "op": ">=",
+   "value": 25.0,
+   "unit": "mm",
+   "level": "severe"
+  },
+  {
+   "alertType": "heat",
+   "op": ">=",
+   "value": 33.0,
+   "unit": "C",
+   "level": "warning"
+  },
+  {
+   "alertType": "frost",
+   "op": "<=",
+   "value": 2.0,
+   "unit": "C",
+   "level": "warning"
+  }
+ ],
+ "forecast": [
+  {
+   "province": "Limpopo",
+   "dayNo": 1,
+   "tempMaxC": 23.0,
+   "tempMinC": 15.0,
+   "rainMm": 2.5
+  },
+  {
+   "province": "Limpopo",
+   "dayNo": 2,
+   "tempMaxC": 25.0,
+   "tempMinC": 15.0,
+   "rainMm": 4.4
+  },
+  {
+   "province": "Limpopo",
+   "dayNo": 3,
+   "tempMaxC": 30.0,
+   "tempMinC": 18.0,
+   "rainMm": 4.1
+  },
+  {
+   "province": "Limpopo",
+   "dayNo": 4,
+   "tempMaxC": 33.0,
+   "tempMinC": 17.0,
+   "rainMm": 1.5
+  },
+  {
+   "province": "Limpopo",
+   "dayNo": 5,
+   "tempMaxC": 33.0,
+   "tempMinC": 12.0,
+   "rainMm": 0.3
+  },
+  {
+   "province": "Limpopo",
+   "dayNo": 6,
+   "tempMaxC": 22.0,
+   "tempMinC": 17.0,
+   "rainMm": 1.7
+  },
+  {
+   "province": "Limpopo",
+   "dayNo": 7,
+   "tempMaxC": 31.0,
+   "tempMinC": 15.0,
+   "rainMm": 11.4
+  },
+  {
+   "province": "Mpumalanga",
+   "dayNo": 1,
+   "tempMaxC": 26.0,
+   "tempMinC": 19.0,
+   "rainMm": 2.3
+  },
+  {
+   "province": "Mpumalanga",
+   "dayNo": 2,
+   "tempMaxC": 32.0,
+   "tempMinC": 15.0,
+   "rainMm": 0.2
+  },
+  {
+   "province": "Mpumalanga",
+   "dayNo": 3,
+   "tempMaxC": 24.0,
+   "tempMinC": 14.0,
+   "rainMm": 10.5
+  },
+  {
+   "province": "Mpumalanga",
+   "dayNo": 4,
+   "tempMaxC": 23.0,
+   "tempMinC": 18.0,
+   "rainMm": 3.0
+  },
+  {
+   "province": "Mpumalanga",
+   "dayNo": 5,
+   "tempMaxC": 22.0,
+   "tempMinC": 16.0,
+   "rainMm": 3.6
+  },
+  {
+   "province": "Mpumalanga",
+   "dayNo": 6,
+   "tempMaxC": 24.0,
+   "tempMinC": 19.0,
+   "rainMm": 4.0
+  },
+  {
+   "province": "Mpumalanga",
+   "dayNo": 7,
+   "tempMaxC": 32.0,
+   "tempMinC": 15.0,
+   "rainMm": 9.6
+  },
+  {
+   "province": "KwaZulu-Natal",
+   "dayNo": 1,
+   "tempMaxC": 29.0,
+   "tempMinC": 17.0,
+   "rainMm": 1.8
+  },
+  {
+   "province": "KwaZulu-Natal",
+   "dayNo": 2,
+   "tempMaxC": 33.0,
+   "tempMinC": 16.0,
+   "rainMm": 1.0
+  },
+  {
+   "province": "KwaZulu-Natal",
+   "dayNo": 3,
+   "tempMaxC": 33.0,
+   "tempMinC": 15.0,
+   "rainMm": 1.9
+  },
+  {
+   "province": "KwaZulu-Natal",
+   "dayNo": 4,
+   "tempMaxC": 31.0,
+   "tempMinC": 15.0,
+   "rainMm": 2.6
+  },
+  {
+   "province": "KwaZulu-Natal",
+   "dayNo": 5,
+   "tempMaxC": 33.0,
+   "tempMinC": 16.0,
+   "rainMm": 11.0
+  },
+  {
+   "province": "KwaZulu-Natal",
+   "dayNo": 6,
+   "tempMaxC": 32.0,
+   "tempMinC": 17.0,
+   "rainMm": 0.1
+  },
+  {
+   "province": "KwaZulu-Natal",
+   "dayNo": 7,
+   "tempMaxC": 30.0,
+   "tempMinC": 12.0,
+   "rainMm": 1.6
+  }
+ ]
+}

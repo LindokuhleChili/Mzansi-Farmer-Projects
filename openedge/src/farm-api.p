@@ -213,6 +213,7 @@ END FUNCTION.
    Included here so it is part of farm-api.p (the only program PASOE and run-contract.p run). */
 {coop.i}
 {market.i}
+{weather.i}
 
 /* ---------- THE RULES ---------- */
 PROCEDURE do-validate:
@@ -808,6 +809,10 @@ PROCEDURE dispatch:
             ELSE IF cP = "market/events" THEN RUN h-mk-events.
             ELSE IF n = 3 AND ENTRY(1, cP, "/") = "market" AND ENTRY(2, cP, "/") = "events" THEN RUN h-mk-event (fPathId(ENTRY(3, cP, "/"))).
             ELSE IF cP = "market/reservations" THEN RUN h-mk-reservations.
+            ELSE IF n = 2 AND ENTRY(1, cP, "/") = "farms" THEN RUN h-wx-farm (fPathId(ENTRY(2, cP, "/"))).
+            ELSE IF cP = "forecast" THEN RUN h-wx-forecast.
+            ELSE IF cP = "alerts" THEN RUN h-wx-alerts.
+            ELSE IF cP = "alert-thresholds" THEN RUN h-wx-thresholds.
             ELSE RUN reply-error (404, "NOT_FOUND", "Unknown route.", ?).
         END.
         WHEN "POST" THEN DO:
@@ -817,6 +822,9 @@ PROCEDURE dispatch:
             ELSE IF n = 3 AND ENTRY(1, cP, "/") = "suggestions" AND ENTRY(3, cP, "/") = "decision"
                 THEN RUN h-decision (INTEGER(ENTRY(2, cP, "/"))).
             ELSE IF cP = "audit" THEN RUN h-post-audit.
+            ELSE IF cP = "alerts/refresh" THEN RUN h-wx-refresh.
+            ELSE IF n = 3 AND ENTRY(1, cP, "/") = "alerts" AND ENTRY(3, cP, "/") = "ack" THEN RUN h-wx-ack (fPathId(ENTRY(2, cP, "/"))).
+            ELSE IF n = 2 AND ENTRY(1, cP, "/") = "alert-thresholds" THEN RUN h-wx-threshold-save (fPathId(ENTRY(2, cP, "/"))).
             ELSE IF cP = "credits" THEN RUN h-coop-credit-create.
             ELSE IF n = 3 AND ENTRY(1, cP, "/") = "credits" AND ENTRY(3, cP, "/") = "decision"
                 THEN RUN h-coop-credit-decide (fPathId(ENTRY(2, cP, "/"))).
