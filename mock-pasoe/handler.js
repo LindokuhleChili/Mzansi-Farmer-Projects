@@ -6,6 +6,7 @@ import { parseIso, iso } from './time.js';
 import { handleCoop } from './coop-handler.js';
 import { handleMarket } from './market-handler.js';
 import { handleWeather } from './weather.js';
+import { handleDoctor } from './doctor.js';
 
 const err = (status, error, message, field) => ({ status, body: { error, message, ...(field ? { field } : {}) } });
 const isNum = (v) => typeof v === 'number' && Number.isFinite(v);
@@ -52,6 +53,8 @@ export function handle(store, method, pathWithQuery, body = {}, clock = () => ne
   if (market) return market;
   const weather = handleWeather(store, method, segs, q, body, clock);   // /farms/{id}, /forecast, /alerts, /alert-thresholds (feature 17)
   if (weather) return weather;
+  const doctor = handleDoctor(store, method, segs, q, body, clock);   // /doctor/check, /doctor/diagnoses, /doctor/blocked-terms (features 1 and 2)
+  if (doctor) return doctor;
 
   if (method === 'GET') {
     if (n === 1 && segs[0] === 'plots') return { status: 200, body: { plots: [...store.plots].sort((a, b) => a.plotId - b.plotId).map(plotJson) } };

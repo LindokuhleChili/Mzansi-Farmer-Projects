@@ -1,0 +1,15 @@
+{
+ "label": "No-doses guardrail word list (feature 2). Admin-editable in the BlockedTerm table. A sentence is blocked when it has a dose word AND a chemical word.",
+ "blockedTerms": [
+  {"term": "dose", "kind": "dose"}, {"term": "doses", "kind": "dose"}, {"term": "dosage", "kind": "dose"}, {"term": "rate", "kind": "dose"},
+  {"term": "dilution", "kind": "dose"}, {"term": "dilute", "kind": "dose"}, {"term": "per litre", "kind": "dose"}, {"term": "per liter", "kind": "dose"},
+  {"term": "per hectare", "kind": "dose"}, {"term": "per ha", "kind": "dose"}, {"term": "ml", "kind": "dose"}, {"term": "g", "kind": "dose"},
+  {"term": "kg", "kind": "dose"}, {"term": "%", "kind": "dose"}, {"term": "ppm", "kind": "dose"}, {"term": "teaspoon", "kind": "dose"},
+  {"term": "tablespoon", "kind": "dose"}, {"term": "cc", "kind": "dose"},
+  {"term": "pesticide", "kind": "chemical"}, {"term": "insecticide", "kind": "chemical"}, {"term": "fungicide", "kind": "chemical"},
+  {"term": "herbicide", "kind": "chemical"}, {"term": "chemical", "kind": "chemical"}, {"term": "copper", "kind": "chemical"},
+  {"term": "sulphur", "kind": "chemical"}, {"term": "sulfur", "kind": "chemical"}, {"term": "mancozeb", "kind": "chemical"},
+  {"term": "chlorothalonil", "kind": "chemical"}, {"term": "glyphosate", "kind": "chemical"}, {"term": "imidacloprid", "kind": "chemical"},
+  {"term": "cypermethrin", "kind": "chemical"}, {"term": "bleach", "kind": "chemical"}
+ ]
+}
