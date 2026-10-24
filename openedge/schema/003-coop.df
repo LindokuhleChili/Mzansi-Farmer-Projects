@@ -120,7 +120,7 @@ ADD FIELD "MemberId" OF "InputCredit" AS integer
   ORDER 20
   MANDATORY
 
-ADD FIELD "Item" OF "InputCredit" AS character
+ADD FIELD "ItemName" OF "InputCredit" AS character
   FORMAT "x(80)"
   INITIAL ""
   LABEL "Item"
