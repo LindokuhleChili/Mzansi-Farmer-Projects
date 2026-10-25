@@ -32,8 +32,12 @@ The farmer takes 1 to 3 photos of a sick plant and picks the crop, plant part, g
 
 ## Photo credit
 
-The header photo `plant-doctor-tomato-leaf.jpg` (early blight on tomato) is "Alternaria solani on Solanum lycopersicum" by **Michal Maňas**, from Wikimedia Commons, under **CC BY 4.0**: https://commons.wikimedia.org/wiki/File:Alternaria_solani_on_Solanum_lycopersicum.jpg (resized). The same photo was used for the one real Gemini check.
+The header photo `plant-doctor-tomato-fruit.jpg` (early blight fruit rot on tomato fruit, per the Wikimedia caption) is "Alternaria solani on Solanum lycopersicum" by **Michal Maňas**, from Wikimedia Commons, under **CC BY 4.0**: https://commons.wikimedia.org/wiki/File:Alternaria_solani_on_Solanum_lycopersicum.jpg (resized). The same photo was used for the one real Gemini check.
 
 ## Not medical/agronomic certainty
 
 This is a suggestion from photos, not a lab test. The page says so and points the farmer to their extension officer.
+
+## Real check (2026-10-24, gemini-3.5-flash-lite, mock OpenEdge)
+
+One real call with this photo answered "Anthracnose fruit rot (likely)" with **high** confidence, and gave 4 steps with no chemicals. The Wikimedia caption says *Alternaria solani* (early blight), so the AI named a different disease while sounding sure of itself. That is one reason the page shows the answer as a suggestion and sends the farmer to an extension officer. The check request wrongly sent `plantPart: "leaf"` for this fruit photo; the photo shows **fruit**.

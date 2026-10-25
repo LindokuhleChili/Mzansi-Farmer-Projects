@@ -6,7 +6,7 @@ import { t, tx } from './i18n.js';
 import { api } from './api.js';
 import { lvl } from './views.js';
 
-const HERO = '/assets/photos/plant-doctor-tomato-leaf.jpg';
+const HERO = '/assets/photos/plant-doctor-tomato-fruit.jpg';
 const MAX_PHOTOS = 3, MAX_SIDE = 1280;
 const PARTS = ['leaf', 'stem', 'fruit', 'root', 'flower', 'whole_plant'];
 const STAGES = ['seedling', 'vegetative', 'flowering', 'fruiting', 'mature'];
