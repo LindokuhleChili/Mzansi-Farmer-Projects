@@ -82,3 +82,9 @@ This is a hackathon prototype. It shows one idea: an AI model may propose, OpenE
 - The real forecast comes from Open-Meteo for one representative town per province, not for each farm's exact position. Without network access (or with `WEATHER_SOURCE=example`), the synthetic example file (`openedge/data/weather-seed.json`) is used. It is labelled "Example forecast data", and a reseed brings it back.
 - Alerts are refreshed when the farmer presses "Check forecast". There is no scheduled job and no push or SMS.
 - Alert levels apply to every farm. There are no per-farm or per-crop levels yet.
+
+## Plant doctor
+- The diagnosis is a guess from photos, not a lab test. The confidence is the AI's own guess.
+- The word lists catch the dose wording they contain. New phrasings need words added by an admin, so the server check and the prompt stay as extra layers.
+- No chemical advice is given at all, on purpose. Farmers who need a spray programme are sent to an extension officer.
+- Photos are not stored, so a saved diagnosis cannot show the photos later.

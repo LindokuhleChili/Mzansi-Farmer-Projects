@@ -1,0 +1,255 @@
+ADD TABLE "BlockedTerm"
+  AREA "Schema Area"
+  DESCRIPTION "No-doses guardrail word list (feature 2). A sentence with a dose term AND a chemical term is refused (DOSE_BLOCKED). Admin-editable."
+  DUMP-NAME "blockedterm"
+
+ADD FIELD "TermId" OF "BlockedTerm" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Term Id"
+  POSITION 2
+  MAX-WIDTH 4
+  ORDER 10
+  MANDATORY
+
+ADD FIELD "TermText" OF "BlockedTerm" AS character
+  FORMAT "x(40)"
+  INITIAL ""
+  LABEL "Term"
+  POSITION 3
+  MAX-WIDTH 80
+  ORDER 20
+
+ADD FIELD "TermKind" OF "BlockedTerm" AS character
+  FORMAT "x(10)"
+  INITIAL ""
+  LABEL "Kind (dose/chemical)"
+  POSITION 4
+  MAX-WIDTH 20
+  ORDER 30
+
+ADD FIELD "Active" OF "BlockedTerm" AS logical
+  FORMAT "yes/no"
+  INITIAL "yes"
+  LABEL "Active"
+  POSITION 5
+  MAX-WIDTH 1
+  ORDER 40
+
+ADD FIELD "UpdatedAt" OF "BlockedTerm" AS datetime-tz
+  FORMAT "99/99/9999 HH:MM:SS.SSS+HH:MM"
+  INITIAL "?"
+  LABEL "Updated"
+  POSITION 6
+  MAX-WIDTH 8
+  ORDER 50
+
+ADD FIELD "UpdatedBy" OF "BlockedTerm" AS character
+  FORMAT "x(40)"
+  INITIAL ""
+  LABEL "Updated by"
+  POSITION 7
+  MAX-WIDTH 80
+  ORDER 60
+
+ADD INDEX "TermId" ON "BlockedTerm"
+  AREA "Schema Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "TermId" ASCENDING
+
+ADD INDEX "KindTerm" ON "BlockedTerm"
+  AREA "Schema Area"
+  UNIQUE
+  INDEX-FIELD "TermKind" ASCENDING
+  INDEX-FIELD "TermText" ASCENDING
+
+ADD TABLE "Diagnosis"
+  AREA "Schema Area"
+  DESCRIPTION "Plant doctor answers (feature 1). Photos are never stored. Saved only after DOSE_BLOCKED passed."
+  DUMP-NAME "diagnosis"
+
+ADD FIELD "DiagnosisId" OF "Diagnosis" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Diagnosis Id"
+  POSITION 2
+  MAX-WIDTH 4
+  ORDER 10
+  MANDATORY
+
+ADD FIELD "CreatedAt" OF "Diagnosis" AS datetime-tz
+  FORMAT "99/99/9999 HH:MM:SS.SSS+HH:MM"
+  INITIAL "?"
+  LABEL "Created"
+  POSITION 3
+  MAX-WIDTH 8
+  ORDER 20
+
+ADD FIELD "Crop" OF "Diagnosis" AS character
+  FORMAT "x(40)"
+  INITIAL ""
+  LABEL "Crop"
+  POSITION 4
+  MAX-WIDTH 80
+  ORDER 30
+
+ADD FIELD "PlantPart" OF "Diagnosis" AS character
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "Plant part"
+  POSITION 5
+  MAX-WIDTH 40
+  ORDER 40
+
+ADD FIELD "GrowthStage" OF "Diagnosis" AS character
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "Growth stage"
+  POSITION 6
+  MAX-WIDTH 40
+  ORDER 50
+
+ADD FIELD "Province" OF "Diagnosis" AS character
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "Province"
+  POSITION 7
+  MAX-WIDTH 40
+  ORDER 60
+
+ADD FIELD "PhotoCount" OF "Diagnosis" AS integer
+  FORMAT ">9"
+  INITIAL "0"
+  LABEL "Photos"
+  POSITION 8
+  MAX-WIDTH 4
+  ORDER 70
+
+ADD FIELD "ConditionName" OF "Diagnosis" AS character
+  FORMAT "x(120)"
+  INITIAL ""
+  LABEL "Likely condition"
+  POSITION 9
+  MAX-WIDTH 240
+  ORDER 80
+
+ADD FIELD "Confidence" OF "Diagnosis" AS character
+  FORMAT "x(10)"
+  INITIAL ""
+  LABEL "Confidence"
+  POSITION 10
+  MAX-WIDTH 20
+  ORDER 90
+
+ADD FIELD "Observations" OF "Diagnosis" AS character
+  FORMAT "x(1000)"
+  INITIAL ""
+  LABEL "Observations"
+  POSITION 11
+  MAX-WIDTH 2000
+  ORDER 100
+
+ADD FIELD "StepsJson" OF "Diagnosis" AS character
+  FORMAT "x(4000)"
+  INITIAL ""
+  LABEL "Steps (JSON)"
+  POSITION 12
+  MAX-WIDTH 8000
+  ORDER 110
+
+ADD FIELD "MonitorJson" OF "Diagnosis" AS character
+  FORMAT "x(2000)"
+  INITIAL ""
+  LABEL "Monitor (JSON)"
+  POSITION 13
+  MAX-WIDTH 4000
+  ORDER 120
+
+ADD FIELD "RiskLevel" OF "Diagnosis" AS character
+  FORMAT "x(10)"
+  INITIAL ""
+  LABEL "Neighbour risk"
+  POSITION 14
+  MAX-WIDTH 20
+  ORDER 130
+
+ADD FIELD "RiskReason" OF "Diagnosis" AS character
+  FORMAT "x(300)"
+  INITIAL ""
+  LABEL "Risk reason"
+  POSITION 15
+  MAX-WIDTH 600
+  ORDER 140
+
+ADD FIELD "CallExpert" OF "Diagnosis" AS character
+  FORMAT "x(300)"
+  INITIAL ""
+  LABEL "When to call an expert"
+  POSITION 16
+  MAX-WIDTH 600
+  ORDER 150
+
+ADD FIELD "UsedFallback" OF "Diagnosis" AS logical
+  FORMAT "yes/no"
+  INITIAL "no"
+  LABEL "Fallback"
+  POSITION 17
+  MAX-WIDTH 1
+  ORDER 160
+
+ADD FIELD "FallbackReason" OF "Diagnosis" AS character
+  FORMAT "x(40)"
+  INITIAL ""
+  LABEL "Fallback reason"
+  POSITION 18
+  MAX-WIDTH 80
+  ORDER 170
+
+ADD FIELD "DiagStatus" OF "Diagnosis" AS character
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "Status"
+  POSITION 19
+  MAX-WIDTH 40
+  ORDER 180
+
+ADD FIELD "DecidedAt" OF "Diagnosis" AS datetime-tz
+  FORMAT "99/99/9999 HH:MM:SS.SSS+HH:MM"
+  INITIAL "?"
+  LABEL "Decided"
+  POSITION 20
+  MAX-WIDTH 8
+  ORDER 190
+
+ADD FIELD "RequestId" OF "Diagnosis" AS character
+  FORMAT "x(40)"
+  INITIAL ""
+  LABEL "Request"
+  POSITION 21
+  MAX-WIDTH 80
+  ORDER 200
+
+ADD INDEX "DiagnosisId" ON "Diagnosis"
+  AREA "Schema Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "DiagnosisId" ASCENDING
+
+ADD SEQUENCE "TermSeq"
+  INITIAL 0
+  INCREMENT 1
+  CYCLE-ON-LIMIT no
+  MIN-VAL 0
+
+ADD SEQUENCE "DiagnosisSeq"
+  INITIAL 0
+  INCREMENT 1
+  CYCLE-ON-LIMIT no
+  MIN-VAL 0
+
+.
+PSC
+cpstream=ISO8859-1
+.
+0000000000

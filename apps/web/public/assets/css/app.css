@@ -412,3 +412,20 @@ table.t td.n{font-variant-numeric:tabular-nums;color:var(--mut)}
 .wx-th input{width:76px}
 @media (max-width:760px){.wx-days{grid-template-columns:none;grid-auto-flow:column;grid-auto-columns:110px;overflow-x:auto}.wx-grid{grid-template-columns:1fr}.wx-alert{flex-wrap:wrap;gap:6px}}
 .wx-credit{margin-top:8px}.wx-credit a{color:inherit;text-decoration:underline}.tag-ex.wx-live{border-style:solid}
+
+/* plant doctor */
+.dr-credit{margin:6px 2px 0}.dr-credit a{color:inherit;text-decoration:underline}
+.dr-layout{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.3fr);gap:14px;margin-top:12px}
+.dr-fields{display:grid;grid-template-columns:1fr 1fr;gap:0 12px}
+.dr-thumbs{display:flex;gap:8px;margin:4px 0 10px}.dr-thumbs img{width:72px;height:72px;object-fit:cover;border-radius:12px}
+.dr-cond{font-family:'Plus Jakarta Sans';font-size:20px;margin:2px 0 0}
+.dr-note{display:flex;gap:8px;align-items:flex-start;background:#FFF8EC;border-radius:12px;padding:8px 10px;margin-top:10px;font-size:13px}
+.dr-steps{margin:6px 0 14px;padding-left:20px}.dr-steps li{padding:6px 0;border-bottom:1px solid var(--line,#e3e8df)}.dr-steps li span:first-child{margin-right:8px}
+.dr-cost{display:inline-block;font-size:10.5px;font-weight:600;border-radius:99px;padding:1px 7px;background:#EAF3EA;color:#2f5d36}
+.dr-cost.medium{background:#FBEBD0;color:#7a4b00}.dr-cost.high{background:#F9DCD6;color:#8a2a17}
+.dr-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.dr-ul{margin:6px 0 0;padding-left:18px;font-size:13px}
+.dr-expert{background:#F6F8F1;border-radius:12px;padding:10px 12px;margin:12px 0 8px}
+.dr-chips{display:flex;flex-wrap:wrap;gap:6px}.dr-chip{border:1px solid #d9e0d5;background:#fff;border-radius:99px;padding:3px 9px;font-size:12px;cursor:pointer}
+.dr-chip.chemical{background:#F6F8F1}.dr-chip.off{opacity:.45;text-decoration:line-through}
+.dr-words summary{cursor:pointer}
+@media (max-width:760px){.dr-layout,.dr-fields,.dr-grid{grid-template-columns:1fr}}

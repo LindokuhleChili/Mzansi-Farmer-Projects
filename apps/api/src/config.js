@@ -34,6 +34,7 @@ export function loadConfig(env = process.env) {
     aiModel: env.AI_MODEL || '',
     weatherSource: String(env.WEATHER_SOURCE || 'open-meteo').toLowerCase() === 'example' ? 'example' : 'open-meteo',   // 'example' = never fetch, keep the example seed
     weatherTimeoutMs: Number.isInteger(+env.WEATHER_TIMEOUT_MS) && +env.WEATHER_TIMEOUT_MS >= 100 ? +env.WEATHER_TIMEOUT_MS : 8000,
+    aiDoctorTimeoutMs: Number.isInteger(+env.AI_DOCTOR_TIMEOUT_MS) && +env.AI_DOCTOR_TIMEOUT_MS >= 100 ? +env.AI_DOCTOR_TIMEOUT_MS : 30000,   // plant doctor (photos take longer)
     aiTranslateTimeoutMs: Number.isInteger(+env.AI_TRANSLATE_TIMEOUT_MS) && +env.AI_TRANSLATE_TIMEOUT_MS >= 100 ? +env.AI_TRANSLATE_TIMEOUT_MS : AI_TRANSLATE_TIMEOUT_MS,   // translation only; advice keeps AI_TIMEOUT_MS
     appToken, registry,
     logDir: env.LOG_DIR || 'logs',

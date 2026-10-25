@@ -3,6 +3,7 @@
 //  - http: any OpenAI-compatible /chat/completions endpoint. Key from AI_API_KEY (never committed).
 import { AI_TIMEOUT_MS, AI_TRANSLATE_TIMEOUT_MS, LITRES_PER_PCT_DEFICIT } from '../config.js';
 import { TRANSLATE_SYSTEM_PROMPT, buildTranslatePrompt } from './translate.js';
+import { DOCTOR_SYSTEM_PROMPT, buildDoctorText, mockDoctorAnswer } from './doctor.js';
 
 export class AiError extends Error {
   constructor(kind, message) { super(message); this.kind = kind; } // kind: timeout | http | network
@@ -47,6 +48,12 @@ export function createMockProvider({ behaviour = process.env.AI_MOCK_BEHAVIOUR |
         default: return JSON.stringify(deterministicProposal(ctx, lang));
       }
     },
+    // Mock plant doctor: never looks at the photos. AI_MOCK_BEHAVIOUR=timeout | bad-json | dose | dose-all | dose-hidden | injection
+    async diagnose(meta, photos) {
+      if (p.behaviour === 'timeout') throw new AiError('timeout', 'AI did not answer (simulated)');
+      if (p.behaviour === 'bad-json') return 'It looks like blight, spray something.';
+      return JSON.stringify(mockDoctorAnswer(meta, p.behaviour));
+    },
     // Mock translation: deterministic and offline. Prefixes "[code]" and leaves the text (with its numbers, prices, names) unchanged.
     // AI_MOCK_BEHAVIOUR=timeout simulates an outage; translate-mangle changes numbers (the translator must reject that).
     async translate(texts, target) {
@@ -59,7 +66,7 @@ export function createMockProvider({ behaviour = process.env.AI_MOCK_BEHAVIOUR |
 }
 
 export function createHttpProvider(config) {
-  async function chat(system, user, timeoutMs = AI_TIMEOUT_MS) {
+  async function chat(system, user, timeoutMs = AI_TIMEOUT_MS) {   // user: string, or an OpenAI-style content array (text + image_url parts)
     const ctl = new AbortController();
     const timer = setTimeout(() => ctl.abort(), timeoutMs);
     try {
@@ -79,6 +86,9 @@ export function createHttpProvider(config) {
   }
   return {
     name: 'http',
+    // Plant doctor: photos go as OpenAI-compatible image_url data URIs. Never logged.
+    diagnose: (meta, photos) => chat(DOCTOR_SYSTEM_PROMPT, [{ type: 'text', text: buildDoctorText(meta) },
+      ...photos.map((ph) => ({ type: 'image_url', image_url: { url: `data:${ph.mimeType};base64,${ph.dataBase64}` } }))], config.aiDoctorTimeoutMs || 30000),
     translate: (texts, target) => chat(TRANSLATE_SYSTEM_PROMPT, buildTranslatePrompt(texts, target), config.aiTranslateTimeoutMs || AI_TRANSLATE_TIMEOUT_MS),
     async propose(ctx, lang) {
       const ctl = new AbortController();

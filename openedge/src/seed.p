@@ -36,6 +36,10 @@ DEFINE BUFFER bMI FOR MarketItem.
 DEFINE VARIABLE cWeather AS CHARACTER NO-UNDO.
 DEFINE VARIABLE joWx AS JsonObject NO-UNDO.
 DEFINE VARIABLE dWxBase AS DATE NO-UNDO.
+/* plant doctor (feature 1/2): 5th file, default doctor-seed.json next to seed.json */
+DEFINE VARIABLE cDoctor AS CHARACTER NO-UNDO.
+DEFINE VARIABLE joDr AS JsonObject NO-UNDO.
+DEFINE VARIABLE iDrTerms AS INTEGER NO-UNDO.
 DEFINE VARIABLE iWxDays AS INTEGER NO-UNDO. DEFINE VARIABLE iWxTh AS INTEGER NO-UNDO.
 
 cArgs = SESSION:PARAMETER.
@@ -57,6 +61,17 @@ ELSE DO:
     iSlash = MAXIMUM(R-INDEX(cFile, "\"), R-INDEX(cFile, "/")).
     IF iSlash = 0 THEN cWeather = "weather-seed.json".
     ELSE cWeather = SUBSTRING(cFile, 1, iSlash) + "weather-seed.json".
+END.
+IF NUM-ENTRIES(cArgs, "|") >= 5 THEN cDoctor = ENTRY(5, cArgs, "|").
+ELSE DO:
+    iSlash = MAXIMUM(R-INDEX(cFile, "\"), R-INDEX(cFile, "/")).
+    IF iSlash = 0 THEN cDoctor = "doctor-seed.json".
+    ELSE cDoctor = SUBSTRING(cFile, 1, iSlash) + "doctor-seed.json".
+END.
+FILE-INFO:FILE-NAME = cDoctor.
+IF FILE-INFO:FULL-PATHNAME = ? THEN DO:
+    MESSAGE "DOCTOR SEED FILE NOT FOUND:" cDoctor.
+    RETURN ERROR.
 END.
 FILE-INFO:FILE-NAME = cWeather.
 IF FILE-INFO:FULL-PATHNAME = ? THEN DO:
@@ -81,8 +96,12 @@ oParser = NEW ObjectModelParser().
 joMarket = CAST(oParser:ParseFile(cMarket), JsonObject).
 oParser = NEW ObjectModelParser().
 joWx = CAST(oParser:ParseFile(cWeather), JsonObject).
+oParser = NEW ObjectModelParser().
+joDr = CAST(oParser:ParseFile(cDoctor), JsonObject).
 
 DO TRANSACTION:
+    FOR EACH Diagnosis EXCLUSIVE-LOCK: DELETE Diagnosis. END.
+    FOR EACH BlockedTerm EXCLUSIVE-LOCK: DELETE BlockedTerm. END.
     FOR EACH WeatherAlert EXCLUSIVE-LOCK: DELETE WeatherAlert. END.
     FOR EACH AlertThreshold EXCLUSIVE-LOCK: DELETE AlertThreshold. END.
     FOR EACH ForecastDay EXCLUSIVE-LOCK: DELETE ForecastDay. END.
@@ -332,7 +351,19 @@ DO TRANSACTION:
         RELEASE ForecastDay.
         iWxDays = iWxDays + 1.
     END.
+    /* ---- plant doctor (feature 1): the no-doses word list (feature 2) */
+    CURRENT-VALUE(TermSeq) = 0. CURRENT-VALUE(DiagnosisSeq) = 0.
+    ja = joDr:GetJsonArray("blockedTerms").
+    DO i = 1 TO ja:Length:
+        jo = ja:GetJsonObject(i).
+        CREATE BlockedTerm.
+        ASSIGN BlockedTerm.TermId = NEXT-VALUE(TermSeq) BlockedTerm.TermText = jo:GetCharacter("term") BlockedTerm.TermKind = jo:GetCharacter("kind")
+               BlockedTerm.Active = TRUE BlockedTerm.UpdatedBy = "seed".
+        RELEASE BlockedTerm.
+        iDrTerms = iDrTerms + 1.
+    END.
 END.
 MESSAGE SUBSTITUTE("SEED OK: &1 farm(s), &2 plots, &3 readings, &4 suggestions, &5 members, &6 credits, &7 lots, &8 contracts (EXAMPLE DATA)", iFarms, iPlots, iReads, iSugg, iMembers, iCredits, iLots, iContracts).
 MESSAGE SUBSTITUTE("MARKET SEED OK: &1 retail prices, &2 events, &3 items, &4 reservations (EXAMPLE DATA)", iPrices, iEvents, iItems, iRes).
 MESSAGE SUBSTITUTE("WEATHER SEED OK: &1 forecast days, &2 thresholds (FICTIONAL EXAMPLE FORECAST)", iWxDays, iWxTh).
+MESSAGE SUBSTITUTE("DOCTOR SEED OK: &1 blocked terms", iDrTerms).

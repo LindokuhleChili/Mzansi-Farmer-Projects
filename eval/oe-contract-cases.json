@@ -5120,12 +5120,12 @@
       {
        "dayNo": 2,
        "tempMaxC": 29.1,
-       "tempMinC": 15.0,
+       "tempMinC": 15,
        "rainMm": 0
       },
       {
        "dayNo": 3,
-       "tempMaxC": 31.0,
+       "tempMaxC": 31,
        "tempMinC": 16.8,
        "rainMm": 2.4
       },
@@ -5143,7 +5143,7 @@
       },
       {
        "dayNo": 6,
-       "tempMaxC": 26.0,
+       "tempMaxC": 26,
        "tempMinC": 11.3,
        "rainMm": 0
       },
@@ -5214,12 +5214,12 @@
       {
        "dayNo": 2,
        "tempMaxC": 29.1,
-       "tempMinC": 15.0,
+       "tempMinC": 15,
        "rainMm": 0
       },
       {
        "dayNo": 3,
-       "tempMaxC": 31.0,
+       "tempMaxC": 31,
        "tempMinC": 16.8,
        "rainMm": 2.4
       },
@@ -5237,7 +5237,7 @@
       },
       {
        "dayNo": 6,
-       "tempMaxC": 26.0,
+       "tempMaxC": 26,
        "tempMinC": 11.3,
        "rainMm": 0
       },
@@ -5279,12 +5279,12 @@
       {
        "dayNo": 2,
        "tempMaxC": 29.1,
-       "tempMinC": 15.0,
+       "tempMinC": 15,
        "rainMm": 0
       },
       {
        "dayNo": 3,
-       "tempMaxC": 31.0,
+       "tempMaxC": 31,
        "tempMinC": 16.8,
        "rainMm": 2.4
       },
@@ -5302,7 +5302,7 @@
       },
       {
        "dayNo": 6,
-       "tempMaxC": 26.0,
+       "tempMaxC": 26,
        "tempMinC": 11.3,
        "rainMm": 0
       }
@@ -5337,12 +5337,12 @@
       {
        "dayNo": 2,
        "tempMaxC": 29.1,
-       "tempMinC": 15.0,
+       "tempMinC": 15,
        "rainMm": 0
       },
       {
        "dayNo": 3,
-       "tempMaxC": 31.0,
+       "tempMaxC": 31,
        "tempMinC": 35,
        "rainMm": 2.4
       },
@@ -5360,7 +5360,7 @@
       },
       {
        "dayNo": 6,
-       "tempMaxC": 26.0,
+       "tempMaxC": 26,
        "tempMinC": 11.3,
        "rainMm": 0
       },
@@ -5401,12 +5401,12 @@
       {
        "dayNo": 2,
        "tempMaxC": 29.1,
-       "tempMinC": 15.0,
+       "tempMinC": 15,
        "rainMm": 0
       },
       {
        "dayNo": 3,
-       "tempMaxC": 31.0,
+       "tempMaxC": 31,
        "tempMinC": 16.8,
        "rainMm": 2.4
       },
@@ -5424,7 +5424,7 @@
       },
       {
        "dayNo": 6,
-       "tempMaxC": 26.0,
+       "tempMaxC": 26,
        "tempMinC": 11.3,
        "rainMm": 0
       },
@@ -5465,12 +5465,12 @@
       {
        "dayNo": 2,
        "tempMaxC": 29.1,
-       "tempMinC": 15.0,
+       "tempMinC": 15,
        "rainMm": 0
       },
       {
        "dayNo": 3,
-       "tempMaxC": 31.0,
+       "tempMaxC": 31,
        "tempMinC": 16.8,
        "rainMm": 2.4
       },
@@ -5488,7 +5488,7 @@
       },
       {
        "dayNo": 6,
-       "tempMaxC": 26.0,
+       "tempMaxC": 26,
        "tempMinC": 11.3,
        "rainMm": 0
       },
@@ -5529,12 +5529,12 @@
       {
        "dayNo": 2,
        "tempMaxC": 29.1,
-       "tempMinC": 15.0,
+       "tempMinC": 15,
        "rainMm": 0
       },
       {
        "dayNo": 3,
-       "tempMaxC": 31.0,
+       "tempMaxC": 31,
        "tempMinC": 16.8,
        "rainMm": 2.4
       },
@@ -5552,7 +5552,7 @@
       },
       {
        "dayNo": 6,
-       "tempMaxC": 26.0,
+       "tempMaxC": 26,
        "tempMinC": 11.3,
        "rainMm": 0
       },
@@ -5593,12 +5593,12 @@
       {
        "dayNo": 2,
        "tempMaxC": 29.1,
-       "tempMinC": 15.0,
+       "tempMinC": 15,
        "rainMm": 0
       },
       {
        "dayNo": 3,
-       "tempMaxC": 31.0,
+       "tempMaxC": 31,
        "tempMinC": 16.8,
        "rainMm": 2.4
       },
@@ -5616,7 +5616,7 @@
       },
       {
        "dayNo": 6,
-       "tempMaxC": 26.0,
+       "tempMaxC": 26,
        "tempMinC": 11.3,
        "rainMm": 0
       },
@@ -5649,6 +5649,865 @@
     "body": {
      "isSynthetic": true,
      "source": "example"
+    }
+   }
+  },
+  {
+   "id": "DR01",
+   "title": "DOSE_BLOCKED rule: ordinary watering and spacing advice passes",
+   "request": {
+    "method": "POST",
+    "path": "/farm/doctor/check",
+    "body": {
+     "texts": [
+      "Water 5 litres at the base. Space plants 40 cm apart."
+     ]
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "verdict": "passed",
+     "blocked": {
+      "$length": 0
+     }
+    }
+   }
+  },
+  {
+   "id": "DR02",
+   "title": "DOSE_BLOCKED rule: a dose word and a chemical word in one sentence are blocked",
+   "request": {
+    "method": "POST",
+    "path": "/farm/doctor/check",
+    "body": {
+     "texts": [
+      "Remove old leaves.",
+      "Spray copper fungicide at 20 ml per litre."
+     ]
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "verdict": "blocked",
+     "blocked": {
+      "$contains": {
+       "code": "DOSE_BLOCKED",
+       "field": "texts[1]",
+       "sentence": "Spray copper fungicide at 20 ml per litre",
+       "doseTerm": "per litre",
+       "chemicalTerm": "fungicide"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "DR03",
+   "title": "DOSE_BLOCKED rule: whole words only, 'small' does not contain the dose word 'ml'",
+   "request": {
+    "method": "POST",
+    "path": "/farm/doctor/check",
+    "body": {
+     "texts": [
+      "Tie the stem with a small copper wire."
+     ]
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "verdict": "passed"
+    }
+   }
+  },
+  {
+   "id": "DR04",
+   "title": "DOSE_BLOCKED rule: '20ml' is split into '20 ml', so it is caught",
+   "request": {
+    "method": "POST",
+    "path": "/farm/doctor/check",
+    "body": {
+     "texts": [
+      "Use 20ml of fungicide"
+     ]
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "verdict": "blocked",
+     "blocked": {
+      "$contains": {
+       "doseTerm": "ml",
+       "chemicalTerm": "fungicide"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "DR05",
+   "title": "Check needs 1 to 20 texts (400)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/doctor/check",
+    "body": {
+     "texts": []
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "texts"
+    }
+   }
+  },
+  {
+   "id": "DR06",
+   "title": "Store a checked plant doctor answer: 201, waiting for the farmer",
+   "request": {
+    "method": "POST",
+    "path": "/farm/doctor/diagnoses",
+    "body": {
+     "crop": "Tomato",
+     "plantPart": "leaf",
+     "growthStage": "fruiting",
+     "province": "KwaZulu-Natal",
+     "photoCount": 2,
+     "result": {
+      "condition": "Early blight (likely)",
+      "confidence": "medium",
+      "observations": "Brown spots with rings on older leaves.",
+      "steps": [
+       {
+        "text": "Remove the spotted lower leaves and throw them away.",
+        "cost": "free"
+       },
+       {
+        "text": "Water at the base in the morning, about 5 litres per plant.",
+        "cost": "free"
+       },
+       {
+        "text": "Add mulch so soil does not splash onto leaves.",
+        "cost": "low"
+       }
+      ],
+      "monitor": [
+       "New spots on upper leaves"
+      ],
+      "neighbourRisk": {
+       "level": "medium",
+       "reason": "Spores spread with wind and water splash."
+      },
+      "callExpert": "Call your extension officer if it spreads within a week."
+     },
+     "requestId": "req_dr"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "diagnosisId": 1,
+     "crop": "Tomato",
+     "condition": "Early blight (likely)",
+     "photoCount": 2,
+     "verdict": "passed",
+     "status": "pending_review",
+     "usedFallback": false,
+     "steps": {
+      "$length": 3
+     }
+    }
+   }
+  },
+  {
+   "id": "DR07",
+   "title": "An answer with a dose in callExpert is refused: 422 DOSE_BLOCKED, nothing stored",
+   "request": {
+    "method": "POST",
+    "path": "/farm/doctor/diagnoses",
+    "body": {
+     "crop": "Tomato",
+     "plantPart": "leaf",
+     "growthStage": "fruiting",
+     "province": "KwaZulu-Natal",
+     "photoCount": 2,
+     "result": {
+      "condition": "Early blight (likely)",
+      "confidence": "medium",
+      "observations": "Brown spots with rings on older leaves.",
+      "steps": [
+       {
+        "text": "Remove the spotted lower leaves and throw them away.",
+        "cost": "free"
+       },
+       {
+        "text": "Water at the base in the morning, about 5 litres per plant.",
+        "cost": "free"
+       },
+       {
+        "text": "Add mulch so soil does not splash onto leaves.",
+        "cost": "low"
+       }
+      ],
+      "monitor": [
+       "New spots on upper leaves"
+      ],
+      "neighbourRisk": {
+       "level": "medium",
+       "reason": "Spores spread with wind and water splash."
+      },
+      "callExpert": "Ask about the right fungicide dose before you spray."
+     },
+     "requestId": "req_dr"
+    }
+   },
+   "expect": {
+    "status": 422,
+    "body": {
+     "error": "DOSE_BLOCKED",
+     "blocked": {
+      "$contains": {
+       "field": "callExpert",
+       "doseTerm": "dose",
+       "chemicalTerm": "fungicide"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "DR08",
+   "title": "Steps must be cheapest first",
+   "request": {
+    "method": "POST",
+    "path": "/farm/doctor/diagnoses",
+    "body": {
+     "crop": "Tomato",
+     "plantPart": "leaf",
+     "growthStage": "fruiting",
+     "province": "KwaZulu-Natal",
+     "photoCount": 2,
+     "result": {
+      "condition": "Early blight (likely)",
+      "confidence": "medium",
+      "observations": "Brown spots with rings on older leaves.",
+      "steps": [
+       {
+        "text": "Add mulch so soil does not splash onto leaves.",
+        "cost": "low"
+       },
+       {
+        "text": "Water at the base in the morning, about 5 litres per plant.",
+        "cost": "free"
+       },
+       {
+        "text": "Remove the spotted lower leaves and throw them away.",
+        "cost": "free"
+       }
+      ],
+      "monitor": [
+       "New spots on upper leaves"
+      ],
+      "neighbourRisk": {
+       "level": "medium",
+       "reason": "Spores spread with wind and water splash."
+      },
+      "callExpert": "Call your extension officer if it spreads within a week."
+     },
+     "requestId": "req_dr"
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "STEPS_NOT_CHEAPEST_FIRST",
+     "field": "result.steps"
+    }
+   }
+  },
+  {
+   "id": "DR09",
+   "title": "Unknown province is a 400 on province",
+   "request": {
+    "method": "POST",
+    "path": "/farm/doctor/diagnoses",
+    "body": {
+     "crop": "Tomato",
+     "plantPart": "leaf",
+     "growthStage": "fruiting",
+     "province": "Atlantis",
+     "photoCount": 2,
+     "result": {
+      "condition": "Early blight (likely)",
+      "confidence": "medium",
+      "observations": "Brown spots with rings on older leaves.",
+      "steps": [
+       {
+        "text": "Remove the spotted lower leaves and throw them away.",
+        "cost": "free"
+       },
+       {
+        "text": "Water at the base in the morning, about 5 litres per plant.",
+        "cost": "free"
+       },
+       {
+        "text": "Add mulch so soil does not splash onto leaves.",
+        "cost": "low"
+       }
+      ],
+      "monitor": [
+       "New spots on upper leaves"
+      ],
+      "neighbourRisk": {
+       "level": "medium",
+       "reason": "Spores spread with wind and water splash."
+      },
+      "callExpert": "Call your extension officer if it spreads within a week."
+     },
+     "requestId": "req_dr"
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "province"
+    }
+   }
+  },
+  {
+   "id": "DR10",
+   "title": "4 photos is a 400 on photoCount",
+   "request": {
+    "method": "POST",
+    "path": "/farm/doctor/diagnoses",
+    "body": {
+     "crop": "Tomato",
+     "plantPart": "leaf",
+     "growthStage": "fruiting",
+     "province": "KwaZulu-Natal",
+     "photoCount": 4,
+     "result": {
+      "condition": "Early blight (likely)",
+      "confidence": "medium",
+      "observations": "Brown spots with rings on older leaves.",
+      "steps": [
+       {
+        "text": "Remove the spotted lower leaves and throw them away.",
+        "cost": "free"
+       },
+       {
+        "text": "Water at the base in the morning, about 5 litres per plant.",
+        "cost": "free"
+       },
+       {
+        "text": "Add mulch so soil does not splash onto leaves.",
+        "cost": "low"
+       }
+      ],
+      "monitor": [
+       "New spots on upper leaves"
+      ],
+      "neighbourRisk": {
+       "level": "medium",
+       "reason": "Spores spread with wind and water splash."
+      },
+      "callExpert": "Call your extension officer if it spreads within a week."
+     },
+     "requestId": "req_dr"
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "photoCount"
+    }
+   }
+  },
+  {
+   "id": "DR11",
+   "title": "Only 2 steps is a 400 on result.steps",
+   "request": {
+    "method": "POST",
+    "path": "/farm/doctor/diagnoses",
+    "body": {
+     "crop": "Tomato",
+     "plantPart": "leaf",
+     "growthStage": "fruiting",
+     "province": "KwaZulu-Natal",
+     "photoCount": 2,
+     "result": {
+      "condition": "Early blight (likely)",
+      "confidence": "medium",
+      "observations": "Brown spots with rings on older leaves.",
+      "steps": [
+       {
+        "text": "Remove the spotted lower leaves and throw them away.",
+        "cost": "free"
+       },
+       {
+        "text": "Water at the base in the morning, about 5 litres per plant.",
+        "cost": "free"
+       }
+      ],
+      "monitor": [
+       "New spots on upper leaves"
+      ],
+      "neighbourRisk": {
+       "level": "medium",
+       "reason": "Spores spread with wind and water splash."
+      },
+      "callExpert": "Call your extension officer if it spreads within a week."
+     },
+     "requestId": "req_dr"
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "result.steps"
+    }
+   }
+  },
+  {
+   "id": "DR12",
+   "title": "Unknown confidence is a 400 on result.confidence",
+   "request": {
+    "method": "POST",
+    "path": "/farm/doctor/diagnoses",
+    "body": {
+     "crop": "Tomato",
+     "plantPart": "leaf",
+     "growthStage": "fruiting",
+     "province": "KwaZulu-Natal",
+     "photoCount": 2,
+     "result": {
+      "condition": "Early blight (likely)",
+      "confidence": "sure",
+      "observations": "Brown spots with rings on older leaves.",
+      "steps": [
+       {
+        "text": "Remove the spotted lower leaves and throw them away.",
+        "cost": "free"
+       },
+       {
+        "text": "Water at the base in the morning, about 5 litres per plant.",
+        "cost": "free"
+       },
+       {
+        "text": "Add mulch so soil does not splash onto leaves.",
+        "cost": "low"
+       }
+      ],
+      "monitor": [
+       "New spots on upper leaves"
+      ],
+      "neighbourRisk": {
+       "level": "medium",
+       "reason": "Spores spread with wind and water splash."
+      },
+      "callExpert": "Call your extension officer if it spreads within a week."
+     },
+     "requestId": "req_dr"
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "result.confidence"
+    }
+   }
+  },
+  {
+   "id": "DR13",
+   "title": "plantPart is case-sensitive ('LEAF' is refused)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/doctor/diagnoses",
+    "body": {
+     "crop": "Tomato",
+     "plantPart": "LEAF",
+     "growthStage": "fruiting",
+     "province": "KwaZulu-Natal",
+     "photoCount": 2,
+     "result": {
+      "condition": "Early blight (likely)",
+      "confidence": "medium",
+      "observations": "Brown spots with rings on older leaves.",
+      "steps": [
+       {
+        "text": "Remove the spotted lower leaves and throw them away.",
+        "cost": "free"
+       },
+       {
+        "text": "Water at the base in the morning, about 5 litres per plant.",
+        "cost": "free"
+       },
+       {
+        "text": "Add mulch so soil does not splash onto leaves.",
+        "cost": "low"
+       }
+      ],
+      "monitor": [
+       "New spots on upper leaves"
+      ],
+      "neighbourRisk": {
+       "level": "medium",
+       "reason": "Spores spread with wind and water splash."
+      },
+      "callExpert": "Call your extension officer if it spreads within a week."
+     },
+     "requestId": "req_dr"
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "plantPart"
+    }
+   }
+  },
+  {
+   "id": "DR14",
+   "title": "Read the stored answer back",
+   "request": {
+    "method": "GET",
+    "path": "/farm/doctor/diagnoses/1"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "diagnosisId": 1,
+     "neighbourRisk": {
+      "level": "medium",
+      "reason": "Spores spread with wind and water splash."
+     },
+     "monitor": [
+      "New spots on upper leaves"
+     ],
+     "decidedAt": null
+    }
+   }
+  },
+  {
+   "id": "DR15",
+   "title": "Unknown decision is a 400",
+   "request": {
+    "method": "POST",
+    "path": "/farm/doctor/diagnoses/1/decision",
+    "body": {
+     "decision": "approve"
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "decision"
+    }
+   }
+  },
+  {
+   "id": "DR16",
+   "title": "The farmer saves it to the farm record",
+   "request": {
+    "method": "POST",
+    "path": "/farm/doctor/diagnoses/1/decision",
+    "body": {
+     "decision": "save",
+     "actor": "farmer"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "diagnosisId": 1,
+     "status": "saved"
+    }
+   }
+  },
+  {
+   "id": "DR17",
+   "title": "Deciding twice is 409 ALREADY_DECIDED",
+   "request": {
+    "method": "POST",
+    "path": "/farm/doctor/diagnoses/1/decision",
+    "body": {
+     "decision": "dismiss"
+    }
+   },
+   "expect": {
+    "status": 409,
+    "body": {
+     "error": "ALREADY_DECIDED"
+    }
+   }
+  },
+  {
+   "id": "DR18",
+   "title": "Unknown diagnosis is 404",
+   "request": {
+    "method": "POST",
+    "path": "/farm/doctor/diagnoses/999/decision",
+    "body": {
+     "decision": "save"
+    }
+   },
+   "expect": {
+    "status": 404,
+    "body": {
+     "error": "DIAGNOSIS_NOT_FOUND"
+    }
+   }
+  },
+  {
+   "id": "DR19",
+   "title": "Admin adds a chemical word (stored lower case)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/doctor/blocked-terms",
+    "body": {
+     "term": " Neem Oil ",
+     "kind": "chemical",
+     "updatedBy": "admin"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "termId": 33,
+     "term": "neem oil",
+     "kind": "chemical",
+     "active": true
+    }
+   }
+  },
+  {
+   "id": "DR20",
+   "title": "The same word twice is 409 TERM_EXISTS",
+   "request": {
+    "method": "POST",
+    "path": "/farm/doctor/blocked-terms",
+    "body": {
+     "term": "neem oil",
+     "kind": "chemical"
+    }
+   },
+   "expect": {
+    "status": 409,
+    "body": {
+     "error": "TERM_EXISTS",
+     "field": "term"
+    }
+   }
+  },
+  {
+   "id": "DR21",
+   "title": "A word with punctuation is BLOCKED_TERM_INVALID on term",
+   "request": {
+    "method": "POST",
+    "path": "/farm/doctor/blocked-terms",
+    "body": {
+     "term": "neem!",
+     "kind": "chemical"
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "BLOCKED_TERM_INVALID",
+     "field": "term"
+    }
+   }
+  },
+  {
+   "id": "DR22",
+   "title": "An unknown kind is BLOCKED_TERM_INVALID on kind",
+   "request": {
+    "method": "POST",
+    "path": "/farm/doctor/blocked-terms",
+    "body": {
+     "term": "azoxystrobin",
+     "kind": "other"
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "BLOCKED_TERM_INVALID",
+     "field": "kind"
+    }
+   }
+  },
+  {
+   "id": "DR23",
+   "title": "Admin turns off 'fungicide' (term 21)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/doctor/blocked-terms/21",
+    "body": {
+     "active": false
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "termId": 21,
+     "term": "fungicide",
+     "active": false
+    }
+   }
+  },
+  {
+   "id": "DR24",
+   "title": "With 'fungicide' off, '20ml of fungicide' passes (the list really drives the rule)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/doctor/check",
+    "body": {
+     "texts": [
+      "Use 20ml of fungicide"
+     ]
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "verdict": "passed"
+    }
+   }
+  },
+  {
+   "id": "DR25",
+   "title": "Turn 'fungicide' back on",
+   "request": {
+    "method": "POST",
+    "path": "/farm/doctor/blocked-terms/21",
+    "body": {
+     "active": true
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "active": true
+    }
+   }
+  },
+  {
+   "id": "DR26",
+   "title": "Blocked again",
+   "request": {
+    "method": "POST",
+    "path": "/farm/doctor/check",
+    "body": {
+     "texts": [
+      "Use 20ml of fungicide"
+     ]
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "verdict": "blocked"
+    }
+   }
+  },
+  {
+   "id": "DR27",
+   "title": "active must be a boolean",
+   "request": {
+    "method": "POST",
+    "path": "/farm/doctor/blocked-terms/21",
+    "body": {
+     "active": "no"
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "BLOCKED_TERM_INVALID",
+     "field": "active"
+    }
+   }
+  },
+  {
+   "id": "DR28",
+   "title": "Unknown term is 404",
+   "request": {
+    "method": "POST",
+    "path": "/farm/doctor/blocked-terms/999",
+    "body": {
+     "active": false
+    }
+   },
+   "expect": {
+    "status": 404,
+    "body": {
+     "error": "TERM_NOT_FOUND"
+    }
+   }
+  },
+  {
+   "id": "DR29",
+   "title": "Word list holds the new word",
+   "request": {
+    "method": "GET",
+    "path": "/farm/doctor/blocked-terms"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "terms": {
+      "$contains": {
+       "termId": 33,
+       "term": "neem oil",
+       "kind": "chemical",
+       "active": true
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "DR30",
+   "title": "Diagnoses list: one stored (the blocked one was not stored)",
+   "request": {
+    "method": "GET",
+    "path": "/farm/doctor/diagnoses?limit=5"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "diagnoses": {
+      "$length": 1
+     }
+    }
+   }
+  },
+  {
+   "id": "DR31",
+   "title": "Audit holds the blocked answer, the save and the word change",
+   "request": {
+    "method": "GET",
+    "path": "/farm/audit?limit=80"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "events": {
+      "$contains": {
+       "event": "doctor_dose_blocked"
+      }
+     }
     }
    }
   },

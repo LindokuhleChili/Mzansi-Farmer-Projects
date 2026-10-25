@@ -85,6 +85,7 @@ All photos are **Pexels License** (free to use and modify, attribution not requi
 | `plot-beans.jpg` | Beans plot | Faisal Ahammad | Close-up of Green Beans on Plant in Garden (37270950) | not stated; see note above |
 | `plot-spinach.jpg` | Spinach plot | Sayeed Chowdhury | Fresh Green Spinach Growing in Rows Outdoors (35252799) | not stated; see note above |
 | `market-stall.jpg` | harvest-day market list header, event header and confirm sheet (docs/MARKET.md) | LekePOV | African Market Stall with Fresh Produce (35726906) | not stated on the page; not South African |
+| `plant-doctor-tomato-fruit.jpg` | plant doctor header (docs/DOCTOR.md) | Michal Maňas | Alternaria solani on Solanum lycopersicum (Wikimedia Commons, **CC BY 4.0**, attribution shown on the page; resized) | not stated; not South African |
 
 ## Tests
 

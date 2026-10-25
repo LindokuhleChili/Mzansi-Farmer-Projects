@@ -1,6 +1,7 @@
 // Fastify app: /api/v1. AI proposes -> OpenEdge (ABL) rules validate -> farmer approves with an explicit confirmation step.
 import { fetchOpenMeteo, PROVINCE_COORDS } from './weather/open-meteo.js';
 import Fastify from 'fastify';
+import { checkDoctorAnswer, fallbackAnswer, checkPhotos, checkMeta } from './ai/doctor.js';
 import crypto from 'node:crypto';
 import { mkdirSync, appendFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -319,6 +320,62 @@ export function buildApp({ config, oe, provider, clock = () => new Date(), weath
     const b = req.body;
     if (!b || typeof b !== 'object' || Array.isArray(b)) return fail(reply, req, 400, 'VALIDATION_ERROR', 'Body must be a JSON object.', { field: 'body' });
     const r = await oeCall(req, 'oe.alert_threshold_save', 'POST', `/farm/alert-thresholds/${id}`, { ...pick(b, ['value', 'level', 'active']), updatedBy: 'farmer', requestId: req.id });
+    return reply.code(r.status).send(r.status < 400 ? r.body : { ...r.body, requestId: req.id });
+  });
+
+  // ---- 7. plant doctor (docs/DOCTOR.md): photos -> AI proposes -> server check -> OpenEdge DOSE_BLOCKED -> farmer saves or dismisses.
+  //      The photos go to the AI only; never to OpenEdge, the logs or the audit (only counts and sizes are logged).
+  const DOCTOR_BODY_LIMIT = 12 * 1024 * 1024;
+  app.post(`${PREFIX}/doctor/diagnoses`, { bodyLimit: DOCTOR_BODY_LIMIT }, async (req, reply) => {
+    if (!requireApp(req, reply)) return;
+    const b = req.body;
+    if (!b || typeof b !== 'object' || Array.isArray(b)) return fail(reply, req, 400, 'VALIDATION_ERROR', 'Body must be a JSON object.', { field: 'body' });
+    const mbad = checkMeta(b);
+    if (mbad) return fail(reply, req, 400, 'VALIDATION_ERROR', mbad.message, { field: mbad.field });
+    const ph = checkPhotos(b.photos);
+    if (!ph.ok) return fail(reply, req, ph.status, ph.code, ph.message, { field: ph.field });
+    const meta = { crop: b.crop.trim(), plantPart: b.plantPart, growthStage: b.growthStage, province: b.province, photoCount: ph.photos.length };
+    let result = null, fallbackReason = '', removedSteps = 0;
+    try {
+      const raw = await tool(req, 'ai.diagnose', { ...meta, photoBytes: ph.photos.map((x) => x.bytes), provider: provider.name },
+        () => provider.diagnose(meta, ph.photos), (txt) => ({ chars: String(txt || '').length }));
+      const c = checkDoctorAnswer(raw);
+      if (c.ok) { result = c.result; removedSteps = c.removedSteps; } else { fallbackReason = c.reason; removedSteps = c.removedSteps || 0; }
+    } catch (e) { fallbackReason = e.kind === 'timeout' ? 'ai_timeout' : 'ai_unavailable'; }
+    const send = (res, fb, why) => oeCall(req, 'oe.doctor_create', 'POST', '/farm/doctor/diagnoses',
+      { ...meta, result: res, usedFallback: fb, fallbackReason: why, requestId: req.id }, (x) => ({ status: x.status, diagnosisId: x.body?.diagnosisId, error: x.body?.error }));
+    let r = result ? await send(result, false, '') : null;
+    if (r && r.status === 422 && r.body?.error === 'DOSE_BLOCKED') fallbackReason = 'dose_blocked';
+    else if (r && r.status >= 400) fallbackReason = fallbackReason || 'rejected_by_openedge';
+    const blocked = r && r.status === 422 ? r.body.blocked : undefined;
+    if (!r || r.status >= 400) r = await send(fallbackAnswer(), true, fallbackReason);
+    if (r.status >= 400) return reply.code(r.status).send({ ...r.body, requestId: req.id });
+    return reply.code(201).send({ diagnosis: r.body, usedFallback: r.body.usedFallback, fallbackReason: r.body.fallbackReason || null, removedSteps, ...(blocked ? { blocked } : {}) });
+  });
+  app.get(`${PREFIX}/doctor/diagnoses`, passthrough('oe.doctor_list', (req) => `/farm/doctor/diagnoses${qsOf(req, ['limit'])}`));
+  app.get(`${PREFIX}/doctor/diagnoses/:id`, passthrough('oe.doctor_get', (req) => { const id = intId(req.params.id); return id === null ? null : `/farm/doctor/diagnoses/${id}`; }));
+  for (const [act, decision] of [['save', 'save'], ['dismiss', 'dismiss']]) {
+    app.post(`${PREFIX}/doctor/diagnoses/:id/${act}`, async (req, reply) => {
+      if (!requireApp(req, reply)) return;
+      const id = intId(req.params.id);
+      if (id === null) return fail(reply, req, 400, 'VALIDATION_ERROR', 'id must be an integer.', { field: 'id' });
+      const r = await oeCall(req, `oe.doctor_${act}`, 'POST', `/farm/doctor/diagnoses/${id}/decision`, { decision, actor: 'farmer', requestId: req.id });
+      return reply.code(r.status).send(r.status < 400 ? r.body : { ...r.body, requestId: req.id });
+    });
+  }
+  // admin-editable no-doses word list (the BlockedTerm table)
+  app.get(`${PREFIX}/doctor/blocked-terms`, passthrough('oe.blocked_terms', () => '/farm/doctor/blocked-terms'));
+  app.post(`${PREFIX}/doctor/blocked-terms`, async (req, reply) => {
+    if (!requireApp(req, reply)) return;
+    const b = req.body || {};
+    const r = await oeCall(req, 'oe.blocked_term_add', 'POST', '/farm/doctor/blocked-terms', { ...pick(b, ['term', 'kind']), updatedBy: 'admin', requestId: req.id });
+    return reply.code(r.status).send(r.status < 400 ? r.body : { ...r.body, requestId: req.id });
+  });
+  app.post(`${PREFIX}/doctor/blocked-terms/:id`, async (req, reply) => {
+    if (!requireApp(req, reply)) return;
+    const id = intId(req.params.id);
+    if (id === null) return fail(reply, req, 400, 'VALIDATION_ERROR', 'id must be an integer.', { field: 'id' });
+    const r = await oeCall(req, 'oe.blocked_term_save', 'POST', `/farm/doctor/blocked-terms/${id}`, { ...pick(req.body || {}, ['active']), updatedBy: 'admin', requestId: req.id });
     return reply.code(r.status).send(r.status < 400 ? r.body : { ...r.body, requestId: req.id });
   });
 

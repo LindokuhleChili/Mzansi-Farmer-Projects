@@ -18,6 +18,7 @@ An ESP32 soil sensor sends readings to a Node API. An AI model proposes an actio
 | Community harvest-day market (feature 16) | Merged; schema `004-market.df` loaded in the live demo DB; MK01-MK51 pass on real ABL |
 | AI translation into all 11 official languages | Merged; picker in the UI, hand-written isiZulu first, AI for the rest (mock offline, Gemini via `AI_PROVIDER=http`); see [docs/TRANSLATION.md](docs/TRANSLATION.md) |
 | Weather alerts (17) and tamper-evident audit hash chain (21) | **Built** (code and scratch-DB tests); the live DB needs 005-audit-chain.df and 006-weather.df loaded, see [docs/AUDIT.md](docs/AUDIT.md) and [docs/WEATHER.md](docs/WEATHER.md) |
+| Plant doctor | **Built** (code and mock tests); the live DB needs 007-doctor.df loaded (`oe-run.ps1 load-doctor`), see [docs/DOCTOR.md](docs/DOCTOR.md) |
 | Planned features 18, 19, 20 (rest), 22 | **Not built yet**; ideas and plans in [docs/OLD-APP-IDEAS-PLAN.md](docs/OLD-APP-IDEAS-PLAN.md) |
 
 Tests: `npm test` 380 passed, 0 failed, 3 intentional failures (by design). Real ABL (scratch database): 187 contract cases passed plus the intentional FAIL01.
@@ -142,6 +143,8 @@ The **community harvest-day market** (farmers list a market day with produce pri
 
 **Weather alerts** (no AI): OpenEdge checks a synthetic example 7-day forecast against the farmer's alert levels for heavy rain, heat and frost, writes the alerts and the audit, and the farmer acknowledges them. See `docs/WEATHER.md`.
 
+**Plant doctor** (`#/doctor`): 1 to 3 photos plus crop, plant part, growth stage and province go to the AI. The API strips dose steps, OpenEdge enforces DOSE_BLOCKED from the BlockedTerm word list, a safe fallback answer replaces anything unsafe, and the farmer saves or dismisses. See `docs/DOCTOR.md`.
+
 ## Demo script
 
 Use this order for a live demo. Times in the seed data are fixed to 23 October 2026, so you need a fresh reading to get an irrigation proposal (step 2 does this).
@@ -222,6 +225,7 @@ For real translation with Gemini, set in your local `.env` only: `AI_PROVIDER=ht
 | [`docs/AUDIT.md`](docs/AUDIT.md) | Tamper-evident audit log: hash chain, verify endpoint, tamper test, live schema load |
 | [`docs/MARKET.md`](docs/MARKET.md) | Harvest-day market: decisions, rules, endpoints, screens, isiZulu drafts |
 | [`docs/WEATHER.md`](docs/WEATHER.md) | Weather alerts: example forecast, ABL rules, thresholds, endpoints, live schema steps |
+| [`docs/DOCTOR.md`](docs/DOCTOR.md) | Plant doctor: photos, three-layer DOSE_BLOCKED guardrail, fallback, farmer approval, photo credit |
 | [`docs/ESP32.md`](docs/ESP32.md) | Firmware, wiring and simulator |
 | `docs/screens/` | Approved demo screens (design mockups) and photo credits |
 | `docs/UI.md` | The web interface: pages, token handling, demo tools, isiZulu, photo credits |
