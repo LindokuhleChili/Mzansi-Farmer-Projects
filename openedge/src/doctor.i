@@ -179,15 +179,15 @@ PROCEDURE h-dr-list:
     DEFINE VARIABLE jo AS JsonObject NO-UNDO.
     DEFINE VARIABLE ja AS JsonArray NO-UNDO.
     DEFINE VARIABLE iLim AS INTEGER NO-UNDO.
-    DEFINE VARIABLE iN AS INTEGER NO-UNDO.
+    DEFINE VARIABLE iDrCount AS INTEGER NO-UNDO.
     DEFINE BUFFER bD FOR Diagnosis.
     iLim = INTEGER(fQuery("limit")) NO-ERROR.
     IF ERROR-STATUS:ERROR OR iLim = ? OR iLim < 1 THEN iLim = 20.
     IF iLim > 100 THEN iLim = 100.
     ja = NEW JsonArray().
     FOR EACH bD NO-LOCK BY bD.DiagnosisId DESCENDING:
-        iN = iN + 1.
-        IF iN > iLim THEN LEAVE.
+        iDrCount = iDrCount + 1.
+        IF iDrCount > iLim THEN LEAVE.
         ja:Add(fDrDiagJson(bD.DiagnosisId)).
     END.
     jo = NEW JsonObject().
