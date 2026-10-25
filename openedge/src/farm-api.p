@@ -823,6 +823,7 @@ PROCEDURE dispatch:
                 THEN RUN h-decision (INTEGER(ENTRY(2, cP, "/"))).
             ELSE IF cP = "audit" THEN RUN h-post-audit.
             ELSE IF cP = "alerts/refresh" THEN RUN h-wx-refresh.
+            ELSE IF cP = "forecast/import" THEN RUN h-wx-import.
             ELSE IF n = 3 AND ENTRY(1, cP, "/") = "alerts" AND ENTRY(3, cP, "/") = "ack" THEN RUN h-wx-ack (fPathId(ENTRY(2, cP, "/"))).
             ELSE IF n = 2 AND ENTRY(1, cP, "/") = "alert-thresholds" THEN RUN h-wx-threshold-save (fPathId(ENTRY(2, cP, "/"))).
             ELSE IF cP = "credits" THEN RUN h-coop-credit-create.

@@ -5101,6 +5101,558 @@
    }
   },
   {
+   "id": "WX29",
+   "title": "Real forecast import (Open-Meteo shape): Limpopo, 7 days, stored with isSynthetic false",
+   "request": {
+    "method": "POST",
+    "path": "/farm/forecast/import",
+    "body": {
+     "province": "Limpopo",
+     "baseDate": "2026-10-24",
+     "source": "open-meteo",
+     "days": [
+      {
+       "dayNo": 1,
+       "tempMaxC": 27.4,
+       "tempMinC": 14.2,
+       "rainMm": 0
+      },
+      {
+       "dayNo": 2,
+       "tempMaxC": 29.1,
+       "tempMinC": 15.0,
+       "rainMm": 0
+      },
+      {
+       "dayNo": 3,
+       "tempMaxC": 31.0,
+       "tempMinC": 16.8,
+       "rainMm": 2.4
+      },
+      {
+       "dayNo": 4,
+       "tempMaxC": 24.3,
+       "tempMinC": 12.1,
+       "rainMm": 12.6
+      },
+      {
+       "dayNo": 5,
+       "tempMaxC": 22.8,
+       "tempMinC": 9.9,
+       "rainMm": 0.3
+      },
+      {
+       "dayNo": 6,
+       "tempMaxC": 26.0,
+       "tempMinC": 11.3,
+       "rainMm": 0
+      },
+      {
+       "dayNo": 7,
+       "tempMaxC": 28.6,
+       "tempMinC": 13.7,
+       "rainMm": 0
+      }
+     ]
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "province": "Limpopo",
+     "baseDate": "2026-10-24",
+     "isSynthetic": false,
+     "source": "open-meteo",
+     "noData": false,
+     "days": {
+      "$length": 7
+     }
+    }
+   }
+  },
+  {
+   "id": "WX30",
+   "title": "Forecast read-back: Limpopo Day 4 is 2026-10-27 with 12.6 mm, source open-meteo",
+   "request": {
+    "method": "GET",
+    "path": "/farm/forecast?province=Limpopo"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "source": "open-meteo",
+     "isSynthetic": false,
+     "days": {
+      "$contains": {
+       "dayNo": 4,
+       "date": "2026-10-27",
+       "tempMaxC": 24.3,
+       "tempMinC": 12.1,
+       "rainMm": 12.6
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "WX31",
+   "title": "Importing the same base date again replaces the rows (still 7 days)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/forecast/import",
+    "body": {
+     "province": "Limpopo",
+     "baseDate": "2026-10-24",
+     "source": "open-meteo",
+     "days": [
+      {
+       "dayNo": 1,
+       "tempMaxC": 27.4,
+       "tempMinC": 14.2,
+       "rainMm": 0
+      },
+      {
+       "dayNo": 2,
+       "tempMaxC": 29.1,
+       "tempMinC": 15.0,
+       "rainMm": 0
+      },
+      {
+       "dayNo": 3,
+       "tempMaxC": 31.0,
+       "tempMinC": 16.8,
+       "rainMm": 2.4
+      },
+      {
+       "dayNo": 4,
+       "tempMaxC": 24.3,
+       "tempMinC": 12.1,
+       "rainMm": 12.6
+      },
+      {
+       "dayNo": 5,
+       "tempMaxC": 22.8,
+       "tempMinC": 9.9,
+       "rainMm": 0.3
+      },
+      {
+       "dayNo": 6,
+       "tempMaxC": 26.0,
+       "tempMinC": 11.3,
+       "rainMm": 0
+      },
+      {
+       "dayNo": 7,
+       "tempMaxC": 28.6,
+       "tempMinC": 13.7,
+       "rainMm": 0
+      }
+     ]
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "days": {
+      "$length": 7
+     }
+    }
+   }
+  },
+  {
+   "id": "WX32",
+   "title": "Forecast import: 6 days is FORECAST_INVALID on days",
+   "request": {
+    "method": "POST",
+    "path": "/farm/forecast/import",
+    "body": {
+     "province": "Limpopo",
+     "baseDate": "2026-10-24",
+     "source": "open-meteo",
+     "days": [
+      {
+       "dayNo": 1,
+       "tempMaxC": 27.4,
+       "tempMinC": 14.2,
+       "rainMm": 0
+      },
+      {
+       "dayNo": 2,
+       "tempMaxC": 29.1,
+       "tempMinC": 15.0,
+       "rainMm": 0
+      },
+      {
+       "dayNo": 3,
+       "tempMaxC": 31.0,
+       "tempMinC": 16.8,
+       "rainMm": 2.4
+      },
+      {
+       "dayNo": 4,
+       "tempMaxC": 24.3,
+       "tempMinC": 12.1,
+       "rainMm": 12.6
+      },
+      {
+       "dayNo": 5,
+       "tempMaxC": 22.8,
+       "tempMinC": 9.9,
+       "rainMm": 0.3
+      },
+      {
+       "dayNo": 6,
+       "tempMaxC": 26.0,
+       "tempMinC": 11.3,
+       "rainMm": 0
+      }
+     ]
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "FORECAST_INVALID",
+     "field": "days"
+    }
+   }
+  },
+  {
+   "id": "WX33",
+   "title": "Forecast import: a minimum above the maximum is FORECAST_INVALID",
+   "request": {
+    "method": "POST",
+    "path": "/farm/forecast/import",
+    "body": {
+     "province": "Limpopo",
+     "baseDate": "2026-10-24",
+     "source": "open-meteo",
+     "days": [
+      {
+       "dayNo": 1,
+       "tempMaxC": 27.4,
+       "tempMinC": 14.2,
+       "rainMm": 0
+      },
+      {
+       "dayNo": 2,
+       "tempMaxC": 29.1,
+       "tempMinC": 15.0,
+       "rainMm": 0
+      },
+      {
+       "dayNo": 3,
+       "tempMaxC": 31.0,
+       "tempMinC": 35,
+       "rainMm": 2.4
+      },
+      {
+       "dayNo": 4,
+       "tempMaxC": 24.3,
+       "tempMinC": 12.1,
+       "rainMm": 12.6
+      },
+      {
+       "dayNo": 5,
+       "tempMaxC": 22.8,
+       "tempMinC": 9.9,
+       "rainMm": 0.3
+      },
+      {
+       "dayNo": 6,
+       "tempMaxC": 26.0,
+       "tempMinC": 11.3,
+       "rainMm": 0
+      },
+      {
+       "dayNo": 7,
+       "tempMaxC": 28.6,
+       "tempMinC": 13.7,
+       "rainMm": 0
+      }
+     ]
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "FORECAST_INVALID",
+     "field": "days[2].tempMinC"
+    }
+   }
+  },
+  {
+   "id": "WX34",
+   "title": "Forecast import: source 'example' is refused (only real sources are imported)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/forecast/import",
+    "body": {
+     "province": "Limpopo",
+     "baseDate": "2026-10-24",
+     "source": "example",
+     "days": [
+      {
+       "dayNo": 1,
+       "tempMaxC": 27.4,
+       "tempMinC": 14.2,
+       "rainMm": 0
+      },
+      {
+       "dayNo": 2,
+       "tempMaxC": 29.1,
+       "tempMinC": 15.0,
+       "rainMm": 0
+      },
+      {
+       "dayNo": 3,
+       "tempMaxC": 31.0,
+       "tempMinC": 16.8,
+       "rainMm": 2.4
+      },
+      {
+       "dayNo": 4,
+       "tempMaxC": 24.3,
+       "tempMinC": 12.1,
+       "rainMm": 12.6
+      },
+      {
+       "dayNo": 5,
+       "tempMaxC": 22.8,
+       "tempMinC": 9.9,
+       "rainMm": 0.3
+      },
+      {
+       "dayNo": 6,
+       "tempMaxC": 26.0,
+       "tempMinC": 11.3,
+       "rainMm": 0
+      },
+      {
+       "dayNo": 7,
+       "tempMaxC": 28.6,
+       "tempMinC": 13.7,
+       "rainMm": 0
+      }
+     ]
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "FORECAST_INVALID",
+     "field": "source"
+    }
+   }
+  },
+  {
+   "id": "WX35",
+   "title": "Forecast import: 2026-02-30 is not a real date",
+   "request": {
+    "method": "POST",
+    "path": "/farm/forecast/import",
+    "body": {
+     "province": "Limpopo",
+     "baseDate": "2026-02-30",
+     "source": "open-meteo",
+     "days": [
+      {
+       "dayNo": 1,
+       "tempMaxC": 27.4,
+       "tempMinC": 14.2,
+       "rainMm": 0
+      },
+      {
+       "dayNo": 2,
+       "tempMaxC": 29.1,
+       "tempMinC": 15.0,
+       "rainMm": 0
+      },
+      {
+       "dayNo": 3,
+       "tempMaxC": 31.0,
+       "tempMinC": 16.8,
+       "rainMm": 2.4
+      },
+      {
+       "dayNo": 4,
+       "tempMaxC": 24.3,
+       "tempMinC": 12.1,
+       "rainMm": 12.6
+      },
+      {
+       "dayNo": 5,
+       "tempMaxC": 22.8,
+       "tempMinC": 9.9,
+       "rainMm": 0.3
+      },
+      {
+       "dayNo": 6,
+       "tempMaxC": 26.0,
+       "tempMinC": 11.3,
+       "rainMm": 0
+      },
+      {
+       "dayNo": 7,
+       "tempMaxC": 28.6,
+       "tempMinC": 13.7,
+       "rainMm": 0
+      }
+     ]
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "FORECAST_INVALID",
+     "field": "baseDate"
+    }
+   }
+  },
+  {
+   "id": "WX36",
+   "title": "Forecast import: unknown province",
+   "request": {
+    "method": "POST",
+    "path": "/farm/forecast/import",
+    "body": {
+     "province": "Atlantis",
+     "baseDate": "2026-10-24",
+     "source": "open-meteo",
+     "days": [
+      {
+       "dayNo": 1,
+       "tempMaxC": 27.4,
+       "tempMinC": 14.2,
+       "rainMm": 0
+      },
+      {
+       "dayNo": 2,
+       "tempMaxC": 29.1,
+       "tempMinC": 15.0,
+       "rainMm": 0
+      },
+      {
+       "dayNo": 3,
+       "tempMaxC": 31.0,
+       "tempMinC": 16.8,
+       "rainMm": 2.4
+      },
+      {
+       "dayNo": 4,
+       "tempMaxC": 24.3,
+       "tempMinC": 12.1,
+       "rainMm": 12.6
+      },
+      {
+       "dayNo": 5,
+       "tempMaxC": 22.8,
+       "tempMinC": 9.9,
+       "rainMm": 0.3
+      },
+      {
+       "dayNo": 6,
+       "tempMaxC": 26.0,
+       "tempMinC": 11.3,
+       "rainMm": 0
+      },
+      {
+       "dayNo": 7,
+       "tempMaxC": 28.6,
+       "tempMinC": 13.7,
+       "rainMm": 0
+      }
+     ]
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "FORECAST_INVALID",
+     "field": "province"
+    }
+   }
+  },
+  {
+   "id": "WX37",
+   "title": "Forecast import: negative rain",
+   "request": {
+    "method": "POST",
+    "path": "/farm/forecast/import",
+    "body": {
+     "province": "Limpopo",
+     "baseDate": "2026-10-24",
+     "source": "open-meteo",
+     "days": [
+      {
+       "dayNo": 1,
+       "tempMaxC": 27.4,
+       "tempMinC": 14.2,
+       "rainMm": -1
+      },
+      {
+       "dayNo": 2,
+       "tempMaxC": 29.1,
+       "tempMinC": 15.0,
+       "rainMm": 0
+      },
+      {
+       "dayNo": 3,
+       "tempMaxC": 31.0,
+       "tempMinC": 16.8,
+       "rainMm": 2.4
+      },
+      {
+       "dayNo": 4,
+       "tempMaxC": 24.3,
+       "tempMinC": 12.1,
+       "rainMm": 12.6
+      },
+      {
+       "dayNo": 5,
+       "tempMaxC": 22.8,
+       "tempMinC": 9.9,
+       "rainMm": 0.3
+      },
+      {
+       "dayNo": 6,
+       "tempMaxC": 26.0,
+       "tempMinC": 11.3,
+       "rainMm": 0
+      },
+      {
+       "dayNo": 7,
+       "tempMaxC": 28.6,
+       "tempMinC": 13.7,
+       "rainMm": 0
+      }
+     ]
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "FORECAST_INVALID",
+     "field": "days[0].rainMm"
+    }
+   }
+  },
+  {
+   "id": "WX38",
+   "title": "KwaZulu-Natal still shows the example seed (labelled example) until a real import",
+   "request": {
+    "method": "GET",
+    "path": "/farm/forecast?province=KwaZulu-Natal"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "isSynthetic": true,
+     "source": "example"
+    }
+   }
+  },
+  {
    "id": "AUD05",
    "title": "After every other case (rule checks, decisions, co-op, market) the audit chain still verifies",
    "request": {

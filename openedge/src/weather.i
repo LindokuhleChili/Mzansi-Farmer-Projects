@@ -106,20 +106,21 @@ PROCEDURE h-wx-farm:
     RUN reply (200, jo).
 END PROCEDURE.
 
-PROCEDURE h-wx-forecast:
-    DEFINE VARIABLE cProv AS CHARACTER NO-UNDO.
+/* forecast JSON for a province: latest BaseDate; isSynthetic/source come from the rows (example seed or open-meteo import) */
+FUNCTION fWxForecastJson RETURNS JsonObject (INPUT cProv AS CHARACTER):
     DEFINE VARIABLE dBase AS DATE NO-UNDO.
     DEFINE VARIABLE jo AS JsonObject NO-UNDO.
     DEFINE VARIABLE jd AS JsonObject NO-UNDO.
     DEFINE VARIABLE ja AS JsonArray NO-UNDO.
+    DEFINE VARIABLE lSyn AS LOGICAL NO-UNDO INITIAL TRUE.
+    DEFINE VARIABLE cSrc AS CHARACTER NO-UNDO INITIAL "example".
     DEFINE BUFFER bF FOR ForecastDay.
-    cProv = fQuery("province").
-    IF cProv = ? OR cProv = "" THEN DO: RUN reply-error (400, "VALIDATION_ERROR", "province is required.", "province"). RETURN. END.
     dBase = fWxBase(cProv).
     ja = NEW JsonArray().
     IF dBase <> ? THEN
         FOR EACH bF NO-LOCK WHERE bF.Province = cProv AND bF.BaseDate = dBase BY bF.DayNo:
             IF NOT fEq(bF.Province, cProv) THEN NEXT.
+            IF ja:Length = 0 THEN ASSIGN lSyn = bF.IsSynthetic cSrc = bF.Source.
             jd = NEW JsonObject().
             jd:Add("dayNo", bF.DayNo).
             jd:Add("date", fWxDate(bF.ForecastDate)).
@@ -131,11 +132,105 @@ PROCEDURE h-wx-forecast:
     jo = NEW JsonObject().
     jo:Add("province", cProv).
     IF dBase = ? THEN jo:AddNull("baseDate"). ELSE jo:Add("baseDate", fWxDate(dBase)).
-    jo:Add("isSynthetic", TRUE).
-    jo:Add("source", "example").
+    jo:Add("isSynthetic", lSyn).
+    jo:Add("source", cSrc).
     jo:Add("noData", ja:Length = 0).
     jo:Add("days", ja).
-    RUN reply (200, jo).
+    RETURN jo.
+END FUNCTION.
+
+PROCEDURE h-wx-forecast:
+    DEFINE VARIABLE cProv AS CHARACTER NO-UNDO.
+    cProv = fQuery("province").
+    IF cProv = ? OR cProv = "" THEN DO: RUN reply-error (400, "VALIDATION_ERROR", "province is required.", "province"). RETURN. END.
+    RUN reply (200, fWxForecastJson(cProv)).
+END PROCEDURE.
+
+/* POST /farm/forecast/import {province, baseDate, source, days:[7 x {dayNo, tempMaxC, tempMinC, rainMm}], requestId?}
+   A real forecast (e.g. Open-Meteo) fetched by the API. OpenEdge validates it and replaces that province's rows for baseDate. */
+PROCEDURE h-wx-import:
+    DEFINE VARIABLE cProv AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE cBase AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE cSrc AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE cReq AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE cBad AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE dBase AS DATE NO-UNDO.
+    DEFINE VARIABLE ja AS JsonArray NO-UNDO.
+    DEFINE VARIABLE jd AS JsonObject NO-UNDO.
+    DEFINE VARIABLE lOk AS LOGICAL NO-UNDO.
+    DEFINE VARIABLE i AS INTEGER NO-UNDO.
+    DEFINE VARIABLE k AS INTEGER NO-UNDO.
+    DEFINE VARIABLE iA AS INTEGER NO-UNDO.
+    DEFINE VARIABLE iAud AS INTEGER NO-UNDO.
+    DEFINE VARIABLE dMax AS DECIMAL NO-UNDO.
+    DEFINE VARIABLE dMin AS DECIMAL NO-UNDO.
+    DEFINE VARIABLE dRain AS DECIMAL NO-UNDO.
+    DEFINE VARIABLE cProvList AS CHARACTER NO-UNDO INITIAL "Eastern Cape,Free State,Gauteng,KwaZulu-Natal,Limpopo,Mpumalanga,North West,Northern Cape,Western Cape".
+    DEFINE BUFFER bF FOR ForecastDay.
+
+    RUN get-str (goBody, "province", OUTPUT cProv, OUTPUT lOk).
+    lOk = lOk AND cProv <> "".
+    IF lOk THEN DO:
+        lOk = FALSE.
+        DO i = 1 TO NUM-ENTRIES(cProvList):
+            IF COMPARE(ENTRY(i, cProvList), "EQ", cProv, "CASE-SENSITIVE") THEN lOk = TRUE.
+        END.
+    END.
+    IF NOT lOk THEN DO: RUN reply-error (400, "FORECAST_INVALID", "province must be one of the 9 South African provinces.", "province"). RETURN. END.
+    RUN get-str (goBody, "baseDate", OUTPUT cBase, OUTPUT lOk).
+    IF lOk AND LENGTH(cBase) = 10 AND SUBSTRING(cBase, 5, 1) = "-" AND SUBSTRING(cBase, 8, 1) = "-" THEN DO:
+        dBase = DATE(INTEGER(SUBSTRING(cBase, 6, 2)), INTEGER(SUBSTRING(cBase, 9, 2)), INTEGER(SUBSTRING(cBase, 1, 4))) NO-ERROR.
+        IF ERROR-STATUS:ERROR THEN dBase = ?.
+    END.
+    IF dBase = ? OR ISO-DATE(dBase) <> cBase THEN DO: RUN reply-error (400, "FORECAST_INVALID", "baseDate must be a real date (yyyy-mm-dd).", "baseDate"). RETURN. END.
+    RUN get-str (goBody, "source", OUTPUT cSrc, OUTPUT lOk).
+    lOk = lOk AND LENGTH(cSrc) >= 1 AND LENGTH(cSrc) <= 20.
+    IF lOk THEN DO k = 1 TO LENGTH(cSrc):
+        iA = ASC(SUBSTRING(cSrc, k, 1)).
+        IF NOT ((iA >= 97 AND iA <= 122) OR (iA >= 48 AND iA <= 57) OR iA = 45) THEN DO: lOk = FALSE. LEAVE. END.
+    END.
+    IF NOT lOk OR cSrc = "example" THEN DO: RUN reply-error (400, "FORECAST_INVALID", "source must be 1 to 20 lower-case letters, digits or '-', and not 'example'.", "source"). RETURN. END.
+    IF NOT goBody:Has("days") OR goBody:GetType("days") <> JsonDataType:ARRAY THEN DO: RUN reply-error (400, "FORECAST_INVALID", "days must be an array of 7 days.", "days"). RETURN. END.
+    ja = goBody:GetJsonArray("days").
+    IF ja:Length <> 7 THEN DO: RUN reply-error (400, "FORECAST_INVALID", "days must be an array of 7 days.", "days"). RETURN. END.
+    DO i = 1 TO 7:
+        cBad = "".
+        IF ja:GetType(i) <> JsonDataType:OBJECT THEN cBad = SUBSTITUTE("days[&1]", i - 1).
+        ELSE DO:
+            jd = ja:GetJsonObject(i).
+            RUN get-num (jd, "dayNo", OUTPUT dMax, OUTPUT lOk).
+            IF NOT lOk OR dMax <> i THEN cBad = SUBSTITUTE("days[&1].dayNo", i - 1).
+            ELSE DO:
+                RUN get-num (jd, "tempMaxC", OUTPUT dMax, OUTPUT lOk).
+                IF NOT lOk OR dMax < -30 OR dMax > 60 THEN cBad = SUBSTITUTE("days[&1].tempMaxC", i - 1).
+                ELSE DO:
+                    RUN get-num (jd, "tempMinC", OUTPUT dMin, OUTPUT lOk).
+                    IF NOT lOk OR dMin < -30 OR dMin > 60 OR dMin > dMax THEN cBad = SUBSTITUTE("days[&1].tempMinC", i - 1).
+                    ELSE DO:
+                        RUN get-num (jd, "rainMm", OUTPUT dRain, OUTPUT lOk).
+                        IF NOT lOk OR dRain < 0 OR dRain > 1000 THEN cBad = SUBSTITUTE("days[&1].rainMm", i - 1).
+                    END.
+                END.
+            END.
+        END.
+        IF cBad <> "" THEN DO: RUN reply-error (400, "FORECAST_INVALID", cBad + " is missing or out of range.", cBad). RETURN. END.
+    END.
+    RUN get-str (goBody, "requestId", OUTPUT cReq, OUTPUT lOk). IF NOT lOk THEN cReq = "".
+    DO TRANSACTION:
+        FOR EACH bF EXCLUSIVE-LOCK WHERE bF.Province = cProv AND bF.BaseDate = dBase:
+            DELETE bF.
+        END.
+        DO i = 1 TO 7:
+            jd = ja:GetJsonObject(i).
+            CREATE bF.
+            ASSIGN bF.ForecastId = NEXT-VALUE(ForecastSeq) bF.Province = cProv bF.BaseDate = dBase bF.DayNo = i
+                   bF.ForecastDate = dBase + i - 1 bF.TempMaxC = jd:GetDecimal("tempMaxC") bF.TempMinC = jd:GetDecimal("tempMinC")
+                   bF.RainMm = jd:GetDecimal("rainMm") bF.IsSynthetic = FALSE bF.Source = cSrc.
+            RELEASE bF.
+        END.
+    END.
+    RUN audit (cReq, "api", "forecast_imported", SUBSTITUTE('~{"province":"&1","baseDate":"&2","source":"&3","days":7}', cProv, cBase, cSrc), NOW, OUTPUT iAud).
+    RUN reply (200, fWxForecastJson(cProv)).
 END PROCEDURE.
 
 PROCEDURE h-wx-alerts:

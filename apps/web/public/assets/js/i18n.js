@@ -112,7 +112,7 @@ const en = {
   // ---- harvest-day market (docs/MARKET.md)
   // ---- weather alerts (docs/WEATHER.md)
   wx_nav: 'Weather', wx_title: 'Weather alerts', wx_sub: 'OpenEdge checks the 7-day forecast against your alert levels. No AI is used.',
-  wx_refresh: 'Check forecast', wx_week: 'Next 7 days', wx_example: 'Example forecast data', wx_day: 'Day {n}', wx_rain_mm: 'Rain {mm} mm',
+  wx_refresh: 'Check forecast', wx_week: 'Next 7 days', wx_example: 'Example forecast data', wx_src_om: 'Forecast: Open-Meteo', wx_om_credit_pre: 'Weather data by', wx_om_place: 'forecast from {date}', wx_example_note: 'This is example forecast data, not a real forecast. Press Check forecast to load the real Open-Meteo forecast.', wx_fetch_failed: 'Could not load the real forecast, so the stored forecast was used.', wx_day: 'Day {n}', wx_rain_mm: 'Rain {mm} mm',
   wx_type_rain: 'Heavy rain', wx_type_heat: 'Heat', wx_type_frost: 'Frost', wx_lvl_watch: 'Watch', wx_lvl_warning: 'Warning', wx_lvl_severe: 'Severe',
   wx_open_0: 'No open weather alerts', wx_open_1: '1 open weather alert', wx_open_n: '{n} open weather alerts', wx_rules: 'Alerts come from the OpenEdge rules, not from AI.',
   wx_alerts: 'Alerts', wx_none: 'No alerts. Press Check forecast.', wx_ack: 'Acknowledge', wx_acked: 'Acknowledged',
