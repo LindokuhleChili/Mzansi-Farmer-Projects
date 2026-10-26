@@ -27,7 +27,8 @@ export function loadConfig(env = process.env) {
     oeMode,
     oeBaseUrl: env.OE_BASE_URL || 'http://localhost:8820/web',
     oeTimeoutMs: Number.isInteger(+env.OE_TIMEOUT_MS) && +env.OE_TIMEOUT_MS >= 50 ? +env.OE_TIMEOUT_MS : OE_TIMEOUT_MS,   // OE_TIMEOUT_MS env var is for tests
-    oeAuth: env.OE_AUTH || '',                     // optional "user:password" for PASOE basic auth
+    oeAuth: env.OE_AUTH || '',                     // optional "user:password" for PASOE basic auth (PSCUser, e.g. farmapi)
+    oeAdminAuth: env.OE_ADMIN_AUTH || '',          // optional "user:password" with PSCAdmin (farmadmin) for the admin routes
     aiProvider: (env.AI_PROVIDER || 'mock').toLowerCase(),   // mock | http (any OpenAI-compatible chat completions API)
     aiBaseUrl: env.AI_BASE_URL || '',
     aiApiKey: env.AI_API_KEY || '',

@@ -14,11 +14,14 @@
    .\scripts\oe-run.ps1 -Action test-http-coop   # reseed, then only CO01-CO76 over HTTP
    .\scripts\oe-run.ps1 -Action test-market      # reseed, then only the market cases MK01-MK51 in batch mode
    .\scripts\oe-run.ps1 -Action test-http-market # reseed, then only MK01-MK51 over HTTP
+   .\scripts\oe-run.ps1 -Action test-security    # PASOE basic login: 401 / 403 / admin-role checks (eval/pasoe-security.mjs), then reseed
+   HTTP actions read OE_AUTH, OE_ADMIN_AUTH and OE_NONE_AUTH from the environment, else from the repo .env
+   (or the file in FARM_ENV_FILE). The values are never printed.
    .\scripts\oe-run.ps1 -Action scratch-test     # throw-away database next to the farm db: load 001-004, seed, run EVERY case single-user.
                                                   # Never touches the farm database or PASOE; safe while they run.
 #>
 param(
-  [ValidateSet('load-schema','load-coop','load-market','load-audit-chain','load-weather','load-doctor','scratch-schema','scratch-test','seed','test','test-coop','test-market','test-http','test-http-coop','test-http-market','start-db','stop-db')][string]$Action = 'test',
+  [ValidateSet('load-schema','load-coop','load-market','load-audit-chain','load-weather','load-doctor','scratch-schema','scratch-test','seed','test','test-coop','test-market','test-http','test-http-coop','test-http-market','test-security','start-db','stop-db')][string]$Action = 'test',
   [string]$Dlc = $(if ($env:DLC) { $env:DLC } else { 'C:\Progress\OpenEdge' }),
   [string]$DbDir = $(if ($env:FARM_DB_DIR) { $env:FARM_DB_DIR } else { 'C:\OpenEdge\WRK\farm' }),
   [int]$Port = 20000
@@ -35,6 +38,15 @@ function Invoke-Abl($prog, $param, $extra = @()) {
 }
 $seedFiles = (Join-Path $repo 'openedge\data\seed.json') + '|' + (Join-Path $repo 'openedge\data\coop-seed.json') + '|' + (Join-Path $repo 'openedge\data\market-seed.json') + '|' + (Join-Path $repo 'openedge\data\weather-seed.json') + '|' + (Join-Path $repo 'openedge\data\doctor-seed.json')
 $scratchDir = Join-Path (Split-Path -Parent $DbDir) 'scratch'
+# PASOE basic-login credentials for the HTTP actions: real environment first, then .env (never printed)
+$envFile = if ($env:FARM_ENV_FILE) { $env:FARM_ENV_FILE } else { Join-Path $repo '.env' }
+if (Test-Path $envFile) {
+  foreach ($line in Get-Content $envFile) {
+    if ($line -match '^\s*(OE_AUTH|OE_ADMIN_AUTH|OE_NONE_AUTH)\s*=\s*(.+?)\s*$' -and -not [Environment]::GetEnvironmentVariable($Matches[1])) {
+      [Environment]::SetEnvironmentVariable($Matches[1], $Matches[2], 'Process')
+    }
+  }
+}
 # load_df.p writes <db>.e next to the program when a .df fails; the DONE message alone does not prove success
 function Assert-SchemaLoaded($dbName) {
   $e = Join-Path $src "$dbName.e"
@@ -133,6 +145,12 @@ switch ($Action) {
     Invoke-Abl 'seed.p' $seedFiles $client
     & node (Join-Path $repo 'eval\compare-oe.mjs') --http $(if ($env:OE_BASE_URL) { $env:OE_BASE_URL } else { 'http://localhost:8820/web' }) --market
     if ($LASTEXITCODE -ne 0) { exit $LASTEXITCODE }
+  }
+  'test-security' {
+    & node (Join-Path $repo 'eval\pasoe-security.mjs') $(if ($env:OE_BASE_URL) { $env:OE_BASE_URL } else { 'http://localhost:8820/web' })
+    $code = $LASTEXITCODE
+    Invoke-Abl 'seed.p' $seedFiles $client | Out-Null   # SEC07 added a blocked term; put the seed data back
+    if ($code -ne 0) { exit $code }
   }
   'test-http-coop' {
     Invoke-Abl 'seed.p' $seedFiles $client

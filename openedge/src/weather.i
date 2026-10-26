@@ -390,6 +390,7 @@ PROCEDURE h-wx-threshold-save:
     IF lActive AND bT.AlertType = "heat" AND CAN-FIND(FIRST bO WHERE bO.AlertType = "frost" AND bO.Active AND bO.ThresholdId <> piId AND dVal <= bO.LimitValue) THEN DO:
         RUN reply-error (400, "ALERT_THRESHOLD_INVALID", "The heat (maximum) threshold must be above the frost (minimum) threshold.", "value"). RETURN. END.
     RUN get-str (goBody, "updatedBy", OUTPUT cBy, OUTPUT lOk). IF NOT lOk THEN cBy = "api".
+    cBy = fRealActor(cBy).   /* PASOE user (farmadmin) when logged in */
     RUN get-str (goBody, "requestId", OUTPUT cReq, OUTPUT lOk). IF NOT lOk THEN cReq = "".
     DO TRANSACTION:
         FIND bT WHERE bT.ThresholdId = piId EXCLUSIVE-LOCK.

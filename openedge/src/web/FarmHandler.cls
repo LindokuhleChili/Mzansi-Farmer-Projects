@@ -1,6 +1,8 @@
 /*------------------------------------------------------------------------
   web/FarmHandler.cls - PASOE WEB-transport handler. Thin wrapper: every request is passed to farm-api.p,
-  which holds all business rules and data access. Mapped to /web/farm/ ... (see docs/OE-CONTRACT.md).
+  which holds all business rules and data access.
+  It also copies the PASOE client principal (user, roles) into web.AuthContext for the request.
+  Mapped to /web/farm/ ... (see docs/OE-CONTRACT.md).
   STATUS: compiled and run on PASOE 12.8 (see docs/NOTES.md).
 ------------------------------------------------------------------------*/
 USING OpenEdge.Web.WebHandler.
@@ -44,6 +46,7 @@ CLASS web.FarmHandler INHERITS WebHandler:
         DEFINE VARIABLE iStatus   AS INTEGER NO-UNDO.
         DEFINE VARIABLE cNames    AS CHARACTER EXTENT NO-UNDO.
         DEFINE VARIABLE iQ        AS INTEGER NO-UNDO.
+        DEFINE VARIABLE hCP       AS HANDLE NO-UNDO.
 
         cPath = poRequest:URI:Path.
         poRequest:URI:GetQueryNames(OUTPUT cNames).
@@ -58,7 +61,19 @@ CLASS web.FarmHandler INHERITS WebHandler:
                 lcBody = CAST(poRequest:Entity, String):Value.
         END.
 
-        RUN farm-api.p (pcMethod, cPath, lcBody, OUTPUT iStatus, OUTPUT lcResp).
+        /* who is calling: PASOE basic login puts a client principal on the request (oeablSecurity.properties,
+           client.login.model=basic). farm-api.p reads it from web.AuthContext for role checks and the audit actor. */
+        web.AuthContext:Reset().
+        hCP = SESSION:CURRENT-REQUEST-INFO:GetClientPrincipal() NO-ERROR.
+        IF VALID-HANDLE(hCP) AND hCP:USER-ID <> ? AND hCP:USER-ID <> "" THEN
+            ASSIGN web.AuthContext:CallerId = hCP:USER-ID
+                   web.AuthContext:CallerRoles  = (IF hCP:ROLES = ? THEN "" ELSE hCP:ROLES).
+        DO ON ERROR UNDO, THROW:
+            RUN farm-api.p (pcMethod, cPath, lcBody, OUTPUT iStatus, OUTPUT lcResp).
+            FINALLY:
+                web.AuthContext:Reset().
+            END FINALLY.
+        END.
 
         oResponse = NEW WebResponse().
         oResponse:StatusCode = iStatus.

@@ -5,6 +5,9 @@
   (b) the batch contract test runner (tests/run-contract.p).
 
   RUN farm-api.p (method, path, body, OUTPUT status, OUTPUT json-response).
+  The caller is passed in web.AuthContext (set by FarmHandler from the PASOE client principal).
+  When there is a principal, admin routes need the PSCAdmin role (403 FORBIDDEN_ROLE otherwise) and admin
+  changes are recorded under the real user id. No principal (batch tests, anonymous login) = no role checks.
   Path examples: /farm/plots/1/readings?limit=5, /farm/validate, ...
   The REST contract is documented in docs/OE-CONTRACT.md.
 
@@ -87,6 +90,17 @@ FUNCTION fQuery RETURNS CHARACTER (INPUT pcName AS CHARACTER):
             RETURN ENTRY(2, cPair, "=").
     END.
     RETURN ?.
+END FUNCTION.
+
+/* POST routes that change admin settings: the no-doses word list and the weather alert thresholds */
+FUNCTION fIsAdminRoute RETURNS LOGICAL (INPUT pcP AS CHARACTER):
+    RETURN pcP = "doctor/blocked-terms" OR pcP BEGINS "doctor/blocked-terms/" OR pcP BEGINS "alert-thresholds/".
+END FUNCTION.
+
+/* the authenticated PASOE user when there is one, otherwise the name the caller sent (old behaviour) */
+FUNCTION fRealActor RETURNS CHARACTER (INPUT pcClaimed AS CHARACTER):
+    IF web.AuthContext:HasPrincipal() THEN RETURN SUBSTRING(web.AuthContext:CallerId, 1, 40).
+    RETURN pcClaimed.
 END FUNCTION.
 
 PROCEDURE reply:
@@ -773,6 +787,13 @@ PROCEDURE dispatch:
     ELSE IF cP BEGINS "farm/" THEN cP = SUBSTRING(cP, 6).
     gcSegs = cP.
     n = NUM-ENTRIES(cP, "/").
+
+    /* admin-only changes (guardrail word list, weather alert thresholds) need ROLE_PSCAdmin when PASOE has
+       authenticated the caller. Reads stay open to every PSCUser. */
+    IF pcMethod = "POST" AND fIsAdminRoute(cP) AND web.AuthContext:HasPrincipal()
+       AND NOT web.AuthContext:HasRole("PSCAdmin") THEN DO:
+        RUN reply-error (403, "FORBIDDEN_ROLE", "This change needs the farm admin role (PSCAdmin).", ?). RETURN.
+    END.
 
     IF pcBody <> "" AND pcBody <> ? THEN DO ON ERROR UNDO, LEAVE:
         oParser = NEW ObjectModelParser().

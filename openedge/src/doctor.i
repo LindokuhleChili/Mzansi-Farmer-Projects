@@ -442,6 +442,7 @@ PROCEDURE h-dr-term-add:
     IF CAN-FIND(FIRST BlockedTerm WHERE BlockedTerm.TermKind = cKind AND BlockedTerm.TermText = cTerm) THEN DO:
         RUN reply-error (409, "TERM_EXISTS", SUBSTITUTE('"&1" is already in the &2 list.', cTerm, cKind), "term"). RETURN. END.
     RUN get-str (goBody, "updatedBy", OUTPUT cBy, OUTPUT lOk). IF NOT lOk THEN cBy = "admin".
+    cBy = fRealActor(cBy).   /* PASOE user (farmadmin) when logged in */
     RUN get-str (goBody, "requestId", OUTPUT cReq, OUTPUT lOk). IF NOT lOk THEN cReq = "".
     tNow = NOW.
     DO TRANSACTION:
@@ -473,6 +474,7 @@ PROCEDURE h-dr-term-save:
     END.
     lAct = goBody:GetLogical("active").
     RUN get-str (goBody, "updatedBy", OUTPUT cBy, OUTPUT lOk). IF NOT lOk THEN cBy = "admin".
+    cBy = fRealActor(cBy).   /* PASOE user (farmadmin) when logged in */
     RUN get-str (goBody, "requestId", OUTPUT cReq, OUTPUT lOk). IF NOT lOk THEN cReq = "".
     ASSIGN bT.Active = lAct bT.UpdatedAt = NOW bT.UpdatedBy = SUBSTRING(cBy, 1, 40).
     RELEASE bT.

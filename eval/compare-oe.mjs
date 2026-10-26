@@ -9,12 +9,14 @@
 //   node eval/compare-oe.mjs --http http://localhost:8820/web
 //   node eval/compare-oe.mjs --http http://localhost:8820/web --coop
 //   node eval/compare-oe.mjs --http                 # OE_BASE_URL, else http://localhost:8820/web
+// With PASOE basic login, set OE_AUTH=farmapi:<password> and OE_ADMIN_AUTH=farmadmin:<password> (admin routes).
 //
 // --coop keeps only case ids that start with CO, --market only MK (harvest-day market, docs/MARKET.md).
 // A full run already includes those cases and prints a co-op and a market subtotal.
 import { readFileSync } from 'node:fs';
 import { pathToFileURL } from 'node:url';
 import { checkCase, report } from './match.mjs';
+import { isAdminRoute } from '../apps/api/src/oe/client.js';
 
 export function loadCases() {
   return JSON.parse(readFileSync(new URL('./oe-contract-cases.json', import.meta.url), 'utf8')).cases;
@@ -54,14 +56,14 @@ export function resultsFromFile(file) {
   return new Map(parsed.results.map((r) => [r.id, r]));
 }
 
-export async function fetchHttpResults(cases, base, authHeader = {}) {
+export async function fetchHttpResults(cases, base, authHeader = {}, adminAuthHeader = authHeader) {
   const root = base.replace(/\/+$/, '');
   const results = new Map();
   for (const c of cases) {
     const { method, path, body } = c.request;
     const res = await fetch(root + path, {
       method,
-      headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...authHeader },
+      headers: { 'Content-Type': 'application/json', Accept: 'application/json', ...(isAdminRoute(method, path) ? adminAuthHeader : authHeader) },
       body: method === 'GET' || body === undefined ? undefined : JSON.stringify(body),
     });
     const text = await res.text();
@@ -107,8 +109,10 @@ async function main() {
   let results;
   let label;
   if (base) {
-    const auth = process.env.OE_AUTH ? { Authorization: 'Basic ' + Buffer.from(process.env.OE_AUTH).toString('base64') } : {};
-    results = await fetchHttpResults(cases, base, auth);
+    const hdr = (cred) => (cred ? { Authorization: 'Basic ' + Buffer.from(cred).toString('base64') } : {});
+    const auth = hdr(process.env.OE_AUTH);
+    // PASOE basic login: admin routes (blocked terms, alert thresholds) need a PSCAdmin user (OE_ADMIN_AUTH)
+    results = await fetchHttpResults(cases, base, auth, process.env.OE_ADMIN_AUTH ? hdr(process.env.OE_ADMIN_AUTH) : auth);
     label = `OpenEdge contract over HTTP (${base}${only})`;
   } else if (file) {
     results = resultsFromFile(file);
