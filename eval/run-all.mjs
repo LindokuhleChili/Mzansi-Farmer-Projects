@@ -9,6 +9,7 @@
 // 11. eval/audit-chain.test.mjs: audit hash chain (feature 21). AUD03-AUD05 are part of suite 1.
 // 10. eval/translate.test.mjs: dynamic AI translation (11 languages), cache, fallback, the language picker.
 // 13. eval/doctor.test.mjs: plant doctor (mock AI): photo limits, server dose strip, fallback, DOSE_BLOCKED via OpenEdge, approval. Cases DR01 to DR31 are part of suite 1.
+// 14. eval/assistant.test.mjs: Farm Assistant (chat, tool loop, offline planner, citations, approval cards, case files, memory, check-ins). Cases AS01 to AS41 are part of suite 1.
 // 12. eval/weather.test.mjs: weather alerts (no AI): seed labelling, rule edges, /api/v1 weather routes. Cases WX01 to WX28 are part of suite 1.
 //  8. eval/coop.test.mjs: co-op rule unit tests (pro rata rounding, caps, approve re-check, payouts, audit). The co-op contract cases CO01 to CO76 are part of suite 1.
 // The same contract cases run against the REAL ABL code on Windows with scripts\oe-run.ps1 -Action test (see docs/NOTES.md).
@@ -100,6 +101,13 @@ const drPass = Number((/^# pass (\d+)/m.exec(drTests.stdout) || [])[1] || 0), dr
 for (const m of drTests.stdout.matchAll(/^(not ok|ok) \d+ - (.*)$/gm)) console.log(`  ${m[1] === 'ok' ? 'PASS' : 'FAIL'}  ${m[2]}`);
 console.log(`  plant doctor tests: ${drPass} passed, ${drFail} failed`);
 totals.pass += drPass; totals.fail += drFail + (drTests.status === 0 ? 0 : (drFail ? 0 : 1));
+
+console.log('\n=== 14. Farm Assistant: chat, tool loop, citations, approval cards, case files, memory, check-ins (eval/assistant.test.mjs, node:test) ===');
+const asTests = spawnSync(process.execPath, ['--test', '--test-reporter=tap', fileURLToPath(new URL('./assistant.test.mjs', import.meta.url))], { encoding: 'utf8' });
+const asPass = Number((/^# pass (\d+)/m.exec(asTests.stdout) || [])[1] || 0), asFail = Number((/^# fail (\d+)/m.exec(asTests.stdout) || [])[1] || 0);
+for (const m of asTests.stdout.matchAll(/^(not ok|ok) \d+ - (.*)$/gm)) console.log(`  ${m[1] === 'ok' ? 'PASS' : 'FAIL'}  ${m[2]}`);
+console.log(`  farm assistant tests: ${asPass} passed, ${asFail} failed`);
+totals.pass += asPass; totals.fail += asFail + (asTests.status === 0 ? 0 : (asFail ? 0 : 1));
 
 console.log(`\nTOTAL: ${totals.pass} passed, ${totals.fail} failed, ${totals.intentional} intentional failures confirmed (by design), ${totals.unexpected} unexpected passes of intentional cases`);
 process.exit(totals.fail === 0 && totals.unexpected === 0 ? 0 : 1);

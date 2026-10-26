@@ -15,4 +15,8 @@ const provider = createProvider(config);
 const app = buildApp({ config, oe, provider });
 await app.listen({ port: config.port, host: config.host });
 console.log(`mzansi-farmer-ops API on http://${config.host}:${config.port}  (OE_MODE=${oe.mode}, AI=${provider.name})  EXAMPLE DATA ONLY`);
+if (config.assistantCheckInMs > 0) {   // Farm Assistant proactive check-ins: quiet unless something changed
+  const tick = () => app.checkIns.run().catch(() => { /* OpenEdge down: try again next time */ });
+  tick(); setInterval(tick, config.assistantCheckInMs).unref();
+}
 if (oe.mode === 'mock') console.log('NOTE: OE_MODE=mock uses the Node port of the ABL rules (mock-pasoe), not a real OpenEdge database.');

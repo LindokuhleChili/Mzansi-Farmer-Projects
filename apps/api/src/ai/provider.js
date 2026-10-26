@@ -89,6 +89,27 @@ export function createHttpProvider(config) {
     // Plant doctor: photos go as OpenAI-compatible image_url data URIs. Never logged.
     diagnose: (meta, photos) => chat(DOCTOR_SYSTEM_PROMPT, [{ type: 'text', text: buildDoctorText(meta) },
       ...photos.map((ph) => ({ type: 'image_url', image_url: { url: `data:${ph.mimeType};base64,${ph.dataBase64}` } }))], config.aiDoctorTimeoutMs || 30000),
+    // Farm Assistant tool loop (OpenAI-compatible function calling; Gemini's OpenAI endpoint supports it). Returns { content, toolCalls }.
+    async agentStep(messages, tools) {
+      const ctl = new AbortController();
+      const ms = config.aiAgentTimeoutMs || 20000;
+      const timer = setTimeout(() => ctl.abort(), ms);
+      try {
+        const res = await fetch(config.aiBaseUrl.replace(/\/+$/, '') + '/chat/completions', {
+          method: 'POST', signal: ctl.signal,
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${config.aiApiKey}` },
+          body: JSON.stringify({ model: config.aiModel, temperature: 0, messages,
+            ...(tools.length ? { tools: tools.map((t) => ({ type: 'function', function: t })), tool_choice: 'auto' } : { response_format: { type: 'json_object' } }) }),
+        });
+        if (!res.ok) throw new AiError('http', `AI provider returned HTTP ${res.status}`);
+        const m = (await res.json())?.choices?.[0]?.message || {};
+        return { content: m.content ?? '', toolCalls: Array.isArray(m.tool_calls) ? m.tool_calls : [] };
+      } catch (e) {
+        if (e instanceof AiError) throw e;
+        if (e.name === 'AbortError') throw new AiError('timeout', `AI did not answer within ${ms} ms`);
+        throw new AiError('network', `AI provider not reachable: ${e.cause?.code || e.message}`);
+      } finally { clearTimeout(timer); }
+    },
     translate: (texts, target) => chat(TRANSLATE_SYSTEM_PROMPT, buildTranslatePrompt(texts, target), config.aiTranslateTimeoutMs || AI_TRANSLATE_TIMEOUT_MS),
     async propose(ctx, lang) {
       const ctl = new AbortController();

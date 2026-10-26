@@ -11,6 +11,8 @@ import { CONFIRM_TTL_SECONDS, FUTURE_SKEW_MINUTES, READINGS_FOR_AI, AUDIT_TIMEOU
 import { isValidIsoTimestamp } from './iso.js';
 import { registerUi } from './ui.js';
 import { createTranslator, validateTranslateBody } from './ai/translate.js';
+import { runTurn } from './assistant/agent.js';
+import { createCheckIns } from './assistant/checkins.js';
 
 const PREFIX = '/api/v1';
 const safeEqual = (a, b) => {
@@ -394,6 +396,62 @@ export function buildApp({ config, oe, provider, clock = () => new Date(), weath
   });
 
   if (config.uiEnabled) registerUi(app, { config, oe, provider, clock, oeCall, fail });
+
+  // ---- 9. Farm Assistant (docs/ASSISTANT.md): chat turn -> tool loop (AI or offline planner) -> case file in OpenEdge
+  //      (ABL: CITATION_UNKNOWN, DOSE_BLOCKED) -> approval cards. Nothing changes until the farmer approves.
+  const ASSIST_LANGS = ['en', 'af', 'nr', 'xh', 'zu', 'nso', 'st', 'tn', 'ss', 've', 'ts'];
+  const asCall = (req) => (name, method, path, body) => oeCall(req, name, method, path, body);
+  app.post(`${PREFIX}/assistant/chat`, async (req, reply) => {
+    if (!requireApp(req, reply)) return;
+    const b = req.body;
+    if (!b || typeof b !== 'object' || Array.isArray(b)) return fail(reply, req, 400, 'VALIDATION_ERROR', 'Body must be a JSON object.', { field: 'body' });
+    if (typeof b.message !== 'string' || !b.message.trim() || b.message.length > 1000) return fail(reply, req, 400, 'VALIDATION_ERROR', 'message must be 1 to 1000 characters.', { field: 'message' });
+    const lang = b.lang ?? 'en';
+    if (!ASSIST_LANGS.includes(lang)) return fail(reply, req, 400, 'VALIDATION_ERROR', 'lang must be one of the 11 official language codes.', { field: 'lang' });
+    if (b.plotId !== undefined && b.plotId !== null && !Number.isInteger(b.plotId)) return fail(reply, req, 400, 'VALIDATION_ERROR', 'plotId must be an integer.', { field: 'plotId' });
+    const history = Array.isArray(b.history) ? b.history.filter((h) => h && typeof h.text === 'string').slice(-6) : [];
+    const out = await tool(req, 'assistant.turn', { chars: b.message.length, lang, provider: provider.name },
+      () => runTurn({ call: asCall(req), provider, clock, requestId: req.id }, { message: b.message.trim(), lang, plotId: b.plotId ?? undefined, history }),
+      (o) => ({ caseId: o.case?.caseId ?? null, steps: o.steps.length, cards: o.cards.length, usedFallback: o.usedFallback, fallbackReason: o.fallbackReason || undefined }));
+    return { ack: 'Let me check your farm.', ...out, requestId: req.id };
+  });
+  app.get(`${PREFIX}/assistant/cases`, passthrough('oe.assistant_cases', (req) => `/farm/assistant/cases${qsOf(req, ['status', 'limit'])}`));
+  app.get(`${PREFIX}/assistant/cases/:id`, passthrough('oe.assistant_case', (req) => { const id = intId(req.params.id); return id === null ? null : `/farm/assistant/cases/${id}`; }));
+  for (const [act, decision] of [['accept', 'accept'], ['decline', 'decline']]) {
+    app.post(`${PREFIX}/assistant/cases/:id/actions/:n/${act}`, async (req, reply) => {
+      if (!requireApp(req, reply)) return;
+      const id = intId(req.params.id), n = intId(req.params.n);
+      if (id === null || n === null) return fail(reply, req, 400, 'VALIDATION_ERROR', 'Invalid id.', { field: 'id' });
+      const r = await oeCall(req, `oe.assistant_action_${act}`, 'POST', `/farm/assistant/cases/${id}/actions/${n}/decision`, { decision, actor: 'farmer', requestId: req.id });
+      return reply.code(r.status).send(r.status < 400 ? r.body : { ...r.body, requestId: req.id });
+    });
+  }
+  app.post(`${PREFIX}/assistant/cases/:id/follow-ups/:fid/answer`, async (req, reply) => {
+    if (!requireApp(req, reply)) return;
+    const id = intId(req.params.id), fid = intId(req.params.fid);
+    if (id === null || fid === null) return fail(reply, req, 400, 'VALIDATION_ERROR', 'Invalid id.', { field: 'id' });
+    const r = await oeCall(req, 'oe.assistant_followup', 'POST', `/farm/assistant/cases/${id}/follow-ups/${fid}/answer`, { ...pick(req.body || {}, ['answer', 'resolved', 'nextInDays']), actor: 'farmer', requestId: req.id });
+    return reply.code(r.status).send(r.status < 400 ? r.body : { ...r.body, requestId: req.id });
+  });
+  app.get(`${PREFIX}/assistant/memory`, passthrough('oe.assistant_memory', () => '/farm/assistant/memory?farmId=1'));
+  app.post(`${PREFIX}/assistant/memory`, async (req, reply) => {
+    if (!requireApp(req, reply)) return;
+    const r = await oeCall(req, 'oe.assistant_memory_save', 'POST', '/farm/assistant/memory', { ...pick(req.body || {}, ['key', 'value']), farmId: 1, actor: 'farmer', requestId: req.id });
+    return reply.code(r.status).send(r.status < 400 ? r.body : { ...r.body, requestId: req.id });
+  });
+  app.post(`${PREFIX}/guide/search`, async (req, reply) => {
+    if (!requireApp(req, reply)) return;
+    const r = await oeCall(req, 'oe.guide_search', 'POST', '/farm/guide/search', pick(req.body || {}, ['q', 'limit']));
+    return reply.code(r.status).send(r.status < 400 ? r.body : { ...r.body, requestId: req.id });
+  });
+  // proactive check-ins: the job itself is started by index.js (ASSISTANT_CHECKIN_MS); tests call app.checkIns.run()
+  const checkInReq = { id: 'checkin' };
+  app.checkIns = createCheckIns({ call: (name, method, path, body) => oeCall(checkInReq, name, method, path, body), clock });
+  app.get(`${PREFIX}/assistant/check-ins`, async (req, reply) => {
+    if (!requireApp(req, reply)) return;
+    const after = intId(String(req.query.after ?? '0')) ?? 0;
+    return { messages: app.checkIns.list(after) };
+  });
 
   return app;
 }

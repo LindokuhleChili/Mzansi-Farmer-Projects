@@ -221,6 +221,7 @@ For real translation with Gemini, set in your local `.env` only: `AI_PROVIDER=ht
 
 | Doc | What |
 |---|---|
+| [`docs/ASSISTANT.md`](docs/ASSISTANT.md) | Farm Assistant: chat, tool loop, guide search (RAG) in OpenEdge, approval cards, case files, check-ins; guide sources and licence. |
 | [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md) | What is real, what is mocked, and what this project does not do. Read this before relying on it. |
 | [`docs/NOTES.md`](docs/NOTES.md) | Stack versions, rules, environment variables, test results |
 | [`docs/API.md`](docs/API.md) | HTTP API |

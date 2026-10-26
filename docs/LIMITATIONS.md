@@ -88,3 +88,8 @@ This is a hackathon prototype. It shows one idea: an AI model may propose, OpenE
 - The word lists catch the dose wording they contain. New phrasings need words added by an admin, so the server check and the prompt stay as extra layers.
 - No chemical advice is given at all, on purpose. Farmers who need a spray programme are sent to an extension officer.
 - Photos are not stored, so a saved diagnosis cannot show the photos later.
+
+## Farm Assistant
+- Guide passages are quoted from English Wikipedia (CC BY-SA 4.0). They are general text, not local extension advice.
+- "Ask an expert" and "notify" cards send nothing. Voice input is not built. The isiZulu synonyms need review by a first-language speaker.
+- Chat history is kept only in the browser tab. Case files, follow-ups and memory are kept in OpenEdge. See docs/ASSISTANT.md.
