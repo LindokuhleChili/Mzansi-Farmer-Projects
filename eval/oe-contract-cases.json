@@ -6526,6 +6526,1252 @@
      "headHash": "$hex64"
     }
    }
+  },
+  {
+   "id": "AS01",
+   "title": "Guide search: tomato leaf spots return the Alternaria passages first, top 3",
+   "request": {
+    "method": "POST",
+    "path": "/farm/guide/search",
+    "body": {
+     "q": "Brown spots with rings on my tomato leaves"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "terms": {
+      "$contains": "lesions"
+     },
+     "passages": [
+      {
+       "passageId": 1,
+       "score": 16,
+       "sourceTitle": "Wikipedia: Alternaria solani",
+       "section": "On tomatoes",
+       "licence": "CC BY-SA 4.0",
+       "sourceUrl": {
+        "$startsWith": "https://en.wikipedia.org/w/index.php?title=Alternaria_solani&oldid="
+       }
+      },
+      {
+       "passageId": 2,
+       "score": 8
+      },
+      {
+       "passageId": 10,
+       "score": 4
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "AS02",
+   "title": "Guide search: synonyms widen 'frost tonight' to freezing/cold/protection",
+   "request": {
+    "method": "POST",
+    "path": "/farm/guide/search",
+    "body": {
+     "q": "frost tonight",
+     "limit": 2
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "terms": [
+      "frost",
+      "frosts",
+      "tonight",
+      "tonights",
+      "freezing",
+      "cold",
+      "protection"
+     ],
+     "passages": {
+      "$length": 2
+     }
+    }
+   }
+  },
+  {
+   "id": "AS03",
+   "title": "Guide search: stop words and short words only -> no terms, no passages",
+   "request": {
+    "method": "POST",
+    "path": "/farm/guide/search",
+    "body": {
+     "q": "is it on the"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "terms": {
+      "$length": 0
+     },
+     "passages": {
+      "$length": 0
+     }
+    }
+   }
+  },
+  {
+   "id": "AS04",
+   "title": "Guide search: q is required",
+   "request": {
+    "method": "POST",
+    "path": "/farm/guide/search",
+    "body": {
+     "q": " "
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "q"
+    }
+   }
+  },
+  {
+   "id": "AS05",
+   "title": "Guide search: limit 1 to 10",
+   "request": {
+    "method": "POST",
+    "path": "/farm/guide/search",
+    "body": {
+     "q": "dry soil",
+     "limit": 11
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "limit"
+    }
+   }
+  },
+  {
+   "id": "AS06",
+   "title": "Guide search: a plural in the question finds the singular word (wilting plants)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/guide/search",
+    "body": {
+     "q": "plants wilting",
+     "limit": 1
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "passages": [
+      {
+       "sourceTitle": "Wikipedia: Wilting"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "AS07",
+   "title": "Guide passage by id",
+   "request": {
+    "method": "GET",
+    "path": "/farm/guide/passages/5"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "passageId": 5,
+     "section": "Cultural control",
+     "text": {
+      "$startsWith": "Clear infected debris"
+     }
+    }
+   }
+  },
+  {
+   "id": "AS08",
+   "title": "Guide passage: unknown id is 404",
+   "request": {
+    "method": "GET",
+    "path": "/farm/guide/passages/9999"
+   },
+   "expect": {
+    "status": 404,
+    "body": {
+     "error": "PASSAGE_NOT_FOUND"
+    }
+   }
+  },
+  {
+   "id": "AS09",
+   "title": "CITATION_UNKNOWN rule alone: existing ids pass",
+   "request": {
+    "method": "POST",
+    "path": "/farm/guide/verify",
+    "body": {
+     "citations": [
+      1,
+      5,
+      29
+     ]
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "verdict": "passed",
+     "unknown": {
+      "$length": 0
+     }
+    }
+   }
+  },
+  {
+   "id": "AS10",
+   "title": "CITATION_UNKNOWN rule alone: invented ids are listed once, sorted",
+   "request": {
+    "method": "POST",
+    "path": "/farm/guide/verify",
+    "body": {
+     "citations": [
+      999,
+      1,
+      500,
+      999
+     ]
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "verdict": "blocked",
+     "unknown": [
+      500,
+      999
+     ]
+    }
+   }
+  },
+  {
+   "id": "AS11",
+   "title": "Guide verify: citations must be integers",
+   "request": {
+    "method": "POST",
+    "path": "/farm/guide/verify",
+    "body": {
+     "citations": [
+      "1"
+     ]
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "citations"
+    }
+   }
+  },
+  {
+   "id": "AS12",
+   "title": "Setup: an OpenEdge-checked hold suggestion for plot 1 (id 11)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/suggestions",
+    "body": {
+     "plotId": 1,
+     "action": "hold",
+     "litres": 0,
+     "reason": "Soil still moist.",
+     "provider": "mock",
+     "asOf": "2026-10-23T08:10:00Z"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "suggestionId": 11,
+     "action": "hold"
+    }
+   }
+  },
+  {
+   "id": "AS13",
+   "title": "Case: a cited, dose-free answer is stored open with a due follow-up",
+   "request": {
+    "method": "POST",
+    "path": "/farm/assistant/cases",
+    "body": {
+     "plotId": 1,
+     "problemType": "sick_plant",
+     "title": "Brown spots on tomato leaves",
+     "likelyCause": "Early blight (Alternaria) is likely: dark spots with rings on the oldest leaves.",
+     "confidence": "medium",
+     "causeCitations": [
+      1
+     ],
+     "evidence": [
+      {
+       "kind": "get_sensor_readings",
+       "text": "Soil moisture 41%, humidity 88% this morning."
+      },
+      {
+       "kind": "search_guides",
+       "text": "Found 3 guide passages about brown leaf spots."
+      }
+     ],
+     "actions": [
+      {
+       "kind": "step",
+       "text": "Remove the spotted lower leaves and take them off the field.",
+       "cost": "free",
+       "citations": [
+        5
+       ]
+      },
+      {
+       "kind": "step",
+       "text": "Water at the base in the morning so the leaves stay dry.",
+       "cost": "free",
+       "citations": [
+        5,
+        3
+       ]
+      },
+      {
+       "kind": "hold",
+       "text": "Hold irrigation today; the soil is still moist.",
+       "citations": [
+        29
+       ],
+       "suggestionId": 11
+      }
+     ],
+     "followUpDays": 3,
+     "followUpQuestion": "Did new spots appear on the upper leaves?",
+     "diagnosisId": 1,
+     "usedFallback": false,
+     "provider": "mock",
+     "requestId": "as-contract"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "caseId": 1,
+     "status": "open",
+     "plotId": 1,
+     "problemType": "sick_plant",
+     "title": "Brown spots on tomato leaves",
+     "causeCitations": [
+      1
+     ],
+     "citations": [
+      {
+       "passageId": 1
+      },
+      {
+       "passageId": 5
+      },
+      {
+       "passageId": 3
+      },
+      {
+       "passageId": 29
+      }
+     ],
+     "actions": [
+      {
+       "actionNo": 1,
+       "kind": "step",
+       "status": "proposed",
+       "suggestionId": null,
+       "verdict": null
+      },
+      {
+       "actionNo": 2,
+       "kind": "step",
+       "cost": "free"
+      },
+      {
+       "actionNo": 3,
+       "kind": "hold",
+       "suggestionId": 11,
+       "verdict": "$any",
+       "status": "$any"
+      }
+     ],
+     "followUps": [
+      {
+       "followUpId": 1,
+       "status": "due",
+       "question": "Did new spots appear on the upper leaves?",
+       "answer": "",
+       "answeredAt": null
+      }
+     ],
+     "evidence": {
+      "$length": 2
+     },
+     "diagnosisId": 1,
+     "usedFallback": false,
+     "closedAt": null
+    }
+   }
+  },
+  {
+   "id": "AS14",
+   "title": "Case rule CITATION_UNKNOWN: an invented passage id is refused and nothing is stored",
+   "request": {
+    "method": "POST",
+    "path": "/farm/assistant/cases",
+    "body": {
+     "plotId": 1,
+     "problemType": "sick_plant",
+     "title": "Brown spots on tomato leaves",
+     "likelyCause": "Early blight (Alternaria) is likely: dark spots with rings on the oldest leaves.",
+     "confidence": "medium",
+     "causeCitations": [
+      1,
+      777
+     ],
+     "evidence": [
+      {
+       "kind": "get_sensor_readings",
+       "text": "Soil moisture 41%, humidity 88% this morning."
+      },
+      {
+       "kind": "search_guides",
+       "text": "Found 3 guide passages about brown leaf spots."
+      }
+     ],
+     "actions": [
+      {
+       "kind": "step",
+       "text": "Remove the spotted lower leaves and take them off the field.",
+       "cost": "free",
+       "citations": [
+        5
+       ]
+      },
+      {
+       "kind": "step",
+       "text": "Water at the base in the morning so the leaves stay dry.",
+       "cost": "free",
+       "citations": [
+        5,
+        3
+       ]
+      },
+      {
+       "kind": "hold",
+       "text": "Hold irrigation today; the soil is still moist.",
+       "citations": [
+        29
+       ],
+       "suggestionId": 11
+      }
+     ],
+     "followUpDays": 3,
+     "followUpQuestion": "Did new spots appear on the upper leaves?",
+     "diagnosisId": 1,
+     "usedFallback": false,
+     "provider": "mock",
+     "requestId": "as-contract"
+    }
+   },
+   "expect": {
+    "status": 422,
+    "body": {
+     "error": "CITATION_UNKNOWN",
+     "unknown": [
+      777
+     ]
+    }
+   }
+  },
+  {
+   "id": "AS15",
+   "title": "Case rule DOSE_BLOCKED: a chemical dose in an action is refused",
+   "request": {
+    "method": "POST",
+    "path": "/farm/assistant/cases",
+    "body": {
+     "plotId": 1,
+     "problemType": "sick_plant",
+     "title": "Brown spots on tomato leaves",
+     "likelyCause": "Early blight (Alternaria) is likely: dark spots with rings on the oldest leaves.",
+     "confidence": "medium",
+     "causeCitations": [
+      1
+     ],
+     "evidence": [
+      {
+       "kind": "get_sensor_readings",
+       "text": "Soil moisture 41%, humidity 88% this morning."
+      },
+      {
+       "kind": "search_guides",
+       "text": "Found 3 guide passages about brown leaf spots."
+      }
+     ],
+     "actions": [
+      {
+       "kind": "step",
+       "text": "Spray copper fungicide at 20 ml per litre.",
+       "cost": "low",
+       "citations": [
+        5
+       ]
+      }
+     ],
+     "followUpDays": 3,
+     "followUpQuestion": "Did new spots appear on the upper leaves?",
+     "diagnosisId": 1,
+     "usedFallback": false,
+     "provider": "mock",
+     "requestId": "as-contract"
+    }
+   },
+   "expect": {
+    "status": 422,
+    "body": {
+     "error": "DOSE_BLOCKED",
+     "blocked": {
+      "$contains": {
+       "field": "actions[0].text",
+       "chemicalTerm": "fungicide"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "AS16",
+   "title": "Case: every action needs at least one citation",
+   "request": {
+    "method": "POST",
+    "path": "/farm/assistant/cases",
+    "body": {
+     "plotId": 1,
+     "problemType": "sick_plant",
+     "title": "Brown spots on tomato leaves",
+     "likelyCause": "Early blight (Alternaria) is likely: dark spots with rings on the oldest leaves.",
+     "confidence": "medium",
+     "causeCitations": [
+      1
+     ],
+     "evidence": [
+      {
+       "kind": "get_sensor_readings",
+       "text": "Soil moisture 41%, humidity 88% this morning."
+      },
+      {
+       "kind": "search_guides",
+       "text": "Found 3 guide passages about brown leaf spots."
+      }
+     ],
+     "actions": [
+      {
+       "kind": "step",
+       "text": "Remove old leaves.",
+       "cost": "free",
+       "citations": []
+      }
+     ],
+     "followUpDays": 3,
+     "followUpQuestion": "Did new spots appear on the upper leaves?",
+     "diagnosisId": 1,
+     "usedFallback": false,
+     "provider": "mock",
+     "requestId": "as-contract"
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "actions[0].citations"
+    }
+   }
+  },
+  {
+   "id": "AS17",
+   "title": "Case: irrigation actions must name an OpenEdge suggestion",
+   "request": {
+    "method": "POST",
+    "path": "/farm/assistant/cases",
+    "body": {
+     "plotId": 1,
+     "problemType": "sick_plant",
+     "title": "Brown spots on tomato leaves",
+     "likelyCause": "Early blight (Alternaria) is likely: dark spots with rings on the oldest leaves.",
+     "confidence": "medium",
+     "causeCitations": [
+      1
+     ],
+     "evidence": [
+      {
+       "kind": "get_sensor_readings",
+       "text": "Soil moisture 41%, humidity 88% this morning."
+      },
+      {
+       "kind": "search_guides",
+       "text": "Found 3 guide passages about brown leaf spots."
+      }
+     ],
+     "actions": [
+      {
+       "kind": "irrigate",
+       "text": "Water 100 L.",
+       "citations": [
+        29
+       ]
+      }
+     ],
+     "followUpDays": 3,
+     "followUpQuestion": "Did new spots appear on the upper leaves?",
+     "diagnosisId": 1,
+     "usedFallback": false,
+     "provider": "mock",
+     "requestId": "as-contract"
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "actions[0].suggestionId"
+    }
+   }
+  },
+  {
+   "id": "AS18",
+   "title": "Case rule SUGGESTION_MISMATCH: suggestion 11 is a hold, not an irrigate",
+   "request": {
+    "method": "POST",
+    "path": "/farm/assistant/cases",
+    "body": {
+     "plotId": 1,
+     "problemType": "sick_plant",
+     "title": "Brown spots on tomato leaves",
+     "likelyCause": "Early blight (Alternaria) is likely: dark spots with rings on the oldest leaves.",
+     "confidence": "medium",
+     "causeCitations": [
+      1
+     ],
+     "evidence": [
+      {
+       "kind": "get_sensor_readings",
+       "text": "Soil moisture 41%, humidity 88% this morning."
+      },
+      {
+       "kind": "search_guides",
+       "text": "Found 3 guide passages about brown leaf spots."
+      }
+     ],
+     "actions": [
+      {
+       "kind": "irrigate",
+       "text": "Water 100 L.",
+       "citations": [
+        29
+       ],
+       "suggestionId": 11
+      }
+     ],
+     "followUpDays": 3,
+     "followUpQuestion": "Did new spots appear on the upper leaves?",
+     "diagnosisId": 1,
+     "usedFallback": false,
+     "provider": "mock",
+     "requestId": "as-contract"
+    }
+   },
+   "expect": {
+    "status": 422,
+    "body": {
+     "error": "SUGGESTION_MISMATCH"
+    }
+   }
+  },
+  {
+   "id": "AS19",
+   "title": "Case: unknown plot",
+   "request": {
+    "method": "POST",
+    "path": "/farm/assistant/cases",
+    "body": {
+     "plotId": 99,
+     "problemType": "sick_plant",
+     "title": "Brown spots on tomato leaves",
+     "likelyCause": "Early blight (Alternaria) is likely: dark spots with rings on the oldest leaves.",
+     "confidence": "medium",
+     "causeCitations": [
+      1
+     ],
+     "evidence": [
+      {
+       "kind": "get_sensor_readings",
+       "text": "Soil moisture 41%, humidity 88% this morning."
+      },
+      {
+       "kind": "search_guides",
+       "text": "Found 3 guide passages about brown leaf spots."
+      }
+     ],
+     "actions": [
+      {
+       "kind": "step",
+       "text": "Remove the spotted lower leaves and take them off the field.",
+       "cost": "free",
+       "citations": [
+        5
+       ]
+      },
+      {
+       "kind": "step",
+       "text": "Water at the base in the morning so the leaves stay dry.",
+       "cost": "free",
+       "citations": [
+        5,
+        3
+       ]
+      },
+      {
+       "kind": "hold",
+       "text": "Hold irrigation today; the soil is still moist.",
+       "citations": [
+        29
+       ],
+       "suggestionId": 11
+      }
+     ],
+     "followUpDays": 3,
+     "followUpQuestion": "Did new spots appear on the upper leaves?",
+     "diagnosisId": 1,
+     "usedFallback": false,
+     "provider": "mock",
+     "requestId": "as-contract"
+    }
+   },
+   "expect": {
+    "status": 404,
+    "body": {
+     "error": "PLOT_NOT_FOUND"
+    }
+   }
+  },
+  {
+   "id": "AS20",
+   "title": "Case: unknown problem type",
+   "request": {
+    "method": "POST",
+    "path": "/farm/assistant/cases",
+    "body": {
+     "plotId": 1,
+     "problemType": "flood",
+     "title": "Brown spots on tomato leaves",
+     "likelyCause": "Early blight (Alternaria) is likely: dark spots with rings on the oldest leaves.",
+     "confidence": "medium",
+     "causeCitations": [
+      1
+     ],
+     "evidence": [
+      {
+       "kind": "get_sensor_readings",
+       "text": "Soil moisture 41%, humidity 88% this morning."
+      },
+      {
+       "kind": "search_guides",
+       "text": "Found 3 guide passages about brown leaf spots."
+      }
+     ],
+     "actions": [
+      {
+       "kind": "step",
+       "text": "Remove the spotted lower leaves and take them off the field.",
+       "cost": "free",
+       "citations": [
+        5
+       ]
+      },
+      {
+       "kind": "step",
+       "text": "Water at the base in the morning so the leaves stay dry.",
+       "cost": "free",
+       "citations": [
+        5,
+        3
+       ]
+      },
+      {
+       "kind": "hold",
+       "text": "Hold irrigation today; the soil is still moist.",
+       "citations": [
+        29
+       ],
+       "suggestionId": 11
+      }
+     ],
+     "followUpDays": 3,
+     "followUpQuestion": "Did new spots appear on the upper leaves?",
+     "diagnosisId": 1,
+     "usedFallback": false,
+     "provider": "mock",
+     "requestId": "as-contract"
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "problemType"
+    }
+   }
+  },
+  {
+   "id": "AS21",
+   "title": "Case: step actions need a cost",
+   "request": {
+    "method": "POST",
+    "path": "/farm/assistant/cases",
+    "body": {
+     "plotId": 1,
+     "problemType": "sick_plant",
+     "title": "Brown spots on tomato leaves",
+     "likelyCause": "Early blight (Alternaria) is likely: dark spots with rings on the oldest leaves.",
+     "confidence": "medium",
+     "causeCitations": [
+      1
+     ],
+     "evidence": [
+      {
+       "kind": "get_sensor_readings",
+       "text": "Soil moisture 41%, humidity 88% this morning."
+      },
+      {
+       "kind": "search_guides",
+       "text": "Found 3 guide passages about brown leaf spots."
+      }
+     ],
+     "actions": [
+      {
+       "kind": "step",
+       "text": "Remove old leaves.",
+       "citations": [
+        5
+       ]
+      }
+     ],
+     "followUpDays": 3,
+     "followUpQuestion": "Did new spots appear on the upper leaves?",
+     "diagnosisId": 1,
+     "usedFallback": false,
+     "provider": "mock",
+     "requestId": "as-contract"
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "actions[0].cost"
+    }
+   }
+  },
+  {
+   "id": "AS22",
+   "title": "Case list newest first",
+   "request": {
+    "method": "GET",
+    "path": "/farm/assistant/cases?status=open"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "cases": [
+      {
+       "caseId": 1
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "AS23",
+   "title": "Farmer accepts step 1",
+   "request": {
+    "method": "POST",
+    "path": "/farm/assistant/cases/1/actions/1/decision",
+    "body": {
+     "decision": "accept",
+     "actor": "farmer"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "actions": [
+      {
+       "actionNo": 1,
+       "status": "accepted",
+       "decidedAt": {
+        "$startsWith": "20"
+       }
+      },
+      {
+       "status": "proposed"
+      },
+      {
+       "actionNo": 3
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "AS24",
+   "title": "Deciding the same step twice is 409",
+   "request": {
+    "method": "POST",
+    "path": "/farm/assistant/cases/1/actions/1/decision",
+    "body": {
+     "decision": "decline"
+    }
+   },
+   "expect": {
+    "status": 409,
+    "body": {
+     "error": "ALREADY_DECIDED"
+    }
+   }
+  },
+  {
+   "id": "AS25",
+   "title": "Irrigation actions use the suggestion's two-step approval, not the case",
+   "request": {
+    "method": "POST",
+    "path": "/farm/assistant/cases/1/actions/3/decision",
+    "body": {
+     "decision": "accept"
+    }
+   },
+   "expect": {
+    "status": 409,
+    "body": {
+     "error": "USE_SUGGESTION_APPROVAL"
+    }
+   }
+  },
+  {
+   "id": "AS26",
+   "title": "Unknown action number",
+   "request": {
+    "method": "POST",
+    "path": "/farm/assistant/cases/1/actions/9/decision",
+    "body": {
+     "decision": "accept"
+    }
+   },
+   "expect": {
+    "status": 404,
+    "body": {
+     "error": "ACTION_NOT_FOUND"
+    }
+   }
+  },
+  {
+   "id": "AS27",
+   "title": "Follow-up answered, not resolved: a new follow-up is due",
+   "request": {
+    "method": "POST",
+    "path": "/farm/assistant/cases/1/follow-ups/1/answer",
+    "body": {
+     "answer": "Two new spots on the middle leaves.",
+     "resolved": false,
+     "nextInDays": 2
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "status": "open",
+     "followUps": [
+      {
+       "followUpId": 1,
+       "status": "answered",
+       "answer": "Two new spots on the middle leaves."
+      },
+      {
+       "followUpId": 2,
+       "status": "due"
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "AS28",
+   "title": "The same follow-up cannot be answered twice",
+   "request": {
+    "method": "POST",
+    "path": "/farm/assistant/cases/1/follow-ups/1/answer",
+    "body": {
+     "answer": "again",
+     "resolved": true
+    }
+   },
+   "expect": {
+    "status": 409,
+    "body": {
+     "error": "ALREADY_ANSWERED"
+    }
+   }
+  },
+  {
+   "id": "AS29",
+   "title": "Follow-up resolved: the case closes",
+   "request": {
+    "method": "POST",
+    "path": "/farm/assistant/cases/1/follow-ups/2/answer",
+    "body": {
+     "answer": "No new spots after a week.",
+     "resolved": true
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "status": "resolved",
+     "closedAt": {
+      "$startsWith": "20"
+     }
+    }
+   }
+  },
+  {
+   "id": "AS30",
+   "title": "A resolved case takes no more decisions",
+   "request": {
+    "method": "POST",
+    "path": "/farm/assistant/cases/1/actions/2/decision",
+    "body": {
+     "decision": "accept"
+    }
+   },
+   "expect": {
+    "status": 409,
+    "body": {
+     "error": "CASE_CLOSED"
+    }
+   }
+  },
+  {
+   "id": "AS31",
+   "title": "Unknown case is 404",
+   "request": {
+    "method": "GET",
+    "path": "/farm/assistant/cases/42"
+   },
+   "expect": {
+    "status": 404,
+    "body": {
+     "error": "CASE_NOT_FOUND"
+    }
+   }
+  },
+  {
+   "id": "AS32",
+   "title": "Memory: save a farm preference",
+   "request": {
+    "method": "POST",
+    "path": "/farm/assistant/memory",
+    "body": {
+     "farmId": 1,
+     "key": "water_source",
+     "value": "Borehole, pump runs mornings only.",
+     "actor": "farmer"
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "key": "water_source",
+     "value": "Borehole, pump runs mornings only."
+    }
+   }
+  },
+  {
+   "id": "AS33",
+   "title": "Memory: same key updates the value",
+   "request": {
+    "method": "POST",
+    "path": "/farm/assistant/memory",
+    "body": {
+     "farmId": 1,
+     "key": "water_source",
+     "value": "Borehole and a rain tank."
+    }
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "value": "Borehole and a rain tank."
+    }
+   }
+  },
+  {
+   "id": "AS34",
+   "title": "Memory: key must be lower-case letters, digits or _",
+   "request": {
+    "method": "POST",
+    "path": "/farm/assistant/memory",
+    "body": {
+     "farmId": 1,
+     "key": "Water Source",
+     "value": "x"
+    }
+   },
+   "expect": {
+    "status": 400,
+    "body": {
+     "error": "VALIDATION_ERROR",
+     "field": "key"
+    }
+   }
+  },
+  {
+   "id": "AS35",
+   "title": "Memory: unknown farm",
+   "request": {
+    "method": "POST",
+    "path": "/farm/assistant/memory",
+    "body": {
+     "farmId": 77,
+     "key": "note",
+     "value": "x"
+    }
+   },
+   "expect": {
+    "status": 404,
+    "body": {
+     "error": "FARM_NOT_FOUND"
+    }
+   }
+  },
+  {
+   "id": "AS36",
+   "title": "Memory: DOSE_BLOCKED also guards what is remembered",
+   "request": {
+    "method": "POST",
+    "path": "/farm/assistant/memory",
+    "body": {
+     "farmId": 1,
+     "key": "spray_plan",
+     "value": "Use 20 ml fungicide per litre."
+    }
+   },
+   "expect": {
+    "status": 422,
+    "body": {
+     "error": "DOSE_BLOCKED"
+    }
+   }
+  },
+  {
+   "id": "AS37",
+   "title": "Memory list for farm 1",
+   "request": {
+    "method": "GET",
+    "path": "/farm/assistant/memory?farmId=1"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "farmId": 1,
+     "items": [
+      {
+       "key": "water_source",
+       "value": "Borehole and a rain tank."
+      }
+     ]
+    }
+   }
+  },
+  {
+   "id": "AS38",
+   "title": "Audit holds the blocked citation, the case, the decision and the resolution",
+   "request": {
+    "method": "GET",
+    "path": "/farm/audit?limit=40"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "events": {
+      "$contains": {
+       "event": "assistant_citation_blocked"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "AS39",
+   "title": "Audit: case opened",
+   "request": {
+    "method": "GET",
+    "path": "/farm/audit?limit=40"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "events": {
+      "$contains": {
+       "event": "assistant_case_opened"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "AS40",
+   "title": "Audit: case resolved",
+   "request": {
+    "method": "GET",
+    "path": "/farm/audit?limit=40"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "events": {
+      "$contains": {
+       "event": "assistant_case_resolved"
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "AS41",
+   "title": "Audit hash chain still verifies after the assistant writes",
+   "request": {
+    "method": "GET",
+    "path": "/farm/audit/verify"
+   },
+   "expect": {
+    "status": 200,
+    "body": {
+     "ok": true
+    }
+   }
   }
  ]
 }

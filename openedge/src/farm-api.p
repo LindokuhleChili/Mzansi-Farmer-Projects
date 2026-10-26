@@ -229,6 +229,7 @@ END FUNCTION.
 {market.i}
 {weather.i}
 {doctor.i}
+{assistant.i}
 
 /* ---------- THE RULES ---------- */
 PROCEDURE do-validate:
@@ -838,6 +839,10 @@ PROCEDURE dispatch:
             ELSE IF cP = "doctor/blocked-terms" THEN RUN h-dr-terms.
             ELSE IF cP = "doctor/diagnoses" THEN RUN h-dr-list.
             ELSE IF n = 3 AND ENTRY(1, cP, "/") = "doctor" AND ENTRY(2, cP, "/") = "diagnoses" THEN RUN h-dr-get (fPathId(ENTRY(3, cP, "/"))).
+            ELSE IF n = 3 AND ENTRY(1, cP, "/") = "guide" AND ENTRY(2, cP, "/") = "passages" THEN RUN h-gd-passage (fPathId(ENTRY(3, cP, "/"))).
+            ELSE IF cP = "assistant/memory" THEN RUN h-as-memory.
+            ELSE IF cP = "assistant/cases" THEN RUN h-as-cases.
+            ELSE IF n = 3 AND ENTRY(1, cP, "/") = "assistant" AND ENTRY(2, cP, "/") = "cases" THEN RUN h-as-case (fPathId(ENTRY(3, cP, "/"))).
             ELSE RUN reply-error (404, "NOT_FOUND", "Unknown route.", ?).
         END.
         WHEN "POST" THEN DO:
@@ -850,6 +855,14 @@ PROCEDURE dispatch:
             ELSE IF cP = "alerts/refresh" THEN RUN h-wx-refresh.
             ELSE IF cP = "forecast/import" THEN RUN h-wx-import.
             ELSE IF cP = "doctor/check" THEN RUN h-dr-check.
+            ELSE IF cP = "guide/search" THEN RUN h-gd-search.
+            ELSE IF cP = "guide/verify" THEN RUN h-gd-verify.
+            ELSE IF cP = "assistant/memory" THEN RUN h-as-memory-save.
+            ELSE IF cP = "assistant/cases" THEN RUN h-as-case-create.
+            ELSE IF n = 6 AND ENTRY(1, cP, "/") = "assistant" AND ENTRY(2, cP, "/") = "cases" AND ENTRY(4, cP, "/") = "actions" AND ENTRY(6, cP, "/") = "decision"
+                THEN RUN h-as-action (fPathId(ENTRY(3, cP, "/")), fPathId(ENTRY(5, cP, "/"))).
+            ELSE IF n = 6 AND ENTRY(1, cP, "/") = "assistant" AND ENTRY(2, cP, "/") = "cases" AND ENTRY(4, cP, "/") = "follow-ups" AND ENTRY(6, cP, "/") = "answer"
+                THEN RUN h-as-answer (fPathId(ENTRY(3, cP, "/")), fPathId(ENTRY(5, cP, "/"))).
             ELSE IF cP = "doctor/diagnoses" THEN RUN h-dr-create.
             ELSE IF n = 4 AND ENTRY(1, cP, "/") = "doctor" AND ENTRY(2, cP, "/") = "diagnoses" AND ENTRY(4, cP, "/") = "decision" THEN RUN h-dr-decide (fPathId(ENTRY(3, cP, "/"))).
             ELSE IF cP = "doctor/blocked-terms" THEN RUN h-dr-term-add.
