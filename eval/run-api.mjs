@@ -25,6 +25,7 @@ export async function runApiSuites(mode = 'mock') {
   if (mode === 'pasoe-real') {
     env.OE_BASE_URL = process.env.OE_BASE_URL || 'http://localhost:8820/web';
     if (process.env.OE_AUTH) env.OE_AUTH = process.env.OE_AUTH;
+    if (process.env.OE_ADMIN_AUTH) env.OE_ADMIN_AUTH = process.env.OE_ADMIN_AUTH;
   } else if (mode !== 'mock') {
     server = createMockServer();
     await new Promise((r) => server.listen(0, '127.0.0.1', r));

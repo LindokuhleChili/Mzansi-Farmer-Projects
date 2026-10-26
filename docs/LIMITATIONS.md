@@ -8,7 +8,7 @@ This is a hackathon prototype. It shows one idea: an AI model may propose, OpenE
 
 | Piece | Status |
 |---|---|
-| OpenEdge database, schema, ABL rules, PASOE WebHandler | Real for irrigation. Tested on OpenEdge 12.8: the original 47 contract cases in batch mode and over HTTP through PASOE (46 pass plus 1 case designed to fail). API suites also passed against real PASOE. The demo has been run against it. 14 contract cases were added with the QA bug fixes (see `docs/NOTES.md` 6a): those 61 pass on real OpenEdge too (60 pass plus 1 designed to fail, in batch mode and over HTTP). Co-op rules are in `openedge/src/coop.i` (included by `farm-api.p`) and schema `003-coop.df`. That ABL was written to match the Node rules and the 76 cases `CO01` to `CO76`. It has **not** been compiled or run on OpenEdge yet. See `docs/COOP.md`. |
+| OpenEdge database, schema, ABL rules, PASOE WebHandler | Real for irrigation. Tested on OpenEdge 12.8: the original 47 contract cases in batch mode and over HTTP through PASOE (46 pass plus 1 case designed to fail). API suites also passed against real PASOE. The demo has been run against it. 14 contract cases were added with the QA bug fixes (see `docs/NOTES.md` 6a): those 61 pass on real OpenEdge too (60 pass plus 1 designed to fail, in batch mode and over HTTP). Co-op rules are in `openedge/src/coop.i` (included by `farm-api.p`) and schema `003-coop.df`. They are compiled and run on OpenEdge 12.8: on 25 and 26 Oct 2026 all 76 cases `CO01` to `CO76` passed in batch mode on the live database and over HTTP through PASOE, as part of the full 259-case run (plus the intentional FAIL01; market MK01-MK51 51 passed). See `docs/COOP.md`. |
 | `mock-pasoe` (Node port of the ABL rules) | A stand-in. `npm test` uses it so the repository can be tested anywhere. The irrigation cases and the 76 co-op cases run against it. `eval/compare-oe.mjs` is what compares a real OpenEdge batch file or a live PASOE HTTP response with those cases. |
 | Node API, confirmation steps, audit log, fallback logic | Real code, tested in-process and over HTTP. |
 | AI model | Real Gemini (`gemini-3.5-flash`) in `npm run test:gemini` and when `.env` sets `AI_PROVIDER=http`. All automated tests use a deterministic mock so results can be repeated. |
@@ -31,7 +31,7 @@ This is a hackathon prototype. It shows one idea: an AI model may propose, OpenE
 
 ## OpenEdge and the demo setup
 
-- **The demo PASOE instance allows anonymous access.** `/web/**` is set to `permitAll()` (see `openedge/pasoe/README.md`). This is acceptable only because the instance listens on the laptop and the Node API is the only caller. For anything real, use basic or form login and set `OE_AUTH`.
+- **PASOE uses basic login over plain HTTP.** `/web/**` needs `ROLE_PSCUser`; admin changes need `ROLE_PSCAdmin`, checked in ABL (see `openedge/pasoe/README.md`). Users and plain-text passwords are in the instance's `users.properties` (local authmanager), and the API calls as one service user (`farmapi`) on behalf of the farmer, so farmer decisions are audited as "farmer", not per person. For anything real: HTTPS, hashed passwords or an OERealm/LDAP authmanager, and one login per person.
 - **Development licence limits apply.** The PASOE instance runs with one agent and five concurrent requests. That is fine for a demo and not for production.
 - **Only the OpenEdge side is a real rules engine.** Mock mode uses a Node copy of the rules. The two are tested against the same cases, but the copy could drift if one side is changed without the other.
 - **Seed data is dated 23 October 2026.** The seed readings are old compared with the rule that readings must be 15 minutes old or less. Without a fresh reading, the system proposes `notify` instead of irrigation. The seed history also counts toward the 7-day water budget (plot 1 has 1000 litres approved on 21 October), so the room left in the budget depends on the date and on earlier demo runs. Reset the data before each run.
@@ -57,7 +57,7 @@ This is a hackathon prototype. It shows one idea: an AI model may propose, OpenE
 ## Testing
 
 - Error handling is tested for the cases in `eval/*.json`, not for every possible network failure.
-- The offline count in `docs/NOTES.md` section 6b is from `npm test` on this branch (mock AI, mock OpenEdge). The real OpenEdge irrigation results and the real Gemini result were recorded on the team's laptop and are not repeated by `npm test`. The co-op ABL has not been executed on OpenEdge yet.
+- The offline count in `docs/NOTES.md` section 6b is from `npm test` on this branch (mock AI, mock OpenEdge). The real OpenEdge irrigation results and the real Gemini result were recorded on the team's laptop and are not repeated by `npm test`. The co-op ABL has been executed on OpenEdge 12.8 (76 of 76 cases, batch and HTTP).
 - Three cases are designed to fail so the test runner can be seen to report failures. A run that shows "3 intentional failures confirmed" is a pass.
 
 ## Content and licence
