@@ -9,7 +9,7 @@ import { loadConfig } from '../apps/api/src/config.js';
 import { createOeClient } from '../apps/api/src/oe/client.js';
 import { createMockProvider } from '../apps/api/src/ai/provider.js';
 import { buildApp } from '../apps/api/src/app.js';
-import { classify, firstSentence } from '../apps/api/src/assistant/agent.js';
+import { classify, firstSentence, hasDose } from '../apps/api/src/assistant/agent.js';
 import { createCheckIns } from '../apps/api/src/assistant/checkins.js';
 import { STEP_LIMIT, TOOL_DEFS } from '../apps/api/src/assistant/tools.js';
 import { DOSE_QUANTITY } from '../apps/api/src/ai/doctor.js';
@@ -177,4 +177,12 @@ test('check-ins: first look is quiet, nothing changed is quiet, a new alert make
   assert.equal(ci.list(0).length, 1); assert.match(ci.list(0)[0].text, /Frost/);
   const a = mkApp(); await a.checkIns.run();
   assert.deepEqual((await api(a, 'GET', '/api/v1/assistant/check-ins?after=0')).body.messages, []);
+});
+
+test('dose check: sensor percentages the tools reported are not doses; other quantities still are', () => {
+  const steps = [{ tool: 'get_sensor_readings', summary: 'Maize Plot A (example): soil 18.5% (dry below 35%), 29.6 °C, humidity 40%' }];
+  assert.equal(hasDose({ reply: 'Soil moisture is 18.5%, below the 35% limit.' }, steps), false);
+  assert.equal(hasDose({ reply: 'Spray a 2% solution.' }, steps), true);
+  assert.equal(hasDose({ reply: 'Use 20 ml per litre.' }, steps), true);
+  assert.equal(hasDose({ reply: 'Soil is 18.5%.' }, []), true, 'without the tool reading it still counts');
 });

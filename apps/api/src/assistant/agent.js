@@ -85,6 +85,14 @@ async function planOffline(T, st, { message, plotId, problemHint }) {
     followUpQuestion: problem === 'sick_plant' ? 'Have the spots spread to new leaves?' : problem === 'dry_soil' ? 'Is the soil still dry after watering?' : problem === 'frost' ? 'Did the plants get frost damage?' : 'Are the plants wilting in the afternoon?' } };
 }
 
+/** Dose check on the AI answer. A percentage the tools reported (soil moisture 18.5%, dry limit 35%, humidity 40%) is a
+ *  sensor reading, not a dose, so it is taken out first; any other quantity (2%, 20 ml, 5 g, per litre) still counts. */
+export function hasDose(final, steps = []) {
+  const seen = new Set(steps.flatMap((s) => String(s.summary || '').match(/\d+(?:[.,]\d+)?(?=\s*%)/g) || []));
+  const text = JSON.stringify(final).replace(/(\d+(?:[.,]\d+)?)\s*%/g, (m, n) => (seen.has(n) ? n + ' percent' : m));
+  return DOSE_QUANTITY.test(text);
+}
+
 /** Online loop: the model asks for tools (OpenAI-compatible tool calls) until it answers or the step limit is reached. */
 async function planWithAi(provider, T, st, { message, lang, plotId, history }) {
   const steps = [];
@@ -122,7 +130,7 @@ export async function runTurn(deps, { message, lang = 'en', plotId, history = []
       const known = new Set(st.passages.map((p) => p.passageId));
       const cites = [...(plan.final.causeCitations || []), ...st.proposals.flatMap((p) => p.citations)];
       if (plan.problem !== 'none' && (!st.passages.length || !cites.length || cites.some((c) => !known.has(c)))) throw Object.assign(new Error('uncited'), { reason: 'citation_not_retrieved' });
-      if (DOSE_QUANTITY.test(JSON.stringify(plan.final))) throw Object.assign(new Error('dose'), { reason: 'dose_removed' });
+      if (hasDose(plan.final, plan.steps)) throw Object.assign(new Error('dose'), { reason: 'dose_removed' });
     } catch (e) { usedFallback = true; fallbackReason = e.reason || (e.kind === 'timeout' ? 'ai_timeout' : 'ai_unavailable'); fresh(); plan = null; }
   }
   if (!plan) plan = await planOffline(T, st, { message, plotId });
