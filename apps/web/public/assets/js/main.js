@@ -5,6 +5,7 @@ import { api, demo, facts as apiFacts, loadSession, getSession, setToken, needsT
 import { marketPage, marketEventPage, marketFormPage, marketClick, marketSubmit, marketChange } from './market.js';
 import { weatherPage, weatherClick, weatherSubmit } from './weather.js';
 import { doctorPage, doctorClick, doctorSubmit, doctorChange } from './doctor.js';
+import { assistantPage, casePage, assistantClick, assistantSubmit } from './assistant.js';
 import { plotCardD, plotCardM, plotState, lineChart, readingsTable, sugRow, sugTitle, reviewView, confirmSheet, fmtSecs, langToggle, auditRow, bg, metricsBlock, lvl } from './views.js';
 
 const viewEl = $('#view'), overlay = $('#overlay'), toastRoot = $('#toast-root');
@@ -42,7 +43,7 @@ function busy(btn, on, label) {
 }
 
 // ---------- chrome ----------
-const NAV = [['dashboard', '/', 'grid', 'nav_dashboard'], ['plots', '/plots', 'plots', 'nav_plots'], ['suggestions', '/suggestions', 'list', 'nav_suggestions'], ['market', '/market', 'basket', 'mk_nav'], ['weather', '/weather', 'drop', 'wx_nav'], ['doctor', '/doctor', 'spark', 'dr_nav'], ['audit', '/audit', 'book', 'nav_audit'], ['settings', '/settings', 'gear', 'nav_settings']];
+const NAV = [['dashboard', '/', 'grid', 'nav_dashboard'], ['plots', '/plots', 'plots', 'nav_plots'], ['suggestions', '/suggestions', 'list', 'nav_suggestions'], ['market', '/market', 'basket', 'mk_nav'], ['weather', '/weather', 'drop', 'wx_nav'], ['assistant', '/assistant', 'leaf', 'as_nav'], ['doctor', '/doctor', 'spark', 'dr_nav'], ['audit', '/audit', 'book', 'nav_audit'], ['settings', '/settings', 'gear', 'nav_settings']];
 function renderChrome(active, plain = true) {
   const s = getSession() || {};
   document.body.classList.toggle('plain', plain);
@@ -334,6 +335,7 @@ async function routeInner() {
       else await (b ? marketEventPage(Number(b), ...mctx) : marketPage(...mctx));
     }
     else if (a === 'weather') await weatherPage(alive, renderChrome, draw, viewEl, need);
+    else if (a === 'assistant') await (b ? casePage(Number(b), alive, renderChrome, draw, viewEl, need) : assistantPage(alive, renderChrome, draw, viewEl, need));
     else if (a === 'doctor') await doctorPage(alive, renderChrome, draw, viewEl, need);
     else if (a === 'audit') await auditPage(alive);
     else if (a === 'settings') settingsPage();
@@ -416,6 +418,7 @@ document.addEventListener('click', async (ev) => {
   if (a === 'bell') { state.sugFilter = 'waiting'; return; }
   if (a === 'sug-filter') { state.sugFilter = el.dataset.f; return route(); }
   if (a === 'audit-filter') { state.auditFilter = el.dataset.f; return route(); }
+  if (a.startsWith('as-')) return assistantClick(a, el, { route, toast, busy, errText });
   if (a.startsWith('dr-')) return doctorClick(a, el, { route, toast, busy, errText });
   if (a.startsWith('wx-')) return weatherClick(a, el, { route, toast, busy, errText });
   if (a.startsWith('mk-')) return marketClick(a, el, { route, toast, busy, errText, overlay, draw });
@@ -429,6 +432,7 @@ document.addEventListener('click', async (ev) => {
 document.addEventListener('change', (ev) => { if (ev.target.dataset?.act === 'lang-pick') { setLang(ev.target.value); route(); return; } if (ev.target.dataset?.act === 'dr-photos') { doctorChange(ev, { toast }); return; } marketChange(ev); });
 document.addEventListener('submit', async (ev) => {
   ev.preventDefault();
+  if (await assistantSubmit(ev, { route, toast, busy, errText })) return;
   if (await doctorSubmit(ev, { route, toast, busy, errText })) return;
   if (await weatherSubmit(ev, { route, toast, busy, errText })) return;
   if (await marketSubmit(ev, { route, toast, busy, errText })) return;

@@ -1,0 +1,461 @@
+ADD TABLE "GuidePassage"
+  AREA "Schema Area"
+  DESCRIPTION "Farm Assistant RAG: verbatim openly licensed guide excerpts (source, licence, URL recorded). SearchText is the normalised text with a WORD index for CONTAINS."
+  DUMP-NAME "guidepassage"
+
+ADD FIELD "PassageId" OF "GuidePassage" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "PassageId"
+  POSITION 2
+  MAX-WIDTH 4
+  ORDER 10
+  MANDATORY
+
+ADD FIELD "SourceTitle" OF "GuidePassage" AS character
+  FORMAT "x(80)"
+  INITIAL ""
+  LABEL "SourceTitle"
+  POSITION 3
+  MAX-WIDTH 160
+  ORDER 20
+
+ADD FIELD "Section" OF "GuidePassage" AS character
+  FORMAT "x(80)"
+  INITIAL ""
+  LABEL "Section"
+  POSITION 4
+  MAX-WIDTH 160
+  ORDER 30
+
+ADD FIELD "Crop" OF "GuidePassage" AS character
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "Crop"
+  POSITION 5
+  MAX-WIDTH 40
+  ORDER 40
+
+ADD FIELD "Licence" OF "GuidePassage" AS character
+  FORMAT "x(30)"
+  INITIAL ""
+  LABEL "Licence"
+  POSITION 6
+  MAX-WIDTH 60
+  ORDER 50
+
+ADD FIELD "SourceUrl" OF "GuidePassage" AS character
+  FORMAT "x(200)"
+  INITIAL ""
+  LABEL "SourceUrl"
+  POSITION 7
+  MAX-WIDTH 400
+  ORDER 60
+
+ADD FIELD "PassageText" OF "GuidePassage" AS character
+  FORMAT "x(1000)"
+  INITIAL ""
+  LABEL "PassageText"
+  POSITION 8
+  MAX-WIDTH 4000
+  ORDER 70
+
+ADD FIELD "SearchText" OF "GuidePassage" AS character
+  FORMAT "x(1000)"
+  INITIAL ""
+  LABEL "SearchText"
+  POSITION 9
+  MAX-WIDTH 4000
+  ORDER 80
+
+ADD INDEX "PassageId" ON "GuidePassage"
+  AREA "Schema Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "PassageId" ASCENDING
+
+ADD INDEX "SearchWords" ON "GuidePassage"
+  AREA "Schema Area"
+  WORD
+  INDEX-FIELD "SearchText" ASCENDING
+
+ADD TABLE "GuideSynonym"
+  AREA "Schema Area"
+  DESCRIPTION "Farming-term synonym list used to widen guide searches."
+  DUMP-NAME "guidesynonym"
+
+ADD FIELD "SynonymId" OF "GuideSynonym" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "SynonymId"
+  POSITION 2
+  MAX-WIDTH 4
+  ORDER 10
+  MANDATORY
+
+ADD FIELD "SynTerm" OF "GuideSynonym" AS character
+  FORMAT "x(40)"
+  INITIAL ""
+  LABEL "SynTerm"
+  POSITION 3
+  MAX-WIDTH 80
+  ORDER 20
+
+ADD FIELD "Words" OF "GuideSynonym" AS character
+  FORMAT "x(200)"
+  INITIAL ""
+  LABEL "Words"
+  POSITION 4
+  MAX-WIDTH 400
+  ORDER 30
+
+ADD INDEX "SynonymId" ON "GuideSynonym"
+  AREA "Schema Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "SynonymId" ASCENDING
+
+ADD INDEX "SynTerm" ON "GuideSynonym"
+  AREA "Schema Area"
+  UNIQUE
+  INDEX-FIELD "SynTerm" ASCENDING
+
+ADD TABLE "GuideStopword"
+  AREA "Schema Area"
+  DESCRIPTION "Words ignored by guide searches."
+  DUMP-NAME "guidestopword"
+
+ADD FIELD "Word" OF "GuideStopword" AS character
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "Word"
+  POSITION 2
+  MAX-WIDTH 40
+  ORDER 10
+  MANDATORY
+
+ADD INDEX "Word" ON "GuideStopword"
+  AREA "Schema Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "Word" ASCENDING
+
+ADD TABLE "AssistantCase"
+  AREA "Schema Area"
+  DESCRIPTION "Farm Assistant case file: evidence (what I checked), likely cause, cited actions, status."
+  DUMP-NAME "assistantcase"
+
+ADD FIELD "CaseId" OF "AssistantCase" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "CaseId"
+  POSITION 2
+  MAX-WIDTH 4
+  ORDER 10
+  MANDATORY
+
+ADD FIELD "CreatedAt" OF "AssistantCase" AS datetime-tz
+  FORMAT "99/99/9999 HH:MM:SS.SSS+HH:MM"
+  INITIAL "?"
+  LABEL "CreatedAt"
+  POSITION 3
+  MAX-WIDTH 8
+  ORDER 20
+
+ADD FIELD "PlotId" OF "AssistantCase" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "PlotId"
+  POSITION 4
+  MAX-WIDTH 4
+  ORDER 30
+
+ADD FIELD "ProblemType" OF "AssistantCase" AS character
+  FORMAT "x(20)"
+  INITIAL ""
+  LABEL "ProblemType"
+  POSITION 5
+  MAX-WIDTH 40
+  ORDER 40
+
+ADD FIELD "CaseTitle" OF "AssistantCase" AS character
+  FORMAT "x(120)"
+  INITIAL ""
+  LABEL "Title"
+  POSITION 6
+  MAX-WIDTH 240
+  ORDER 50
+
+ADD FIELD "LikelyCause" OF "AssistantCase" AS character
+  FORMAT "x(400)"
+  INITIAL ""
+  LABEL "LikelyCause"
+  POSITION 7
+  MAX-WIDTH 800
+  ORDER 60
+
+ADD FIELD "Confidence" OF "AssistantCase" AS character
+  FORMAT "x(10)"
+  INITIAL ""
+  LABEL "Confidence"
+  POSITION 8
+  MAX-WIDTH 20
+  ORDER 70
+
+ADD FIELD "CauseCitations" OF "AssistantCase" AS character
+  FORMAT "x(60)"
+  INITIAL ""
+  LABEL "CauseCitations"
+  POSITION 9
+  MAX-WIDTH 120
+  ORDER 80
+
+ADD FIELD "EvidenceJson" OF "AssistantCase" AS character
+  FORMAT "x(4000)"
+  INITIAL ""
+  LABEL "EvidenceJson"
+  POSITION 10
+  MAX-WIDTH 16000
+  ORDER 90
+
+ADD FIELD "ActionsJson" OF "AssistantCase" AS character
+  FORMAT "x(4000)"
+  INITIAL ""
+  LABEL "ActionsJson"
+  POSITION 11
+  MAX-WIDTH 16000
+  ORDER 100
+
+ADD FIELD "FollowUpQuestion" OF "AssistantCase" AS character
+  FORMAT "x(200)"
+  INITIAL ""
+  LABEL "FollowUpQuestion"
+  POSITION 12
+  MAX-WIDTH 400
+  ORDER 110
+
+ADD FIELD "DiagnosisId" OF "AssistantCase" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "DiagnosisId"
+  POSITION 13
+  MAX-WIDTH 4
+  ORDER 120
+
+ADD FIELD "UsedFallback" OF "AssistantCase" AS logical
+  FORMAT "yes/no"
+  INITIAL "no"
+  LABEL "UsedFallback"
+  POSITION 14
+  MAX-WIDTH 1
+  ORDER 130
+
+ADD FIELD "Provider" OF "AssistantCase" AS character
+  FORMAT "x(40)"
+  INITIAL ""
+  LABEL "Provider"
+  POSITION 15
+  MAX-WIDTH 80
+  ORDER 140
+
+ADD FIELD "CaseStatus" OF "AssistantCase" AS character
+  FORMAT "x(12)"
+  INITIAL ""
+  LABEL "CaseStatus"
+  POSITION 16
+  MAX-WIDTH 24
+  ORDER 150
+
+ADD FIELD "ClosedAt" OF "AssistantCase" AS datetime-tz
+  FORMAT "99/99/9999 HH:MM:SS.SSS+HH:MM"
+  INITIAL "?"
+  LABEL "ClosedAt"
+  POSITION 17
+  MAX-WIDTH 8
+  ORDER 160
+
+ADD FIELD "RequestId" OF "AssistantCase" AS character
+  FORMAT "x(40)"
+  INITIAL ""
+  LABEL "RequestId"
+  POSITION 18
+  MAX-WIDTH 80
+  ORDER 170
+
+ADD INDEX "CaseId" ON "AssistantCase"
+  AREA "Schema Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "CaseId" ASCENDING
+
+ADD INDEX "PlotCase" ON "AssistantCase"
+  AREA "Schema Area"
+  INDEX-FIELD "PlotId" ASCENDING
+  INDEX-FIELD "CaseId" ASCENDING
+
+ADD TABLE "CaseFollowUp"
+  AREA "Schema Area"
+  DESCRIPTION "Follow-up prompts of a case file (due, answered)."
+  DUMP-NAME "casefollowup"
+
+ADD FIELD "FollowUpId" OF "CaseFollowUp" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "FollowUpId"
+  POSITION 2
+  MAX-WIDTH 4
+  ORDER 10
+  MANDATORY
+
+ADD FIELD "CaseId" OF "CaseFollowUp" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "CaseId"
+  POSITION 3
+  MAX-WIDTH 4
+  ORDER 20
+
+ADD FIELD "DueAt" OF "CaseFollowUp" AS datetime-tz
+  FORMAT "99/99/9999 HH:MM:SS.SSS+HH:MM"
+  INITIAL "?"
+  LABEL "DueAt"
+  POSITION 4
+  MAX-WIDTH 8
+  ORDER 30
+
+ADD FIELD "Question" OF "CaseFollowUp" AS character
+  FORMAT "x(200)"
+  INITIAL ""
+  LABEL "Question"
+  POSITION 5
+  MAX-WIDTH 400
+  ORDER 40
+
+ADD FIELD "FuStatus" OF "CaseFollowUp" AS character
+  FORMAT "x(12)"
+  INITIAL ""
+  LABEL "FuStatus"
+  POSITION 6
+  MAX-WIDTH 24
+  ORDER 50
+
+ADD FIELD "Answer" OF "CaseFollowUp" AS character
+  FORMAT "x(500)"
+  INITIAL ""
+  LABEL "Answer"
+  POSITION 7
+  MAX-WIDTH 1000
+  ORDER 60
+
+ADD FIELD "AnsweredAt" OF "CaseFollowUp" AS datetime-tz
+  FORMAT "99/99/9999 HH:MM:SS.SSS+HH:MM"
+  INITIAL "?"
+  LABEL "AnsweredAt"
+  POSITION 8
+  MAX-WIDTH 8
+  ORDER 70
+
+ADD INDEX "FollowUpId" ON "CaseFollowUp"
+  AREA "Schema Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "FollowUpId" ASCENDING
+
+ADD INDEX "CaseFu" ON "CaseFollowUp"
+  AREA "Schema Area"
+  INDEX-FIELD "CaseId" ASCENDING
+  INDEX-FIELD "FollowUpId" ASCENDING
+
+ADD TABLE "FarmerMemory"
+  AREA "Schema Area"
+  DESCRIPTION "Farm Assistant memory per farm: profile facts and preferences loaded into every chat turn."
+  DUMP-NAME "farmermemory"
+
+ADD FIELD "MemoryId" OF "FarmerMemory" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "MemoryId"
+  POSITION 2
+  MAX-WIDTH 4
+  ORDER 10
+  MANDATORY
+
+ADD FIELD "FarmId" OF "FarmerMemory" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "FarmId"
+  POSITION 3
+  MAX-WIDTH 4
+  ORDER 20
+
+ADD FIELD "MemKey" OF "FarmerMemory" AS character
+  FORMAT "x(40)"
+  INITIAL ""
+  LABEL "MemKey"
+  POSITION 4
+  MAX-WIDTH 80
+  ORDER 30
+
+ADD FIELD "MemValue" OF "FarmerMemory" AS character
+  FORMAT "x(300)"
+  INITIAL ""
+  LABEL "MemValue"
+  POSITION 5
+  MAX-WIDTH 600
+  ORDER 40
+
+ADD FIELD "UpdatedAt" OF "FarmerMemory" AS datetime-tz
+  FORMAT "99/99/9999 HH:MM:SS.SSS+HH:MM"
+  INITIAL "?"
+  LABEL "UpdatedAt"
+  POSITION 6
+  MAX-WIDTH 8
+  ORDER 50
+
+ADD INDEX "MemoryId" ON "FarmerMemory"
+  AREA "Schema Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "MemoryId" ASCENDING
+
+ADD INDEX "FarmKey" ON "FarmerMemory"
+  AREA "Schema Area"
+  UNIQUE
+  INDEX-FIELD "FarmId" ASCENDING
+  INDEX-FIELD "MemKey" ASCENDING
+
+ADD SEQUENCE "PassageSeq"
+  INITIAL 0
+  INCREMENT 1
+  CYCLE-ON-LIMIT no
+  MIN-VAL 0
+
+ADD SEQUENCE "SynonymSeq"
+  INITIAL 0
+  INCREMENT 1
+  CYCLE-ON-LIMIT no
+  MIN-VAL 0
+
+ADD SEQUENCE "CaseSeq"
+  INITIAL 0
+  INCREMENT 1
+  CYCLE-ON-LIMIT no
+  MIN-VAL 0
+
+ADD SEQUENCE "FollowUpSeq"
+  INITIAL 0
+  INCREMENT 1
+  CYCLE-ON-LIMIT no
+  MIN-VAL 0
+
+ADD SEQUENCE "MemorySeq"
+  INITIAL 0
+  INCREMENT 1
+  CYCLE-ON-LIMIT no
+  MIN-VAL 0
+
+.
+PSC
+cpstream=ISO8859-1
+.
+0000000000

@@ -7,6 +7,7 @@ USING Progress.Json.ObjectModel.JsonObject.
 USING Progress.Json.ObjectModel.JsonArray.
 USING Progress.Json.ObjectModel.ObjectModelParser.
 {iso.i}
+{norm.i}
 
 DEFINE VARIABLE oParser AS ObjectModelParser NO-UNDO.
 DEFINE VARIABLE joSeed  AS JsonObject NO-UNDO.
@@ -40,6 +41,11 @@ DEFINE VARIABLE dWxBase AS DATE NO-UNDO.
 DEFINE VARIABLE cDoctor AS CHARACTER NO-UNDO.
 DEFINE VARIABLE joDr AS JsonObject NO-UNDO.
 DEFINE VARIABLE iDrTerms AS INTEGER NO-UNDO.
+/* Farm Assistant (docs/ASSISTANT.md): 6th file, default guide-seed.json next to seed.json */
+DEFINE VARIABLE cGuide AS CHARACTER NO-UNDO.
+DEFINE VARIABLE joGd AS JsonObject NO-UNDO.
+DEFINE VARIABLE iGdP AS INTEGER NO-UNDO. DEFINE VARIABLE iGdS AS INTEGER NO-UNDO. DEFINE VARIABLE iGdK AS INTEGER NO-UNDO.
+DEFINE VARIABLE cGdWords AS CHARACTER NO-UNDO.
 DEFINE VARIABLE iWxDays AS INTEGER NO-UNDO. DEFINE VARIABLE iWxTh AS INTEGER NO-UNDO.
 
 cArgs = SESSION:PARAMETER.
@@ -67,6 +73,17 @@ ELSE DO:
     iSlash = MAXIMUM(R-INDEX(cFile, "\"), R-INDEX(cFile, "/")).
     IF iSlash = 0 THEN cDoctor = "doctor-seed.json".
     ELSE cDoctor = SUBSTRING(cFile, 1, iSlash) + "doctor-seed.json".
+END.
+IF NUM-ENTRIES(cArgs, "|") >= 6 THEN cGuide = ENTRY(6, cArgs, "|").
+ELSE DO:
+    iSlash = MAXIMUM(R-INDEX(cFile, "\"), R-INDEX(cFile, "/")).
+    IF iSlash = 0 THEN cGuide = "guide-seed.json".
+    ELSE cGuide = SUBSTRING(cFile, 1, iSlash) + "guide-seed.json".
+END.
+FILE-INFO:FILE-NAME = cGuide.
+IF FILE-INFO:FULL-PATHNAME = ? THEN DO:
+    MESSAGE "GUIDE SEED FILE NOT FOUND:" cGuide.
+    RETURN ERROR.
 END.
 FILE-INFO:FILE-NAME = cDoctor.
 IF FILE-INFO:FULL-PATHNAME = ? THEN DO:
@@ -98,6 +115,51 @@ oParser = NEW ObjectModelParser().
 joWx = CAST(oParser:ParseFile(cWeather), JsonObject).
 oParser = NEW ObjectModelParser().
 joDr = CAST(oParser:ParseFile(cDoctor), JsonObject).
+oParser = NEW ObjectModelParser().
+joGd = CAST(oParser:ParseFile(cGuide), JsonObject).
+
+/* Farm Assistant tables go first: case files point at suggestions and diagnoses */
+DO TRANSACTION:
+    FOR EACH CaseFollowUp EXCLUSIVE-LOCK: DELETE CaseFollowUp. END.
+    FOR EACH AssistantCase EXCLUSIVE-LOCK: DELETE AssistantCase. END.
+    FOR EACH FarmerMemory EXCLUSIVE-LOCK: DELETE FarmerMemory. END.
+    FOR EACH GuidePassage EXCLUSIVE-LOCK: DELETE GuidePassage. END.
+    FOR EACH GuideSynonym EXCLUSIVE-LOCK: DELETE GuideSynonym. END.
+    FOR EACH GuideStopword EXCLUSIVE-LOCK: DELETE GuideStopword. END.
+    CURRENT-VALUE(CaseSeq) = 0. CURRENT-VALUE(FollowUpSeq) = 0. CURRENT-VALUE(MemorySeq) = 0.
+    CURRENT-VALUE(PassageSeq) = 0. CURRENT-VALUE(SynonymSeq) = 0.
+    ja = joGd:GetJsonArray("passages").
+    DO i = 1 TO ja:Length:
+        jo = ja:GetJsonObject(i).
+        CREATE GuidePassage.
+        ASSIGN GuidePassage.PassageId = NEXT-VALUE(PassageSeq) GuidePassage.SourceTitle = jo:GetCharacter("sourceTitle")
+               GuidePassage.Section = jo:GetCharacter("section") GuidePassage.Crop = jo:GetCharacter("crop")
+               GuidePassage.Licence = jo:GetCharacter("licence") GuidePassage.SourceUrl = jo:GetCharacter("sourceUrl")
+               GuidePassage.PassageText = jo:GetCharacter("text")
+               GuidePassage.SearchText = fNormText(jo:GetCharacter("sourceTitle") + " " + jo:GetCharacter("section") + " " + jo:GetCharacter("text")).
+        RELEASE GuidePassage.
+        iGdP = iGdP + 1.
+    END.
+    ja = joGd:GetJsonArray("synonyms").
+    DO i = 1 TO ja:Length:
+        jo = ja:GetJsonObject(i).
+        cGdWords = "".
+        DO iC = 1 TO jo:GetJsonArray("words"):Length:
+            cGdWords = cGdWords + (IF cGdWords = "" THEN "" ELSE " ") + jo:GetJsonArray("words"):GetCharacter(iC).
+        END.
+        CREATE GuideSynonym.
+        ASSIGN GuideSynonym.SynonymId = NEXT-VALUE(SynonymSeq) GuideSynonym.SynTerm = jo:GetCharacter("term") GuideSynonym.Words = cGdWords.
+        RELEASE GuideSynonym.
+        iGdS = iGdS + 1.
+    END.
+    ja = joGd:GetJsonArray("stopwords").
+    DO i = 1 TO ja:Length:
+        CREATE GuideStopword.
+        GuideStopword.Word = ja:GetCharacter(i).
+        RELEASE GuideStopword.
+        iGdK = iGdK + 1.
+    END.
+END.
 
 DO TRANSACTION:
     FOR EACH Diagnosis EXCLUSIVE-LOCK: DELETE Diagnosis. END.
@@ -367,3 +429,4 @@ MESSAGE SUBSTITUTE("SEED OK: &1 farm(s), &2 plots, &3 readings, &4 suggestions, 
 MESSAGE SUBSTITUTE("MARKET SEED OK: &1 retail prices, &2 events, &3 items, &4 reservations (EXAMPLE DATA)", iPrices, iEvents, iItems, iRes).
 MESSAGE SUBSTITUTE("WEATHER SEED OK: &1 forecast days, &2 thresholds (FICTIONAL EXAMPLE FORECAST)", iWxDays, iWxTh).
 MESSAGE SUBSTITUTE("DOCTOR SEED OK: &1 blocked terms", iDrTerms).
+MESSAGE SUBSTITUTE("GUIDE SEED OK: &1 passages, &2 synonyms, &3 stop words", iGdP, iGdS, iGdK).

@@ -1,0 +1,838 @@
+{
+ "label": "Farm Assistant guide passages (RAG). Verbatim excerpts from Wikipedia articles, CC BY-SA 4.0 (https://creativecommons.org/licenses/by-sa/4.0/). Each passage records the article title, section and the exact revision URL it was copied from on 2026-10-26. Sentences that name chemicals or sprays were left out of the excerpts (each passage is still one unbroken run of the original text). Not agronomic certainty: the app tells farmers to check with an extension officer. Typography outside ISO 8859-1 (dashes, curly quotes, minus signs) was changed to plain ASCII so the OpenEdge database can store it.",
+ "retrievedAt": "2026-10-26",
+ "passages": [
+  {
+   "sourceTitle": "Wikipedia: Alternaria solani",
+   "section": "On tomatoes",
+   "crop": "tomato",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Alternaria_solani&oldid=1380651171",
+   "text": "On tomato, foliar symptoms of A. solani generally occur on the oldest leaves and start as small lesions that are brown to black in color. These leaf spots resemble concentric rings - a distinguishing characteristic of the pathogen - and measure up to 1.3 cm (0.51 in) in diameter. Both the area around the leaf spot and the entire leaf may become yellow or chlorotic. Under favorable conditions (e.g., warm weather with short or abundant dews), significant defoliation of lower leaves may occur, leading to sunscald of the fruit. As the disease progresses, symptoms may migrate to the plant stem and fruit. Stem lesions are dark, slightly sunken and concentric in shape."
+  },
+  {
+   "sourceTitle": "Wikipedia: Alternaria solani",
+   "section": "On tomatoes",
+   "crop": "tomato",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Alternaria_solani&oldid=1380651171",
+   "text": "Seedlings can develop small, dark, partially sunken lesions which grow and elongate into circular or oblong lesions. Basal girdling and death of seedlings may occur, a symptom known as collar rot. In fruit, A. solani invades at the point of attachment to the stem as well as through growth cracks and wounds made by insects, infecting large areas of the fruit Fruit spots are similar in appearance to those on leaves - brown with dark concentric circles. Mature lesions are typically covered by a black, velvety mass of fungal spores that may be visible under proper light conditions."
+  },
+  {
+   "sourceTitle": "Wikipedia: Alternaria solani",
+   "section": "Environment",
+   "crop": "tomato",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Alternaria_solani&oldid=1380651171",
+   "text": "Alternaria solani spores are universally present in fields where host plants have been grown. Free water is required for Alternaria spores to germinate; spores will be unable to infect a perfectly dry leaf. Alternaria spores germinate within 2 hours over a wide range of temperatures but at 26.6-29.4 °C (79.9-84.9 °F) may only take 1/2 hour. Another 3 to 12 hours are required for the fungus to penetrate the plant depending on temperature. After penetration, lesions may form within 2-3 days or the infection can remain dormant awaiting proper conditions [15.5 °C (59.9 °F) and extended periods of wetness]."
+  },
+  {
+   "sourceTitle": "Wikipedia: Alternaria solani",
+   "section": "Environment",
+   "crop": "tomato",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Alternaria_solani&oldid=1380651171",
+   "text": "Alternaria sporulates best at about 26.6 °C (79.9 °F) when abundant moisture (as provided by rain, mist, fog, dew, irrigation) is present. Infections are most prevalent on poorly nourished or otherwise stressed plants."
+  },
+  {
+   "sourceTitle": "Wikipedia: Alternaria solani",
+   "section": "Cultural control",
+   "crop": "tomato",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Alternaria_solani&oldid=1380651171",
+   "text": "Clear infected debris from field to reduce inoculum for the next year. Water plants in the morning so plants are wet for the shortest amount of time. Use a drip irrigation system to minimize leaf wetness. Wet leaves provide optimal conditions for fungal growth. Use mulch so spores that were already in the soil are blocked from splashing onto the leaves. Rotate to a non-solanaceous crop for at least three years. The more potato-free years, the less infection. If possible control wild population of Solanaceae. This will decrease the amount of inoculum to infect your plants."
+  },
+  {
+   "sourceTitle": "Wikipedia: Alternaria solani",
+   "section": "Cultural control",
+   "crop": "tomato",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Alternaria_solani&oldid=1380651171",
+   "text": "Plant resistant cultivars. Increase air circulation in rows. Damp conditions allow for optimal growth of A. solani and the disease spreads more rapidly. Better air circulation can be achieved by planting farther apart or by trimming leaves."
+  },
+  {
+   "sourceTitle": "Wikipedia: Phytophthora infestans",
+   "section": "Reducing inoculum",
+   "crop": "tomato",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Phytophthora_infestans&oldid=1380700327",
+   "text": "Blight can be controlled by limiting the source of inoculum. Only good-quality seed potatoes and tomatoes obtained from certified suppliers should be planted. Often discarded potatoes from the previous season and self-sown tubers can act as sources of inoculum. Compost, soil or potting medium can be heat-treated to kill oomycetes such as Phytophthora infestans. The recommended sterilisation temperature for oomycetes is 120 °F (49 °C) for 30 minutes."
+  },
+  {
+   "sourceTitle": "Wikipedia: Phytophthora infestans",
+   "section": "Environmental conditions",
+   "crop": "tomato",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Phytophthora_infestans&oldid=1380700327",
+   "text": "A Beaumont Period is a period of 48 consecutive hours, in at least 46 of which the hourly readings of temperature and relative humidity at a given place have not been less than 10 °C (50 °F) and 75%, respectively. A Smith Period is at least two consecutive days where min temperature is 10 °C (50 °F) or above and on each day at least 11 hours when the relative humidity is greater than 90%. The Beaumont and Smith periods have traditionally been used by growers in the United Kingdom, with different criteria developed by growers in other regions."
+  },
+  {
+   "sourceTitle": "Wikipedia: Frost",
+   "section": "Damage",
+   "crop": "",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Frost&oldid=1372151439",
+   "text": "Many plants can be damaged or killed by freezing temperatures or frost. This varies with the type of plant, the tissue exposed, and how low temperatures get; a \"light frost\" of -2 to 0 °C (28 to 32 °F) damages fewer types of plants than a \"hard frost\" below -2 °C (28 °F). Plants likely to be damaged even by a light frost include vines-such as beans, grapes, squashes, melons-along with nightshades such as tomatoes, eggplants, and peppers. Plants that may tolerate (or even benefit from) frosts include:"
+  },
+  {
+   "sourceTitle": "Wikipedia: Frost",
+   "section": "Damage",
+   "crop": "",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Frost&oldid=1372151439",
+   "text": "root vegetables (e.g. beets, carrots, parsnips, onions) leafy greens (e.g. lettuces, spinach, chard, cucumber) cruciferous vegetables (e.g. cabbages, cauliflower, bok choy, broccoli, Brussels sprouts, radishes, kale, collard, mustard, turnips, rutabagas) Even those plants that tolerate frost may be damaged once temperatures drop even lower (below -4 °C or 25 °F). Hardy perennials, such as Hosta, become dormant after the first frosts and regrow when spring arrives. The entire visible plant may turn completely brown until the spring warmth, or may drop all of its leaves and flowers, leaving the stem and stalk only."
+  },
+  {
+   "sourceTitle": "Wikipedia: Frost",
+   "section": "Damage",
+   "crop": "",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Frost&oldid=1372151439",
+   "text": "Evergreen plants, such as pine trees, withstand frost although all or most growth stops. Frost crack is a bark defect caused by a combination of low temperatures and heat from the winter sun. Vegetation is not necessarily damaged when leaf temperatures drop below the freezing point of their cell contents. In the absence of a site nucleating the formation of ice crystals, the leaves remain in a supercooled liquid state, safely reaching temperatures of -4 to -12 °C (25 to 10 °F). However, once frost forms, the leaf cells may be damaged by sharp ice crystals. Hardening is the process by which a plant becomes tolerant to low temperatures. See also Cryobiology."
+  },
+  {
+   "sourceTitle": "Wikipedia: Frost",
+   "section": "Protection methods",
+   "crop": "",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Frost&oldid=1372151439",
+   "text": "Deploying powerful blowers to simulate wind, thereby preventing the formation of accumulations of cold air. There are variations on this theme. One variety is the wind machine, an engine-driven propeller mounted on a vertical pole that blows air almost horizontally. Wind machines were introduced as a method for frost protection in California during the 1920s, but they were not widely accepted until the 1940s and 1950s. Now, they are commonly used in many parts of the world. Another is the selective inverted sink, a device which prevents frost by drawing cold air from the ground and blowing it up through a chimney."
+  },
+  {
+   "sourceTitle": "Wikipedia: Frost",
+   "section": "Protection methods",
+   "crop": "",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Frost&oldid=1372151439",
+   "text": "It was originally developed to prevent frost damage to citrus fruits in Uruguay. In New Zealand, helicopters are used in similar fashion, especially in the vineyard regions such as Marlborough. By dragging down warmer air from the inversion layers, and preventing the ponding of colder air on the ground, the low-flying helicopters prevent damage to the fruit buds. As the operations are conducted at night, and have in the past involved up to 130 aircraft per night in one region, safety rules are strict. Although not a dedicated method, wind turbines have a similar (although smaller) effect of vertically mixing air layers of different temperature."
+  },
+  {
+   "sourceTitle": "Wikipedia: Frost",
+   "section": "Protection methods",
+   "crop": "",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Frost&oldid=1372151439",
+   "text": "For high-value crops, farmers may wrap trees and use physical crop coverings. For high-value crops grown over small areas, heating to slow the drop in temperature may be practical. Production of smoke to reduce cooling by radiation, now thought to be of little benefit."
+  },
+  {
+   "sourceTitle": "Wikipedia: Frost",
+   "section": "Protection methods",
+   "crop": "",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Frost&oldid=1372151439",
+   "text": "An effective, low-cost method for small crop farms and plant nurseries, this technique exploits the latent heat of freezing. A pulsed irrigation timer delivers water through existing overhead sprinklers at a low volumes to combat frosts down to -5 °C (23 °F). The water gives off latent heat as it freezes, preventing the temperature of the foliage from falling much below zero."
+  },
+  {
+   "sourceTitle": "Wikipedia: Fall armyworm",
+   "section": "Africa",
+   "crop": "maize",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Fall_armyworm&oldid=1373923018",
+   "text": "The fall armyworm was identified in Africa in 2016. In early 2017, armyworms infested large swathes of corn crops across southern Africa, devastating the livelihoods of many farmers. It is thought they arrived as an invasive species from the Americas as eggs in imported produce. This is causing immense concern among agricultural experts, due to the potentially huge amount of damage this invasive species will do to African food crops if allowed to spread. Many African countries have agreed to take urgent actions against armyworms."
+  },
+  {
+   "sourceTitle": "Wikipedia: Fall armyworm",
+   "section": "Management and control",
+   "crop": "maize",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Fall_armyworm&oldid=1373923018",
+   "text": "The CABI-led programme, Plantwise and partners have several recommendations for managing fall armyworm, these include: planting early, avoiding staggered planting, and inter-cropping with crops that are not susceptible to fall armyworm, such as cassava or yam. They also recommend conserving shelters and flowering plants on the edges for beneficial insects such as ground beetles and parasitoids. Inter-cropping with the \"push-pull\" technique with crops such as Desmodium and Napier grass can be used to control fall armyworm."
+  },
+  {
+   "sourceTitle": "Wikipedia: Fall armyworm",
+   "section": "Management and control",
+   "crop": "maize",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Fall_armyworm&oldid=1373923018",
+   "text": "For some crops, including wheat, sorghum, millet and rice, it is recommend by Plantwise partners to plant short maturing and varieties that are less preferred by S. frugiperda. Another strategy is to plant crops earlier to avoid the increase in armyworm numbers as the summer progresses."
+  },
+  {
+   "sourceTitle": "Wikipedia: Mulch",
+   "section": "Uses",
+   "crop": "",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Mulch&oldid=1376736622",
+   "text": "Many materials are used as mulches, which are used to retain soil moisture, regulate soil temperature, suppress weed growth, and for aesthetics. They are applied to the soil surface, around trees, paths, flower beds, to prevent soil erosion on slopes, and in production areas for flower and vegetable crops. Mulch layers are normally 5 centimetres (2 in) or more deep when applied. Although mulch can be applied around established plants at any time, they may be applied at various times of the year depending on the purpose. Towards the beginning of the growing season, mulches serve initially to warm the soil by helping it retain heat which is otherwise lost during the night."
+  },
+  {
+   "sourceTitle": "Wikipedia: Mulch",
+   "section": "Uses",
+   "crop": "",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Mulch&oldid=1376736622",
+   "text": "This allows early seeding and transplanting of certain crops, and encourages faster growth. Mulch acts as an insulator. As the season progresses, mulch stabilizes the soil temperature and moisture, and prevents the growing of weeds from seeds. In temperate climates, the effects of mulches depend upon the time of year in which they are applied. When applied in fall and winter, mulches delay the growth of perennial plants in the spring and prevent growth in winter during warm spells, thus limiting freeze-thaw damage. The effect of mulch upon soil moisture content is complex. Mulch forms a layer between the soil and the atmosphere reducing evaporation."
+  },
+  {
+   "sourceTitle": "Wikipedia: Mulch",
+   "section": "Uses",
+   "crop": "",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Mulch&oldid=1376736622",
+   "text": "However, mulch can also prevent water from reaching the soil by absorbing or blocking water from light rains and overly thick layers of mulch can reduce oxygen in the soil. In order to maximise the benefits of mulch, while minimizing its negative influences, it is often applied in late spring/early summer when soil temperatures have risen sufficiently, but soil moisture content is still relatively high. However, permanent mulch is also widely used and valued for its simplicity, as popularized by author Ruth Stout, who said, \"My way is simply to keep a thick mulch of any vegetable matter that rots on both sides of my vegetable and flower garden all year long."
+  },
+  {
+   "sourceTitle": "Wikipedia: Crop rotation",
+   "section": "Pathogen and pest control",
+   "crop": "",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Crop_rotation&oldid=1382035952",
+   "text": "Crop rotation helps to control pests and diseases that can become established in the soil over time. The changing of crops in a sequence decreases the population level of pests by (1) interrupting pest life cycles and (2) interrupting pest habitat. Plants within the same taxonomic family tend to have similar pests and pathogens. By regularly changing crops and keeping the soil occupied by cover crops instead of lying fallow, pest cycles can be broken or limited, especially cycles that benefit from overwintering in residue."
+  },
+  {
+   "sourceTitle": "Wikipedia: Drip irrigation",
+   "section": "Advantages and disadvantages",
+   "crop": "",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Drip_irrigation&oldid=1375186568",
+   "text": "Fertilizer and nutrient loss is minimized due to a localized application and reduced leaching. Water application efficiency is high if managed correctly. Field leveling is not necessary. Fields with irregular shapes are easily accommodated. Recycled non-potable water can be safely used. Moisture within the root zone can be maintained at field capacity. Soil type plays a less important role in the frequency of irrigation. Soil erosion is lessened. Weed growth is lessened. Water distribution is highly uniform, controlled by the output of each nozzle. Labour cost is less than other irrigation methods. Variation in supply can be regulated by regulating the valves and drippers."
+  },
+  {
+   "sourceTitle": "Wikipedia: Drip irrigation",
+   "section": "Advantages and disadvantages",
+   "crop": "",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Drip_irrigation&oldid=1375186568",
+   "text": "Fertigation can easily be included with minimal waste of fertilizers. Foliage remains dry, reducing the risk of disease. Usually operated at lower pressure than other types of pressurized irrigation, reducing energy costs. The disadvantages of drip irrigation are:"
+  },
+  {
+   "sourceTitle": "Wikipedia: Drip irrigation",
+   "section": "Advantages and disadvantages",
+   "crop": "",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Drip_irrigation&oldid=1375186568",
+   "text": "Initial cost can be more than overhead systems. Ongoing capital costs related to replacing and maintaining the tubes can exceed water savings if the system improperly designed and set up. Drip irrigation may also be more labor intensive, especially if there is extensive crop rotation necessitating seasonal replacement of drip tubing to accommodate different row spacings. The sun can affect the tubes used for drip irrigation, shortening their lifespan. (See Polymer degradation); The risks of degrading plastic affecting the soil content and food crops."
+  },
+  {
+   "sourceTitle": "Wikipedia: Drip irrigation",
+   "section": "Advantages and disadvantages",
+   "crop": "",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Drip_irrigation&oldid=1375186568",
+   "text": "If the water is not properly filtered and the equipment not properly maintained, it can result in clogging or bioclogging. For subsurface drip the irrigator cannot see the water that is applied. This may lead to the farmer either applying too much water (low efficiency) or an insufficient amount of water, this is particularly common for those with less experience with drip irrigation."
+  },
+  {
+   "sourceTitle": "Wikipedia: Drip irrigation",
+   "section": "Advantages and disadvantages",
+   "crop": "",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Drip_irrigation&oldid=1375186568",
+   "text": "Drip tape causes extra cleanup costs after harvest. Users need to plan for drip tape winding, disposal, recycling or reuse. Waste of water, time and harvest, if not installed properly. These systems require careful study of all the relevant factors like land topography, soil, water, crop and agro-climatic conditions, and suitability of drip irrigation system and its components. In lighter soils subsurface drip may be unable to wet the soil surface for germination. Requires careful consideration of the installation depth. Most drip systems are designed for high efficiency, meaning little or no leaching fraction."
+  },
+  {
+   "sourceTitle": "Wikipedia: Drip irrigation",
+   "section": "Advantages and disadvantages",
+   "crop": "",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Drip_irrigation&oldid=1375186568",
+   "text": "Without sufficient leaching, salts applied with the irrigation water may build up in the root zone, usually at the edge of the wetting pattern. On the other hand, drip irrigation avoids the high capillary potential of traditional surface-applied irrigation, which can draw salt deposits up from deposits below. The PVC pipes often suffer from rodent damage, requiring replacement of the entire tube and increasing expenses. Drip irrigation systems cannot be used for damage control by night frosts (like in the case of sprinkler irrigation systems)"
+  },
+  {
+   "sourceTitle": "Wikipedia: Irrigation scheduling",
+   "section": "Observation method",
+   "crop": "",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Irrigation_scheduling&oldid=1351051876",
+   "text": "Visual cues: Monitoring plants for signs of water stress (wilting, leaf curling, or color changes) before watering. Feel and appearance method: Taking a soil sample by hand to estimate moisture content based on how the soil ribbons or clumps."
+  },
+  {
+   "sourceTitle": "Wikipedia: Irrigation scheduling",
+   "section": "Soil moisture measurement",
+   "crop": "",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Irrigation_scheduling&oldid=1351051876",
+   "text": "This method uses sensors placed directly in the root zone to measure the volumetric water content or soil water tension."
+  },
+  {
+   "sourceTitle": "Wikipedia: Irrigation scheduling",
+   "section": "Soil moisture measurement",
+   "crop": "",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Irrigation_scheduling&oldid=1351051876",
+   "text": "Tensiometers: Measure the force (tension) roots must exert to extract water. Capacitance Sensors: Measure the dielectric permittivity of the soil to determine water volume. Neutron Probes: Used in agriculture for highly accurate deep-soil readings. These sensors can act as a \"thermostat\" for irrigation, triggering the system only when moisture drops below a specific Management Allowed Depletion (MAD) threshold."
+  },
+  {
+   "sourceTitle": "Wikipedia: Irrigation scheduling",
+   "section": "Management allowed depletion (MAD)",
+   "crop": "",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Irrigation_scheduling&oldid=1351051876",
+   "text": "Standard Crops: Often set at 50% depletion. Sensitive Crops: (e.g., Vegetables) may require watering at 30% depletion. Stress Tolerant: (e.g., Established trees) may tolerate 60-70% depletion."
+  },
+  {
+   "sourceTitle": "Wikipedia: Maize streak virus",
+   "section": "Introduction",
+   "crop": "maize",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Maize_streak_virus&oldid=1374724877",
+   "text": "Maize streak virus (MSV) is a virus primarily known for causing maize streak disease (MSD) in its major host, and which also infects over 80 wild and domesticated grasses. It is an insect-transmitted pathogen of maize in the genus Mastrevirus of the family Geminiviridae that is endemic in sub-Saharan Africa and neighbouring Indian Ocean island territories such as Madagascar, Mauritius and La Reunion. The A-strain of MSV (MSV-A) causes sporadic maize streak disease epidemics throughout the maize-growing regions of Africa. MSV was first described by the South African entomologist Claude Fuller who referred to it in a 1901 report as \"mealie variegation\"."
+  },
+  {
+   "sourceTitle": "Wikipedia: Maize streak virus",
+   "section": "Introduction",
+   "crop": "maize",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Maize_streak_virus&oldid=1374724877",
+   "text": "The development of conventionally resistant maize varieties has been a priority since the 1950s in Kenya, Nigeria, South Africa and elsewhere, with a good deal of success: however, there are several genes associated with resistance, and breeding is complex. Transgenically resistant or genetically modified maize varieties were under development in South Africa, but the project has terminated without field trials of the candidate maize lines that were developed. Maize streak resistance is an important trait to maize breeders. Forward genetics is increasingly being used."
+  },
+  {
+   "sourceTitle": "Wikipedia: Maize streak virus",
+   "section": "Introduction",
+   "crop": "maize",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Maize_streak_virus&oldid=1374724877",
+   "text": "MSV is mainly vectored by Cicadulina mbila, and other Cicadulina species, such as C. storeyi, C. arachidis and C. dabrowski, are also able to transmit the virus. Typical of all mastreviruses, MSV's circular, ~2.7-Kb monopartite single-stranded (ss) DNA genome encodes only four proteins. Bidirectional transcription from a long intergenic region (LIR) results in the virion-sense expression of a movement protein (MP) and a coat protein (CP), and the complementary-sense expression of the replication-associated proteins, Rep and RepA."
+  },
+  {
+   "sourceTitle": "Wikipedia: Wilting",
+   "section": "Introduction",
+   "crop": "",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Wilting&oldid=1357344688",
+   "text": "Wilting is the loss of rigidity of non-woody parts of plants. This occurs when the turgor pressure in non-lignified plant cells falls towards zero, as a result of diminished water in the cells. Wilting also serves to reduce water loss, as it makes the leaves expose less surface area. The rate of loss of water from the plant is greater than the absorption of water in the plant. The process of wilting modifies the leaf angle distribution of the plant (or canopy) towards more erectophile conditions. Lower water availability may result from:"
+  },
+  {
+   "sourceTitle": "Wikipedia: Wilting",
+   "section": "Introduction",
+   "crop": "",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Wilting&oldid=1357344688",
+   "text": "drought conditions, where the soil moisture drops below conditions most favorable for plant functioning; the temperature falls to the point where the plant's vascular system cannot function; high salinity, which causes water to diffuse from the plant cells and induce shrinkage; saturated soil conditions, where roots are unable to obtain sufficient oxygen for cellular respiration, and so are unable to transport water into the plant; or bacteria or fungi that clog the plant's vascular system. Wilting diminishes the plant's ability to transpire, reproduce and grow. Permanent wilting leads to the plant dying. Symptoms of wilting and blights resemble one another."
+  },
+  {
+   "sourceTitle": "Wikipedia: Wilting",
+   "section": "Introduction",
+   "crop": "",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Wilting&oldid=1357344688",
+   "text": "The plants may recover during the night when evaporation is reduced as the stomata closes. In woody plants, reduced water availability leads to cavitation of the xylem. Wilting occurs in plants such as balsam and holy basil. Wilting is an effect of the plant growth-inhibiting hormone, abscisic acid. With cucurbits, wilting can be caused by the squash vine borer."
+  },
+  {
+   "sourceTitle": "Wikipedia: Calcium deficiency (plant)",
+   "section": "Causes",
+   "crop": "tomato",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Calcium_deficiency_(plant)&oldid=1345715282",
+   "text": "Acidic, sandy, or coarse soils often contain less calcium. Uneven soil moisture and overuse of fertilizers can also cause calcium deficiency. At times, even with sufficient calcium in the soil, it can be in an insoluble form and is then unusable by the plant or it could be attributed to a \"transport protein\". Soils containing high phosphorus are particularly susceptible to creating insoluble forms of calcium. Calcium and magnesium are opposed within the plant cells, and have antagonistic interactions. As a result, a homeostatic balance between Ca and Mg within the plant is necessary for optimal growth and proper development."
+  },
+  {
+   "sourceTitle": "Wikipedia: Calcium deficiency (plant)",
+   "section": "Symptoms",
+   "crop": "tomato",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Calcium_deficiency_(plant)&oldid=1345715282",
+   "text": "Calcium deficiency symptoms appear initially as localized tissue necrosis leading to stunted plant growth, necrotic leaf margins on young leaves or curling of the leaves, and eventual death of terminal buds and root tips. Generally, the new growth and rapidly growing tissues of the plant are affected first. The mature leaves are rarely if ever affected because calcium accumulates to high concentrations in older leaves. Calcium deficiencies in plants are associated with reduced height, fewer nodes, and less leaf area. Crop-specific symptoms include:"
+  },
+  {
+   "sourceTitle": "Wikipedia: Calcium deficiency (plant)",
+   "section": "Symptoms",
+   "crop": "tomato",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Calcium_deficiency_(plant)&oldid=1345715282",
+   "text": "Tomatoes and peppers 'Blossom end rot' - Symptoms start as sunken, dry decaying areas at the blossom end of the fruit, furthest away from the stem, not all fruit on a truss is necessarily affected. Sometimes rapid growth from high-nitrogen fertilizers may exacerbate blossom end rot. Water management and preventing water stress is key to minimizing its occurrence. Although it was once common knowledge that blossom end rot was caused by calcium deficiencies, there are also other proposed causes."
+  },
+  {
+   "sourceTitle": "Wikipedia: Soil moisture",
+   "section": "Water uptake by plants",
+   "crop": "",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Soil_moisture&oldid=1379027994",
+   "text": "Of equal importance to the storage and movement of water in soil is the means by which plants acquire it and their nutrients. Most soil water is taken up by plants as passive absorption caused by the pulling force of water evaporating (transpiring) from the long column of water (xylem sap flow) that leads from the plant's roots to its leaves, according to the cohesion-tension theory. The upward movement of water and solutes (hydraulic lift) is regulated in the roots by the endodermis and in the plant foliage by stomatal conductance, and can be interrupted in root and shoot xylem vessels by cavitation, also called xylem embolism."
+  },
+  {
+   "sourceTitle": "Wikipedia: Soil moisture",
+   "section": "Water uptake by plants",
+   "crop": "",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Soil_moisture&oldid=1379027994",
+   "text": "Insufficient soil moisture, to the point of causing wilting, will cause permanent damage and crop yields will suffer. When grain sorghum was exposed to soil suction as low as 1300 kPa during the seed head emergence through bloom and seed set stages of growth, its production was reduced by 34%."
+  },
+  {
+   "sourceTitle": "Wikipedia: Erysiphaceae",
+   "section": "Management",
+   "crop": "",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Erysiphaceae&oldid=1371061050",
+   "text": "Some cultivars of both vegetables and ornamental plants are bred to be resistant to powdery mildews. Powdery mildew thrives particularly in areas with little air flow, dry host leaves and humid conditions. As a result, it is important to manage the environment around susceptible plants by: avoiding sheltered places, such as against walls or fences, where the air is likely to be still; providing good drainage, but watering regularly during dry periods (plants suffering from regular but intermittent drought-stress are more susceptible); not planting too densely, giving space between plants; and pruning shrubs to give an open structure improving air circulation and humidity."
+  },
+  {
+   "sourceTitle": "Wikipedia: Erysiphaceae",
+   "section": "Management",
+   "crop": "",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Erysiphaceae&oldid=1371061050",
+   "text": "Application of mulch may help water retention. It is also recommended not to over-fertilise (especially not too much nitrogen) as succulent growth is particularly susceptible to infection."
+  },
+  {
+   "sourceTitle": "Wikipedia: Abiotic stress",
+   "section": "Heat stress",
+   "crop": "",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Abiotic_stress&oldid=1370591169",
+   "text": "Elevated global temperatures present a severe bottleneck for crop yields, as heat stress alters membrane fluidity, accelerates destructive transpiration rates, and heavily impairs a plant's overall Water Use Efficiency (WUE). When crops encounter extreme thermal environments during early reproductive or vegetative stages, cellular homeostasis is broken down, causing grain yield reduction and premature leaf senescence."
+  },
+  {
+   "sourceTitle": "Wikipedia: Abiotic stress",
+   "section": "Heat stress",
+   "crop": "",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Abiotic_stress&oldid=1370591169",
+   "text": "These priming interventions activate early molecular, enzymatic, and hormonal pre-defense responses within the seed tissue, enabling the plant to maintain higher functional stability and lower oxidative injury when heat stress occurs later in the field environment."
+  },
+  {
+   "sourceTitle": "Wikipedia: Abiotic stress",
+   "section": "Drought stress",
+   "crop": "",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Abiotic_stress&oldid=1370591169",
+   "text": "Drought stress, defined as naturally occurring water deficit, is a main cause of crop losses in agriculture. This is because water is essential for many fundamental processes in plant growth. It has become especially important in recent years to find a way to combat drought stress. A decrease in precipitation and consequent increase in drought are extremely likely in the future due to an increase in global warming. Plants have come up with many mechanisms and adaptations to try and deal with drought stress. One of the leading ways that plants combat drought stress is by closing their stomata. A key hormone regulating stomatal opening and closing is abscisic acid (ABA)."
+  },
+  {
+   "sourceTitle": "Wikipedia: Abiotic stress",
+   "section": "Drought stress",
+   "crop": "",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Abiotic_stress&oldid=1370591169",
+   "text": "Synthesis of ABA causes the ABA to bind to receptors. This binding then affects the opening of ion channels, thereby decreasing turgor pressure in the stomata and causing them to close. Recent studies by Gonzalez-Villagra, et al., have shown how ABA levels increased in drought-stressed plants (2018). They showed that when plants were placed in a stressful situation, they produced more ABA to try to conserve any water they had in their leaves. Another extremely important factor in dealing with drought stress and regulating the uptake and export of water is aquaporins (AQPs). AQPs are integral membrane proteins that make up channels."
+  },
+  {
+   "sourceTitle": "Wikipedia: Row cover",
+   "section": "Introduction",
+   "crop": "",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Row_cover&oldid=1297900311",
+   "text": "In agriculture and gardening, row cover is any transparent or semi-transparent flexible material, like fabric or plastic sheeting, used as a protective covering for plants, usually vegetables. Covers are used to extend growing seasons, and reduce undesirable effects of cold, wind and insects. Row covers can reduce the drying effect of wind, and can provide a small amount of warming in a similar way to unheated cold frames, greenhouses and polytunnels, creating a microclimate for the plants. The first commercial-scale use of polyethylene row covers in the US was in the 1950s, and by the 1980s their use was widespread."
+  },
+  {
+   "sourceTitle": "Wikipedia: Row cover",
+   "section": "Introduction",
+   "crop": "",
+   "licence": "CC BY-SA 4.0",
+   "sourceUrl": "https://en.wikipedia.org/w/index.php?title=Row_cover&oldid=1297900311",
+   "text": "Row cover is a lightweight synthetic, such as clear plastic (polyethylene) or spunbonded polyester called horticultural fleece. Plastic covers are elevated above plants on a supporting framework such as wire hoops to form a low tunnel. (Plastic placed directly on the ground is mulch.) Fleece covers can be placed directly on plants or on supporting frames. Floating row cover is the term used when there are no (or minimal) supports under the fleece and the plants themselves hold up the fleece, though the edges may be anchored to the ground against wind by metal staples or soil piled up over the edges."
+  }
+ ],
+ "synonyms": [
+  {
+   "term": "dry",
+   "words": [
+    "drought",
+    "wilting",
+    "moisture",
+    "water",
+    "irrigation"
+   ]
+  },
+  {
+   "term": "drought",
+   "words": [
+    "dry",
+    "wilting",
+    "moisture",
+    "water"
+   ]
+  },
+  {
+   "term": "wilting",
+   "words": [
+    "wilt",
+    "turgor",
+    "drought",
+    "water"
+   ]
+  },
+  {
+   "term": "wilt",
+   "words": [
+    "wilting",
+    "water"
+   ]
+  },
+  {
+   "term": "water",
+   "words": [
+    "irrigation",
+    "moisture",
+    "watering"
+   ]
+  },
+  {
+   "term": "watering",
+   "words": [
+    "irrigation",
+    "water"
+   ]
+  },
+  {
+   "term": "irrigate",
+   "words": [
+    "irrigation",
+    "water"
+   ]
+  },
+  {
+   "term": "irrigation",
+   "words": [
+    "water",
+    "moisture",
+    "drip"
+   ]
+  },
+  {
+   "term": "soil",
+   "words": [
+    "moisture",
+    "mulch"
+   ]
+  },
+  {
+   "term": "moisture",
+   "words": [
+    "water",
+    "soil"
+   ]
+  },
+  {
+   "term": "frost",
+   "words": [
+    "freezing",
+    "cold",
+    "protection"
+   ]
+  },
+  {
+   "term": "cold",
+   "words": [
+    "frost",
+    "freezing"
+   ]
+  },
+  {
+   "term": "freezing",
+   "words": [
+    "frost",
+    "cold"
+   ]
+  },
+  {
+   "term": "hot",
+   "words": [
+    "heat",
+    "temperature"
+   ]
+  },
+  {
+   "term": "blight",
+   "words": [
+    "alternaria",
+    "phytophthora",
+    "lesions",
+    "spots"
+   ]
+  },
+  {
+   "term": "spots",
+   "words": [
+    "lesions",
+    "leaf",
+    "blight"
+   ]
+  },
+  {
+   "term": "spot",
+   "words": [
+    "lesions",
+    "spots",
+    "blight"
+   ]
+  },
+  {
+   "term": "lesions",
+   "words": [
+    "spots",
+    "blight"
+   ]
+  },
+  {
+   "term": "fungus",
+   "words": [
+    "fungal",
+    "spores",
+    "blight",
+    "mildew"
+   ]
+  },
+  {
+   "term": "fungal",
+   "words": [
+    "fungus",
+    "spores"
+   ]
+  },
+  {
+   "term": "mildew",
+   "words": [
+    "powdery",
+    "fungal"
+   ]
+  },
+  {
+   "term": "rot",
+   "words": [
+    "blossom",
+    "calcium",
+    "fruit"
+   ]
+  },
+  {
+   "term": "leaf",
+   "words": [
+    "leaves",
+    "foliar"
+   ]
+  },
+  {
+   "term": "leaves",
+   "words": [
+    "leaf",
+    "foliar"
+   ]
+  },
+  {
+   "term": "tomato",
+   "words": [
+    "tomatoes"
+   ]
+  },
+  {
+   "term": "tomatoes",
+   "words": [
+    "tomato"
+   ]
+  },
+  {
+   "term": "maize",
+   "words": [
+    "corn",
+    "armyworms",
+    "armyworm",
+    "streak"
+   ]
+  },
+  {
+   "term": "corn",
+   "words": [
+    "maize"
+   ]
+  },
+  {
+   "term": "armyworm",
+   "words": [
+    "larvae",
+    "maize",
+    "pest"
+   ]
+  },
+  {
+   "term": "worm",
+   "words": [
+    "armyworm",
+    "larvae"
+   ]
+  },
+  {
+   "term": "pest",
+   "words": [
+    "pests",
+    "armyworm",
+    "rotation"
+   ]
+  },
+  {
+   "term": "disease",
+   "words": [
+    "pathogen",
+    "diseases",
+    "rotation"
+   ]
+  },
+  {
+   "term": "sick",
+   "words": [
+    "disease",
+    "symptoms"
+   ]
+  },
+  {
+   "term": "mulching",
+   "words": [
+    "mulch"
+   ]
+  },
+  {
+   "term": "mulch",
+   "words": [
+    "mulches",
+    "moisture"
+   ]
+  },
+  {
+   "term": "rotate",
+   "words": [
+    "rotation"
+   ]
+  },
+  {
+   "term": "rotation",
+   "words": [
+    "rotate",
+    "crop"
+   ]
+  },
+  {
+   "term": "umswakama",
+   "words": [
+    "moisture",
+    "soil"
+   ]
+  },
+  {
+   "term": "isithwathwa",
+   "words": [
+    "frost"
+   ]
+  },
+  {
+   "term": "ukoma",
+   "words": [
+    "drought",
+    "dry"
+   ]
+  },
+  {
+   "term": "worms",
+   "words": [
+    "armyworms",
+    "armyworm",
+    "larvae"
+   ]
+  },
+  {
+   "term": "caterpillars",
+   "words": [
+    "armyworm",
+    "larvae"
+   ]
+  },
+  {
+   "term": "heat",
+   "words": [
+    "temperature",
+    "temperatures",
+    "hot",
+    "stress"
+   ]
+  }
+ ],
+ "stopwords": [
+  "a",
+  "about",
+  "after",
+  "again",
+  "all",
+  "also",
+  "am",
+  "an",
+  "and",
+  "any",
+  "are",
+  "as",
+  "at",
+  "be",
+  "because",
+  "been",
+  "before",
+  "being",
+  "but",
+  "by",
+  "can",
+  "could",
+  "did",
+  "do",
+  "does",
+  "doing",
+  "for",
+  "from",
+  "had",
+  "has",
+  "have",
+  "he",
+  "her",
+  "here",
+  "his",
+  "how",
+  "i",
+  "if",
+  "in",
+  "into",
+  "is",
+  "it",
+  "its",
+  "just",
+  "me",
+  "more",
+  "most",
+  "my",
+  "no",
+  "nor",
+  "not",
+  "of",
+  "on",
+  "once",
+  "only",
+  "or",
+  "other",
+  "our",
+  "out",
+  "over",
+  "own",
+  "same",
+  "she",
+  "should",
+  "so",
+  "some",
+  "such",
+  "than",
+  "that",
+  "the",
+  "their",
+  "them",
+  "then",
+  "there",
+  "these",
+  "they",
+  "this",
+  "those",
+  "through",
+  "to",
+  "too",
+  "under",
+  "until",
+  "up",
+  "very",
+  "was",
+  "we",
+  "were",
+  "what",
+  "when",
+  "where",
+  "which",
+  "while",
+  "who",
+  "why",
+  "will",
+  "with",
+  "would",
+  "you",
+  "your"
+ ]
+}

@@ -429,3 +429,20 @@ table.t td.n{font-variant-numeric:tabular-nums;color:var(--mut)}
 .dr-chip.chemical{background:#F6F8F1}.dr-chip.off{opacity:.45;text-decoration:line-through}
 .dr-words summary{cursor:pointer}
 @media (max-width:760px){.dr-layout,.dr-fields,.dr-grid{grid-template-columns:1fr}}
+/* Farm Assistant */
+.as-layout{display:grid;grid-template-columns:minmax(0,1.6fr) minmax(0,1fr);gap:14px;margin-top:12px}
+.as-side{display:flex;flex-direction:column;gap:14px}
+.as-log{display:flex;flex-direction:column;gap:10px;max-height:60vh;overflow-y:auto;margin-bottom:10px}
+.as-msg{max-width:92%;border-radius:16px;padding:10px 12px;font-size:14px}.as-msg p{margin:4px 0}
+.as-msg.me{align-self:flex-end;background:#1F3A2B;color:#fff}.as-msg.bot{align-self:flex-start;background:#F6F8F1}
+.as-msg.ack{font-style:italic;color:var(--mut)}
+.as-cards{display:flex;flex-direction:column;gap:8px;margin:8px 0}
+.as-card{background:#fff;border:1px solid #e3e8df;border-radius:12px;padding:10px 12px}.as-card p{margin:6px 0}
+.as-rej{background:#FBEDEA;border-radius:10px;padding:8px 10px;font-size:13px}.as-rej ul{margin:4px 0;padding-left:18px}
+.as-checked,.as-src{font-size:13px;margin:4px 0}.as-checked summary,.as-src summary{cursor:pointer;color:var(--mut)}
+.as-checked ol,.as-src ul{margin:6px 0;padding-left:20px}.as-checked code{font-size:11.5px;background:#EAF3EA;border-radius:6px;padding:0 4px}
+.as-src a{color:inherit;text-decoration:underline}
+.as-quick{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
+.as-in{display:flex;flex-direction:column;gap:3px;padding:8px 0;border-bottom:1px solid #e3e8df}.as-in:last-child{border-bottom:0}
+.as-caserow{text-decoration:none;color:inherit}
+@media (max-width:760px){.as-layout{grid-template-columns:1fr}.as-msg{max-width:100%}}
