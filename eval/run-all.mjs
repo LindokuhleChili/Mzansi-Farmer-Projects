@@ -9,7 +9,7 @@
 // 11. eval/audit-chain.test.mjs: audit hash chain (feature 21). AUD03-AUD05 are part of suite 1.
 // 10. eval/translate.test.mjs: dynamic AI translation (11 languages), cache, fallback, the language picker.
 // 13. eval/doctor.test.mjs: plant doctor (mock AI): photo limits, server dose strip, fallback, DOSE_BLOCKED via OpenEdge, approval. Cases DR01 to DR31 are part of suite 1.
-// 14. eval/assistant.test.mjs: Farm Assistant (chat, tool loop, offline planner, citations, approval cards, case files, memory, check-ins). Cases AS01 to AS41 are part of suite 1.
+// 14. eval/assistant.test.mjs: Farm Assistant (chat, tool loop, offline planner, citations, approval cards, case files, memory, check-ins). Cases AS01 to AS42 are part of suite 1.
 // 12. eval/weather.test.mjs: weather alerts (no AI): seed labelling, rule edges, /api/v1 weather routes. Cases WX01 to WX28 are part of suite 1.
 //  8. eval/coop.test.mjs: co-op rule unit tests (pro rata rounding, caps, approve re-check, payouts, audit). The co-op contract cases CO01 to CO76 are part of suite 1.
 // The same contract cases run against the REAL ABL code on Windows with scripts\oe-run.ps1 -Action test (see docs/NOTES.md).

@@ -1,5 +1,5 @@
 // Farm Assistant tests (run by `npm test`, or alone: node --test eval/assistant.test.mjs). Offline: mock OpenEdge, mock AI or a scripted AI.
-// The ABL rule cases AS01 to AS41 (guide search, citations, DOSE_BLOCKED, approvals, memory) are in eval/oe-contract-cases.json.
+// The ABL rule cases AS01 to AS42 (guide search, citations, DOSE_BLOCKED, approvals, memory) are in eval/oe-contract-cases.json.
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtempSync } from 'node:fs';

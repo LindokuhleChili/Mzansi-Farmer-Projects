@@ -17,7 +17,7 @@ A chat-first assistant for the farmer. It checks the farm, answers from farming 
 
 ## Guide search (RAG) in OpenEdge
 * Schema `openedge/schema/008-assistant.df`: `GuidePassage` with a WORD index on `SearchText`, `GuideSynonym`, `GuideStopword`, `AssistantCase`, `CaseFollowUp`, `FarmerMemory`.
-* `POST /farm/guide/search {q}` (ABL `CONTAINS`, plus synonyms and singular/plural) returns the top 3 passages. `mock-pasoe/assistant.js` gives the same results (contract cases AS01 to AS41).
+* `POST /farm/guide/search {q}` (ABL `CONTAINS`, plus synonyms and singular/plural) returns the top 3 passages. `mock-pasoe/assistant.js` gives the same results (contract cases AS01 to AS42).
 * Seed: `openedge/data/guide-seed.json`. There are 51 passages quoted word for word from 15 English Wikipedia articles. Each passage stores the article title, section, a fixed-revision URL (`oldid`) and the licence **CC BY-SA 4.0**. Sentences that name chemicals or sprays were left out. Nothing is invented.
 
 ## Memory and check-ins
@@ -33,4 +33,4 @@ A chat-first assistant for the farmer. It checks the farm, answers from farming 
 * Single farm (farmId 1), as in the rest of the demo.
 
 ## Tests
-`eval/assistant.test.mjs` (in `npm test`) and contract cases AS01 to AS41 (mock and real ABL, `oe-run.ps1 -Action test`).
+`eval/assistant.test.mjs` (in `npm test`) and contract cases AS01 to AS42 (mock and real ABL, `oe-run.ps1 -Action test`).

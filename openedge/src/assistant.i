@@ -20,6 +20,17 @@ DEFINE TEMP-TABLE ttGdId NO-UNDO
     FIELD id AS INTEGER
     INDEX idxId IS PRIMARY UNIQUE id.
 
+/* Stored JSON (EvidenceJson, ActionsJson) is CHARACTER in the database codepage. Parse it through a UTF-8 LONGCHAR so
+   non-ASCII text such as the degree sign survives (parsing the CHARACTER directly corrupted it). */
+FUNCTION fAsParseArr RETURNS JsonArray (INPUT pc AS CHARACTER):
+    DEFINE VARIABLE lc AS LONGCHAR NO-UNDO.
+    DEFINE VARIABLE oPa AS ObjectModelParser NO-UNDO.
+    FIX-CODEPAGE(lc) = "UTF-8".
+    lc = pc.
+    oPa = NEW ObjectModelParser().
+    RETURN CAST(oPa:Parse(lc), JsonArray).
+END FUNCTION.
+
 FUNCTION fGdIsInt RETURNS LOGICAL (INPUT poJo AS JsonObject, INPUT pcName AS CHARACTER):
     DEFINE VARIABLE d AS DECIMAL NO-UNDO.
     IF NOT poJo:Has(pcName) OR poJo:GetType(pcName) <> JsonDataType:NUMBER THEN RETURN FALSE.
@@ -335,7 +346,7 @@ FUNCTION fAsCaseJson RETURNS JsonObject (INPUT piId AS INTEGER):
         jCc:Add(INTEGER(ENTRY(i, bC.CauseCitations))).
     END.
     jo:Add("causeCitations", jCc).
-    jA = CAST(oP:Parse(bC.ActionsJson), JsonArray).
+    jA = fAsParseArr(bC.ActionsJson).
     DO i = 1 TO jA:Length:
         jIds = jA:GetJsonObject(i):GetJsonArray("citations").
         DO k = 1 TO jIds:Length:
@@ -349,7 +360,7 @@ FUNCTION fAsCaseJson RETURNS JsonObject (INPUT piId AS INTEGER):
         IF jX <> ? THEN jCit:Add(jX).
     END.
     jo:Add("citations", jCit).
-    jo:Add("evidence", CAST(oP:Parse(bC.EvidenceJson), JsonArray)).
+    jo:Add("evidence", fAsParseArr(bC.EvidenceJson)).
     jOut = NEW JsonArray().
     DO i = 1 TO jA:Length:
         jX = jA:GetJsonObject(i).
@@ -613,7 +624,7 @@ PROCEDURE h-as-action:
     FIND bC WHERE bC.CaseId = piId NO-LOCK NO-ERROR.
     IF piId = ? OR NOT AVAILABLE bC THEN DO: RUN reply-error (404, "CASE_NOT_FOUND", SUBSTITUTE("No case with id &1.", (IF piId = ? THEN "?" ELSE STRING(piId))), ?). RETURN. END.
     oP = NEW ObjectModelParser().
-    jA = CAST(oP:Parse(bC.ActionsJson), JsonArray).
+    jA = fAsParseArr(bC.ActionsJson).
     IF piNo = ? OR piNo < 1 OR piNo > jA:Length THEN DO:
         RUN reply-error (404, "ACTION_NOT_FOUND", SUBSTITUTE("Case &1 has no action &2.", piId, (IF piNo = ? THEN "?" ELSE STRING(piNo))), ?). RETURN. END.
     RUN get-str (goBody, "decision", OUTPUT cDec, OUTPUT lOk).

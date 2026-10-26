@@ -7772,6 +7772,59 @@
      "ok": true
     }
    }
+  },
+  {
+   "id": "AS42",
+   "title": "Case: Latin-1 text (degree sign, middle dot, accents) in title, evidence and actions comes back unchanged",
+   "request": {
+    "method": "POST",
+    "path": "/farm/assistant/cases",
+    "body": {
+     "plotId": 4,
+     "problemType": "heat",
+     "title": "Heat · Tomato Plot D",
+     "likelyCause": "Hot afternoon, 34 °C.",
+     "confidence": "low",
+     "causeCitations": [
+      9
+     ],
+     "evidence": [
+      {
+       "kind": "get_sensor_readings",
+       "text": "34 °C, café rête"
+      }
+     ],
+     "actions": [
+      {
+       "kind": "step",
+       "text": "Mulch · water early.",
+       "cost": "low",
+       "citations": [
+        19
+       ]
+      }
+     ],
+     "followUpDays": 2,
+     "followUpQuestion": "Is it cooler?",
+     "diagnosisId": null,
+     "usedFallback": false,
+     "provider": "mock",
+     "requestId": "as-contract"
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "title": "Heat · Tomato Plot D",
+     "likelyCause": "Hot afternoon, 34 °C.",
+     "evidence": [
+      {
+       "kind": "get_sensor_readings",
+       "text": "34 °C, café rête"
+      }
+     ]
+    }
+   }
   }
  ]
 }
