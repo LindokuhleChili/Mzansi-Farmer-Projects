@@ -1,20 +1,23 @@
-// Mzansi Farmer - ESP32 soil + water probes.
+// Mzansi Farmer - ESP32 soil + water probes (Wi-Fi CLIENT / station mode).
 // Board: ESP32 Dev Module. Arduino-ESP32 core 3.x. Libraries: built-in only.
 //
-// Local backup dashboard (always, even with no internet):
-//   join Wi-Fi "WaterLevel-ESP32" / "Water1234", open http://192.168.4.1
-//   water signal GPIO34, soil AO GPIO35, calibration saved in Preferences.
+// Wi-Fi name and password are read from secrets.h (copy secrets.example.h).
+// They are not written in this file. The board joins that network, gets an
+// address from DHCP and prints it on Serial (115200). Open http://<that IP>/
+// or http://mzansi-farm.local/
+//   GET /            dashboard
+//   GET /data        live JSON (CORS *, no token)
+//   GET /api/readings  same JSON (alias)
+//   GET /history     recent raw samples
+//   GET /calibrate?mode=wempty|wfull|sdry|swet
+// Water signal GPIO34, soil AO GPIO35, calibration saved in Preferences.
 //
-// Cloud: WIFI_AP_STA also joins the phone hotspot from secrets.h and, about
-// every 10 s, POSTs with header X-Device-Token:
-//   {API_BASE_URL}/api/v1/readings
-//     deviceId, plotId, timestamp, soilMoisturePct, temperatureC, humidityPct, raining
-//   {API_BASE_URL}/api/v1/tank-readings
-//     deviceId, plotId, timestamp, waterLevelRaw, waterLevelPct, calibrated
-// Tank storage is openedge/schema/010-tank.df. Loading it stops the database.
-// See docs/ESP32.md. Do not run that load until the backup and stop steps there.
+// Optional cloud upload (OFF by default): #define ENABLE_CLOUD_UPLOAD 1 in
+// secrets.h, with DEVICE_TOKEN / DEVICE_ID / API_BASE_URL, to POST readings to
+// {API_BASE_URL}/api/v1/readings and /api/v1/tank-readings with X-Device-Token.
 #include <WiFi.h>
 #include <WebServer.h>
+#include <ESPmDNS.h>
 #include <HTTPClient.h>
 #include <Preferences.h>
 #include <time.h>
@@ -34,6 +37,9 @@
 #ifndef WIFI_SSID
 #error "secrets.h must define WIFI_SSID"
 #endif
+#ifndef WIFI_PASSWORD
+#error "secrets.h must define WIFI_PASSWORD"
+#endif
 #ifndef DEVICE_TOKEN
 #error "secrets.h must define DEVICE_TOKEN"
 #endif
@@ -43,12 +49,25 @@
 #ifndef API_BASE_URL
 #error "secrets.h must define API_BASE_URL"
 #endif
+#ifndef PLOT_ID
+#define PLOT_ID 1
+#endif
+#ifndef ENABLE_CLOUD_UPLOAD
+#define ENABLE_CLOUD_UPLOAD 0
+#endif
+#ifndef CLIMATE_VALUES_ARE_REAL
+#define CLIMATE_VALUES_ARE_REAL 0
+#endif
+#ifndef CLIMATE_TEMPERATURE_C
+#define CLIMATE_TEMPERATURE_C 22.0
+#endif
+#ifndef CLIMATE_HUMIDITY_PCT
+#define CLIMATE_HUMIDITY_PCT 55.0
+#endif
 
-static const char *AP_SSID = "WaterLevel-ESP32";
-static const char *AP_PASSWORD = "Water1234";
-static const IPAddress LOCAL_IP(192, 168, 4, 1);
-static const IPAddress GATEWAY(192, 168, 4, 1);
-static const IPAddress SUBNET(255, 255, 255, 0);
+static const char *MDNS_NAME = "mzansi-farm";
+static const uint32_t WIFI_CONNECT_TIMEOUT_MS = 15000;
+static const int WIFI_CONNECT_TRIES = 5;
 
 static const int WATER_PIN = 34;
 static const int SOIL_PIN = 35;
@@ -131,68 +150,135 @@ static void saveCal() {
 static const char page[] PROGMEM = R"rawliteral(
 <!DOCTYPE html><html lang="en"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
-<title>Mzansi Farm Sensors</title>
+<title>Mzansi Farmer · Live Sensors</title>
 <style>
-*{box-sizing:border-box}body{margin:0;padding:18px;font-family:Arial,sans-serif;background:#0b1120;color:#f1f5f9}
-.wrap{max-width:760px;margin:auto}.eye{color:#4ade80;font-size:12px;font-weight:bold;letter-spacing:2px}
-h1{margin:8px 0 4px;font-size:30px}.sub{color:#94a3b8;font-size:14px}
-.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-top:18px}
-.card{background:#151e30;border:1px solid #26334a;border-radius:18px;padding:20px}
-.t{color:#94a3b8;font-size:12px;letter-spacing:1px}.big{font-size:48px;font-weight:bold;margin:8px 0}
-.u{font-size:20px;color:#38bdf8}.bar{height:14px;background:#26334a;border-radius:20px;overflow:hidden;margin:10px 0}
-.fill{height:100%;width:0;transition:width .4s}.w{background:linear-gradient(90deg,#0ea5e9,#2dd4bf)}
-.s{background:linear-gradient(90deg,#a16207,#4ade80)}.m{color:#94a3b8;font-size:13px;line-height:1.6}
-.row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:12px}
-button{border:0;padding:12px;border-radius:10px;font-weight:bold;color:#fff;cursor:pointer}
-.b1{background:#334155}.b2{background:#0891b2}.b3{background:#854d0e}.b4{background:#15803d}
-.st{display:inline-block;margin:10px 8px 0 0;background:#102d38;color:#67e8f9;padding:7px 12px;border-radius:20px;font-size:13px}
-@media(max-width:560px){.grid{grid-template-columns:1fr}}
+*{box-sizing:border-box}body{margin:0;padding:16px;font-family:system-ui,Segoe UI,Arial,sans-serif;background:radial-gradient(circle at 20% 0,#0f2a24,#070d18 60%);color:#e8f1f2;min-height:100vh}
+.wrap{max-width:960px;margin:auto}.eye{color:#4ade80;font-size:12px;font-weight:700;letter-spacing:3px}
+h1{margin:6px 0 2px;font-size:28px}.sub{color:#8fa3b3;font-size:14px}
+.chips{display:flex;flex-wrap:wrap;gap:8px;margin:14px 0}
+.chip{background:#ffffff10;border:1px solid #ffffff1a;padding:6px 12px;border-radius:99px;font-size:13px;display:flex;gap:6px;align-items:center}
+.dot{width:8px;height:8px;border-radius:50%;background:#64748b}.on{background:#4ade80;box-shadow:0 0 8px #4ade80}.off{background:#f87171}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}
+.card{background:#0f1a2bcc;border:1px solid #1f2f45;border-radius:20px;padding:18px;backdrop-filter:blur(6px)}
+.t{color:#8fa3b3;font-size:12px;letter-spacing:2px;font-weight:700}
+.g{display:flex;gap:16px;align-items:center;margin:10px 0}
+.ring{position:relative;width:140px;height:140px;flex:none}.ring svg{transform:rotate(-90deg)}
+.ring circle{fill:none;stroke-width:12}.bg{stroke:#1f2f45}.fg{stroke-linecap:round;transition:stroke-dashoffset .6s}
+.val{position:absolute;inset:0;display:flex;flex-direction:column;align-items:center;justify-content:center}
+.val b{font-size:34px}.val span{font-size:12px;color:#8fa3b3}
+.m{color:#a7b8c6;font-size:13px;line-height:1.6}.st{font-weight:700;font-size:15px;margin-bottom:4px}
+.hint{margin-top:8px;padding:8px 10px;border-radius:10px;background:#f59e0b1f;color:#fcd34d;font-size:13px}
+.hint.ok{background:#4ade801f;color:#86efac}
+.row{display:grid;grid-template-columns:1fr 1fr;gap:8px;margin-top:10px}
+button{border:0;padding:11px;border-radius:12px;font-weight:700;color:#fff;cursor:pointer;font-size:14px}
+button.done{outline:2px solid #4ade80}
+.b1{background:#334155}.b2{background:#0284c7}.b3{background:#92400e}.b4{background:#15803d}
+canvas{width:100%;height:170px;display:block;margin-top:8px}
+.full{grid-column:1/-1}
+@media(max-width:640px){.grid{grid-template-columns:1fr}.ring{width:120px;height:120px}}
 </style></head><body><div class="wrap">
 <div class="eye">MZANSI FARMER · ESP32 LIVE</div><h1>Farm Sensors</h1>
-<div class="sub">Water tank and soil on this page. Both are sent to the app about every 10 seconds.</div>
-<div class="st" id="conn">Connecting...</div>
-<div class="st" id="sta">Internet Wi-Fi: --</div>
-<div class="st" id="cloud">Cloud: --</div>
+<div class="sub">Water tank and soil moisture, live from the field.</div>
+<div class="chips"><div class="chip"><i class="dot" id="cd"></i><span id="conn">Connecting...</span></div>
+<div class="chip"><i class="dot" id="wd"></i><span id="sta">Wi-Fi: --</span></div>
+<div class="chip">☁ <span id="cloud">Cloud: --</span></div></div>
 <div class="grid">
- <div class="card"><div class="t">WATER LEVEL</div>
-  <div><span class="big" id="wp">--</span><span class="u">%</span></div>
-  <div class="bar"><div class="fill w" id="wb"></div></div>
-  <div class="m" id="ws">Calibrate to see a percentage.</div>
-  <div class="m">Raw: <b id="wr">--</b> · Empty: <b id="we">-</b> · Full: <b id="wf">-</b></div>
-  <div class="row"><button class="b1" onclick="cal('wempty','sensor at EMPTY level')">Set EMPTY</button>
-  <button class="b2" onclick="cal('wfull','sensor at FULL level')">Set FULL</button></div></div>
- <div class="card"><div class="t">SOIL MOISTURE</div>
-  <div><span class="big" id="sp">--</span><span class="u">%</span></div>
-  <div class="bar"><div class="fill s" id="sb"></div></div>
-  <div class="m" id="ss">Calibrate to see a percentage.</div>
-  <div class="m">Raw: <b id="sr">--</b> · Dry: <b id="sd">-</b> · Wet: <b id="sw">-</b></div>
-  <div class="row"><button class="b3" onclick="cal('sdry','probe in DRY air or dry soil')">Set DRY</button>
-  <button class="b4" onclick="cal('swet','probe in a cup of WATER or wet soil')">Set WET</button></div></div>
-</div>
-<div class="card" style="margin-top:14px"><div class="t">WIRING AND CLOUD</div><div class="m">
-Water sensor: signal D34, + to 3V3, - to GND<br>
-Soil sensor: AO to D35, VCC to 3V3, GND to GND<br>
-Soil goes to /api/v1/readings. Water goes to /api/v1/tank-readings. Temperature and humidity in the soil post come from secrets.h (this board does not measure those).</div></div>
-</div><script>
-const $=i=>document.getElementById(i);
-function show(p,big,bar,st,labels){
- if(p>=0){$(big).textContent=p;$(bar).style.width=p+'%';$(st).textContent=p<=20?labels[0]:p<70?labels[1]:labels[2];}
- else{$(big).textContent='--';$(bar).style.width='0%';$(st).textContent='Save both calibration points to see a percentage.';}
-}
-async function up(){try{const d=await(await fetch('/data?t='+Date.now(),{cache:'no-store'})).json();
- $('conn').textContent='● Sensors connected';
- $('sta').textContent=d.sta?('Internet Wi-Fi: '+d.staIp):'Internet Wi-Fi: offline';
+<div class="card"><div class="t">💧 WATER TANK</div><div class="g">
+<div class="ring"><svg viewBox="0 0 140 140" width="100%" height="100%"><circle class="bg" cx="70" cy="70" r="58"/><circle class="fg" id="wg" cx="70" cy="70" r="58" stroke="#38bdf8"/></svg>
+<div class="val"><b id="wp">--</b><span id="wu">raw</span></div></div>
+<div><div class="st" id="ws">--</div><div class="m">Raw <b id="wr">--</b><br>Empty <b id="we">-</b> · Full <b id="wf">-</b></div></div></div>
+<div class="hint" id="wh"></div>
+<div class="row"><button class="b1" id="bwe" onclick="cal('wempty','sensor at EMPTY level')">Set EMPTY</button>
+<button class="b2" id="bwf" onclick="cal('wfull','sensor at FULL level')">Set FULL</button></div></div>
+<div class="card"><div class="t">🌱 SOIL MOISTURE</div><div class="g">
+<div class="ring"><svg viewBox="0 0 140 140" width="100%" height="100%"><circle class="bg" cx="70" cy="70" r="58"/><circle class="fg" id="sg" cx="70" cy="70" r="58" stroke="#4ade80"/></svg>
+<div class="val"><b id="sp">--</b><span id="su">raw</span></div></div>
+<div><div class="st" id="ss">--</div><div class="m">Raw <b id="sr">--</b><br>Dry <b id="sd">-</b> · Wet <b id="sw">-</b></div></div></div>
+<div class="hint" id="sh"></div>
+<div class="row"><button class="b3" id="bsd" onclick="cal('sdry','probe in DRY air or dry soil')">Set DRY</button>
+<button class="b4" id="bsw" onclick="cal('swet','probe in a cup of WATER or wet soil')">Set WET</button></div></div>
+<div class="card"><div class="t">WATER HISTORY</div><canvas id="wc"></canvas></div>
+<div class="card"><div class="t">SOIL HISTORY</div><canvas id="sc"></canvas></div>
+<div class="card full"><div class="t">WIRING</div><div class="m">Water: signal GPIO34, + to 3V3, - to GND · Soil: AO to GPIO35, VCC to 3V3, GND to GND · JSON at /data, history at /history</div></div>
+</div></div><script>
+const $=i=>document.getElementById(i),N=120,C=2*Math.PI*58;let D=null,W=[],S=[];
+['wg','sg'].forEach(i=>{$(i).style.strokeDasharray=C;$(i).style.strokeDashoffset=C});
+function pct(r,a,b,as,bs){if(!as||!bs||a==b)return -1;let p=Math.round((r-a)*100/(b-a));return p<0?0:p>100?100:p}
+function push(a,v){a.push(v);if(a.length>N)a.shift()}
+function ring(g,b,u,p,raw){if(p>=0){$(b).textContent=p+'%';$(u).textContent='calibrated';$(g).style.strokeDashoffset=C*(1-p/100)}
+ else{$(b).textContent=raw;$(u).textContent='raw 0-4095';$(g).style.strokeDashoffset=C*(1-raw/4095)}}
+function hint(h,lo,hi,ln,hn,b1,b2){let e=$(h);$(b1).className=$(b1).className.replace(' done','')+(lo?' done':'');$(b2).className=$(b2).className.replace(' done','')+(hi?' done':'');
+ if(lo&&hi){e.className='hint ok';e.textContent='✓ Calibrated: showing percentage'}
+ else{e.className='hint';e.textContent=!lo&&!hi?'Step 1 of 2: set '+ln+' (then '+hn+')':'Step 2 of 2: '+(lo?hn:ln)+' point missing, set '+(lo?hn:ln)}}
+function draw(id,arr,cal,col,lo,hi,as,bs){const c=$(id),r=devicePixelRatio||1,w=c.clientWidth,h=c.clientHeight;c.width=w*r;c.height=h*r;
+ const x=c.getContext('2d');x.scale(r,r);x.clearRect(0,0,w,h);const L=34,B=18,pw=w-L-6,ph=h-B-6,mx=cal?100:4095;
+ x.font='10px sans-serif';x.fillStyle='#8fa3b3';x.strokeStyle='#1f2f45';x.lineWidth=1;
+ for(let k=0;k<=4;k++){const y=4+ph*k/4;x.beginPath();x.moveTo(L,y);x.lineTo(L+pw,y);x.stroke();x.fillText(Math.round(mx*(1-k/4)),2,y+3)}
+ x.fillText(cal?'% (calibrated)':'raw ADC 0-4095 (not calibrated)',L,h-4);x.textAlign='right';x.fillText('last '+N+' s',w-4,h-4);x.textAlign='left';
+ if(arr.length<2)return;const v=arr.map(q=>cal?pct(q,lo,hi,as,bs):q);
+ const g=x.createLinearGradient(0,4,0,4+ph);g.addColorStop(0,col+'66');g.addColorStop(1,col+'00');
+ x.beginPath();v.forEach((q,i)=>{const X=L+pw*(i+N-v.length)/(N-1),Y=4+ph*(1-q/mx);i?x.lineTo(X,Y):x.moveTo(X,Y)});
+ x.strokeStyle=col;x.lineWidth=2;x.stroke();x.lineTo(L+pw,4+ph);x.lineTo(L+pw*(N-v.length)/(N-1),4+ph);x.fillStyle=g;x.fill()}
+function render(){if(!D)return;const d=D,wc=d.wEs&&d.wFs,sc=d.sDs&&d.sWs;
+ draw('wc',W,wc,'#38bdf8',d.wE,d.wF,d.wEs,d.wFs);draw('sc',S,sc,'#4ade80',d.sD,d.sW,d.sDs,d.sWs)}
+async function up(){try{const d=await(await fetch('/data?t='+Date.now(),{cache:'no-store'})).json();D=d;
+ $('conn').textContent='Sensors live';$('cd').className='dot on';
+ $('sta').textContent=d.sta?('Wi-Fi '+d.staIp+' · '+d.rssi+' dBm'):'Wi-Fi offline';$('wd').className='dot '+(d.sta?'on':'off');
  $('cloud').textContent='Cloud: '+d.cloud;
  $('wr').textContent=d.wRaw;$('we').textContent=d.wEs?d.wE:'-';$('wf').textContent=d.wFs?d.wF:'-';
  $('sr').textContent=d.sRaw;$('sd').textContent=d.sDs?d.sD:'-';$('sw').textContent=d.sWs?d.sW:'-';
- show(d.wPct,'wp','wb','ws',['Low water: refill the tank','Medium water level','Tank is full']);
- show(d.sPct,'sp','sb','ss',['Soil is dry: needs water','Soil moisture is good','Soil is wet: no watering needed']);
-}catch(e){$('conn').textContent='Reconnecting...';}}
+ ring('wg','wp','wu',d.wPct,d.wRaw);ring('sg','sp','su',d.sPct,d.sRaw);
+ $('ws').textContent=d.wPct<0?'Not calibrated':d.wPct<=20?'Low: refill the tank':d.wPct<70?'Medium level':'Tank is full';
+ $('ss').textContent=d.sPct<0?'Not calibrated':d.sPct<=20?'Dry: needs water':d.sPct<70?'Moisture is good':'Wet: no watering needed';
+ hint('wh',d.wEs,d.wFs,'EMPTY','FULL','bwe','bwf');hint('sh',d.sDs,d.sWs,'DRY','WET','bsd','bsw');
+ push(W,d.wRaw);push(S,d.sRaw);render();
+}catch(e){$('conn').textContent='Reconnecting...';$('cd').className='dot off'}}
 async function cal(m,txt){if(!confirm('Is the '+txt+' right now?'))return;
- try{const r=await(await fetch('/calibrate?mode='+m)).json();if(!r.ok)throw 0;up();}catch(e){alert('Calibration failed.');}}
-up();setInterval(up,1000);
+ try{const r=await(await fetch('/calibrate?mode='+m)).json();if(!r.ok)throw 0;up()}catch(e){alert('Calibration failed.')}}
+fetch('/history').then(r=>r.json()).then(h=>{if(!W.length){W=h.w.slice(-N);S=h.s.slice(-N)}}).catch(()=>0).finally(()=>{up();setInterval(up,1000)});
+onresize=render;
 </script></body></html>
 )rawliteral";
+
+static const int HIST_N = 120;
+static int16_t histW[HIST_N], histS[HIST_N];
+static int histCount = 0, histHead = 0;
+static uint32_t nextHistAt = 0;
+
+static void sampleHistory() {
+  if ((int32_t)(millis() - nextHistAt) < 0) return;
+  nextHistAt = millis() + 1000;
+  histW[histHead] = (int16_t)readAvg(WATER_PIN);
+  histS[histHead] = (int16_t)readAvg(SOIL_PIN);
+  histHead = (histHead + 1) % HIST_N;
+  if (histCount < HIST_N) histCount++;
+}
+
+static void allowBrowser() {
+  server.sendHeader("Cache-Control", "no-store");
+  server.sendHeader("Access-Control-Allow-Origin", "*");
+  server.sendHeader("Access-Control-Allow-Private-Network", "true");
+}
+
+static void handleOptions() {
+  server.sendHeader("Access-Control-Allow-Origin", "*");
+  server.sendHeader("Access-Control-Allow-Private-Network", "true");
+  server.sendHeader("Access-Control-Allow-Methods", "GET, OPTIONS");
+  server.sendHeader("Access-Control-Allow-Headers", "*");
+  server.send(204);
+}
+
+static void handleHistory() {
+  String w, s;
+  w.reserve(histCount * 5); s.reserve(histCount * 5);
+  for (int i = 0; i < histCount; i++) {
+    int k = (histHead - histCount + i + HIST_N) % HIST_N;
+    if (i) { w += ','; s += ','; }
+    w += String(histW[k]); s += String(histS[k]);
+  }
+  allowBrowser();
+  server.send(200, "application/json", "{\"intervalMs\":1000,\"w\":[" + w + "],\"s\":[" + s + "]}");
+}
 
 static String jsonEscape(const String &s) {
   String out;
@@ -218,8 +304,8 @@ static void handleData() {
              ",\"sD\":" + String(soilDry) + ",\"sW\":" + String(soilWet) +
              ",\"sDs\":" + (soilDrySet ? "true" : "false") + ",\"sWs\":" + (soilWetSet ? "true" : "false") +
              ",\"sta\":" + (sta ? "true" : "false") + ",\"staIp\":\"" + jsonEscape(staIp) +
-             "\",\"cloud\":\"" + jsonEscape(lastSendStatus) + "\"}";
-  server.sendHeader("Cache-Control", "no-store");
+             "\",\"cloud\":\"" + jsonEscape(lastSendStatus) + "\",\"rssi\":" + String(sta ? WiFi.RSSI() : 0) + "}";
+  allowBrowser();
   server.send(200, "application/json", j);
 }
 
@@ -229,17 +315,59 @@ static void handleCal() {
   else if (mode == "wfull") { waterFull = readAvg(WATER_PIN); waterFullSet = true; cachedWater = waterFull; }
   else if (mode == "sdry") { soilDry = readAvg(SOIL_PIN); soilDrySet = true; cachedSoil = soilDry; }
   else if (mode == "swet") { soilWet = readAvg(SOIL_PIN); soilWetSet = true; cachedSoil = soilWet; }
-  else { server.send(400, "application/json", "{\"ok\":false}"); return; }
+  else { allowBrowser(); server.send(400, "application/json", "{\"ok\":false}"); return; }
   saveCal();
   Serial.println(String("Calibration saved: ") + mode);
+  allowBrowser();
   server.send(200, "application/json", "{\"ok\":true}");
 }
 
+static void printWifiInfo() {
+  Serial.println("[wifi] connected");
+  Serial.printf("[wifi] SSID: %s\n", WiFi.SSID().c_str());
+  Serial.printf("[wifi] IP (DHCP): %s\n", WiFi.localIP().toString().c_str());
+  Serial.printf("[wifi] RSSI: %d dBm\n", WiFi.RSSI());
+  Serial.printf("[web] dashboard: http://%s/   JSON: http://%s/data\n",
+                WiFi.localIP().toString().c_str(), WiFi.localIP().toString().c_str());
+}
+
+static void startMdns() {
+  MDNS.end();
+  if (MDNS.begin(MDNS_NAME)) {
+    MDNS.addService("http", "tcp", 80);
+    Serial.printf("[mdns] http://%s.local/\n", MDNS_NAME);
+  } else {
+    Serial.println("[mdns] failed to start (use the IP instead)");
+  }
+}
+
+// Blocking connect with timeout + retries (used at boot).
+static bool connectWifi() {
+  for (int attempt = 1; attempt <= WIFI_CONNECT_TRIES; attempt++) {
+    Serial.printf("[wifi] connecting to %s (try %d/%d) ...\n", WIFI_SSID, attempt, WIFI_CONNECT_TRIES);
+    WiFi.disconnect(true);
+    delay(200);
+    WiFi.begin(WIFI_SSID, WIFI_PASSWORD);  // DHCP
+    uint32_t start = millis();
+    while (WiFi.status() != WL_CONNECTED && millis() - start < WIFI_CONNECT_TIMEOUT_MS) {
+      delay(250);
+      Serial.print('.');
+    }
+    Serial.println();
+    if (WiFi.status() == WL_CONNECTED) return true;
+    Serial.printf("[wifi] timed out (status %d)\n", (int)WiFi.status());
+  }
+  Serial.println("[wifi] could not connect; will keep retrying in loop()");
+  return false;
+}
+
+// Non-blocking reconnect (used in loop()).
 static void ensureInternetWifi() {
   if (WiFi.status() == WL_CONNECTED) return;
   if ((int32_t)(millis() - lastWifiAttempt) < (int32_t)WIFI_RETRY_MS) return;
   lastWifiAttempt = millis();
-  Serial.printf("[wifi] connecting to %s ...\n", WIFI_SSID);
+  Serial.printf("[wifi] reconnecting to %s ...\n", WIFI_SSID);
+  WiFi.disconnect();
   WiFi.begin(WIFI_SSID, WIFI_PASSWORD);
 }
 
@@ -315,6 +443,10 @@ static bool transportFailed(int code) {
 static void sendReading() {
   waitShort = false;
   if (apiGaveUp) return;
+#if !ENABLE_CLOUD_UPLOAD
+  lastSendStatus = "upload off (local only)";
+  return;
+#endif
   if (!tokenReady() || !idReady()) {
     waitShort = true;
     lastSendStatus = "set DEVICE_TOKEN and DEVICE_ID in secrets.h";
@@ -403,30 +535,38 @@ void setup() {
   loadCal();
   Serial.println("\nMzansi Farmer - soil and water sensors");
 
-  WiFi.mode(WIFI_AP_STA);
+  WiFi.mode(WIFI_STA);          // client only: no ESP32 hotspot
+  WiFi.setHostname(MDNS_NAME);
   WiFi.setAutoReconnect(true);
-  if (!WiFi.softAPConfig(LOCAL_IP, GATEWAY, SUBNET)) Serial.println("[ap] warning: static IP failed");
-  if (!WiFi.softAP(AP_SSID, AP_PASSWORD)) Serial.println("[ap] ERROR: hotspot did not start");
-  Serial.printf("[ap] %s -> http://%s\n", AP_SSID, WiFi.softAPIP().toString().c_str());
-  lastWifiAttempt = millis() - WIFI_RETRY_MS;
-  ensureInternetWifi();
+  WiFi.persistent(false);
+  if (connectWifi()) { printWifiInfo(); startMdns(); }
+  lastWifiAttempt = millis();
   configTime(0, 0, "pool.ntp.org", "time.google.com");
 
-  server.on("/", HTTP_GET, []() { server.send_P(200, "text/html", page); });
+  server.on("/", HTTP_GET, []() { allowBrowser(); server.send_P(200, "text/html", page); });
   server.on("/data", HTTP_GET, handleData);
+  server.on("/api/readings", HTTP_GET, handleData);
   server.on("/calibrate", HTTP_GET, handleCal);
-  server.onNotFound([]() { server.send(404, "text/plain", "Open http://192.168.4.1"); });
+  server.on("/history", HTTP_GET, handleHistory);
+  server.onNotFound([]() {
+    if (server.method() == HTTP_OPTIONS) {
+      handleOptions();
+      return;
+    }
+    server.send(404, "text/plain", "Try / or /data");
+  });
   server.begin();
-  Serial.println("[web] dashboard ready at http://192.168.4.1");
+  Serial.println("[web] server started on port 80");
 }
 
 void loop() {
   server.handleClient();
+  sampleHistory();
   ensureInternetWifi();
   static bool wasUp = false;
   bool up = WiFi.status() == WL_CONNECTED;
   if (up != wasUp) {
-    if (up) Serial.printf("[wifi] connected, ip=%s\n", WiFi.localIP().toString().c_str());
+    if (up) { printWifiInfo(); startMdns(); }
     else Serial.println("[wifi] internet Wi-Fi dropped");
     wasUp = up;
   }
@@ -438,3 +578,4 @@ void loop() {
     nextSendAt = millis() + wait;
   }
 }
+

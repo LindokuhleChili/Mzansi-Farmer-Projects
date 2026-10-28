@@ -22,7 +22,7 @@ const SECURITY_HEADERS = {
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'no-referrer',
   // frame-src / connect-src allow any http(s) host because the farmer can type a different device address in the browser.
-  // The ESP32 sends no CORS headers. connect-src is only for a no-cors reachability check (opaque response, body not read).
+  // connect-src lets the browser read the ESP32 (GET /data, /history, /calibrate). frame-src is the fallback embed.
   // The server still never fetches the device. script-src stays 'self'.
   'Content-Security-Policy': "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' http: https:; frame-src http: https:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
 };

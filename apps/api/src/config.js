@@ -59,7 +59,7 @@ export function loadConfig(env = process.env) {
     logLevel: env.LOG_LEVEL || 'warn',
     uiEnabled: !['0', 'false', 'off', 'no'].includes(String(env.UI_ENABLED ?? '1').toLowerCase()),   // serve the web UI at / (static files + local-only /ui/api proxy)
     uiAllowRemote: ['1', 'true', 'on', 'yes'].includes(String(env.UI_ALLOW_REMOTE ?? '0').toLowerCase()),   // let non-loopback clients use the /ui/api proxy (OFF by default)
-    esp32DashboardUrl: esp32DashboardUrlFromEnv(env.ESP32_DASHBOARD_URL),   // browser embed only; the server never connects to this address
+    esp32DashboardUrl: esp32DashboardUrlFromEnv(env.ESP32_DASHBOARD_URL),   // browser reads this address; the server never connects to it
     problems,
   };
 }

@@ -95,7 +95,7 @@ By default `OE_MODE=mock` and `AI_PROVIDER=mock`, so the API runs entirely in me
 | `FARM_WATCH_DEDUPE_HOURS` | Do not open another case for the same issue while one is open, or until this many hours after a closed one | `24` |
 | `MCP_HTTP_HOST`, `MCP_HTTP_PORT` | Used only by `npm run mcp:http`. Bearer token is `APP_TOKEN` | `127.0.0.1`, `3001` |
 | `LOG_DIR`, `LOG_LEVEL` | Tool-call log folder (`logs/tool-calls.jsonl`, gitignored) and log level | `logs`, `warn` |
-| `ESP32_DASHBOARD_URL` | Address of the ESP32's own sensor page. The browser embeds it. The API never connects to it. See [docs/ESP32.md](docs/ESP32.md) | `http://192.168.4.1` |
+| `ESP32_DASHBOARD_URL` | Address of the ESP32. The browser reads `/data` from it. The API never connects to it. Station-mode boards are also at `http://mzansi-farm.local`. See [docs/ESP32.md](docs/ESP32.md) | `http://192.168.4.1` |
 
 ## Using the real Gemini model
 
