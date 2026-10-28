@@ -51,7 +51,7 @@ const en = {
   dash_title: '{dry} of {live} plots have dry soil', dash_title_1: '{dry} of {live} plot has dry soil', dash_num: '{dry} of {live}', dash_rest: 'plots have dry soil', dash_rest_1: 'plot has dry soil', dash_no_live: 'Waiting for live sensor data',
   dash_no_live_sub: 'Readings older than 15 min block new suggestions.',
   your_plots: 'Your plots', all_plots: 'All plots', all_n_plots: 'View all {n} plots', waiting_for_you: 'Waiting for you', n_sug: '{n} suggestions', n_sug_1: '1 suggestion', nothing_waiting: 'Nothing is waiting for you. Ask the AI for advice on a plot.', ask_plot: 'Ask AI about {plot}',
-  see_all: 'See all', soil_moisture: 'Soil moisture', temperature: 'Temperature', humidity: 'Humidity',
+  see_all: 'See all', soil_moisture: 'Soil moisture', water_level: 'Water level', water_uncal: 'Not calibrated', temperature: 'Temperature', humidity: 'Humidity',
   dry_soil: 'Dry soil', moisture_ok: 'Moisture OK', sensor_offline: 'Sensor offline', no_data: 'No data yet',
   rain_detected: 'Rain detected', no_rain: 'No rain', raining: 'Raining', rain_word: 'Rain', dry: 'Dry',
   reading_ago: 'Reading {ago}', reading_ago_dev: '{dev} · {ago}', ago_now: 'just now', ago_min: '{n} min ago', ago_h: '{n} h ago', ago_d: '{n} d ago',

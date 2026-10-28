@@ -1,0 +1,96 @@
+ADD SEQUENCE "TankReadingSeq"
+  INITIAL 1000
+  INCREMENT 1
+  CYCLE-ON-LIMIT no
+  MIN-VAL 0
+
+ADD TABLE "TankReading"
+  AREA "Schema Area"
+  DESCRIPTION "One water-tank reading from a field sensor (ESP32). LevelPct is unknown until the probe is calibrated. Example data only"
+  DUMP-NAME "tankrdg"
+
+ADD FIELD "TankReadingId" OF "TankReading" AS integer
+  FORMAT ">>>>>>>>9"
+  INITIAL "0"
+  LABEL "Tank reading id"
+  POSITION 2
+  MAX-WIDTH 4
+  ORDER 10
+  MANDATORY
+
+ADD FIELD "PlotId" OF "TankReading" AS integer
+  FORMAT ">>>>9"
+  INITIAL "0"
+  LABEL "Plot id"
+  POSITION 3
+  MAX-WIDTH 4
+  ORDER 20
+  MANDATORY
+
+ADD FIELD "DeviceId" OF "TankReading" AS character
+  FORMAT "x(40)"
+  INITIAL ""
+  LABEL "Device id"
+  POSITION 4
+  MAX-WIDTH 80
+  ORDER 30
+  MANDATORY
+
+ADD FIELD "ReadAt" OF "TankReading" AS datetime-tz
+  FORMAT "99/99/9999 HH:MM:SS.SSS+HH:MM"
+  INITIAL "?"
+  LABEL "Read at"
+  POSITION 5
+  MAX-WIDTH 8
+  ORDER 40
+  MANDATORY
+
+ADD FIELD "LevelPct" OF "TankReading" AS decimal
+  FORMAT ">>9.9"
+  INITIAL ?
+  LABEL "Water level (%)"
+  DECIMALS 1
+  POSITION 6
+  MAX-WIDTH 17
+  ORDER 50
+
+ADD FIELD "LevelRaw" OF "TankReading" AS integer
+  FORMAT ">>>9"
+  INITIAL "0"
+  LABEL "Water level raw"
+  POSITION 7
+  MAX-WIDTH 4
+  ORDER 60
+  MANDATORY
+
+ADD FIELD "Calibrated" OF "TankReading" AS logical
+  FORMAT "yes/no"
+  INITIAL "no"
+  LABEL "Calibrated"
+  POSITION 8
+  MAX-WIDTH 1
+  ORDER 70
+  MANDATORY
+
+ADD INDEX "TankReadingId" ON "TankReading"
+  AREA "Schema Area"
+  UNIQUE
+  PRIMARY
+  INDEX-FIELD "TankReadingId" ASCENDING
+
+ADD INDEX "PlotReadAt" ON "TankReading"
+  AREA "Schema Area"
+  INDEX-FIELD "PlotId" ASCENDING
+  INDEX-FIELD "ReadAt" DESCENDING
+
+ADD INDEX "DeviceReadAt" ON "TankReading"
+  AREA "Schema Area"
+  UNIQUE
+  INDEX-FIELD "DeviceId" ASCENDING
+  INDEX-FIELD "ReadAt" ASCENDING
+
+.
+PSC
+cpstream=ISO8859-1
+.
+0000000000

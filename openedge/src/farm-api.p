@@ -470,6 +470,116 @@ PROCEDURE h-post-reading:
     RUN reply (201, jo).
 END PROCEDURE.
 
+PROCEDURE h-tank-readings:
+    DEFINE INPUT PARAMETER piId AS INTEGER NO-UNDO.
+    DEFINE VARIABLE ja AS JsonArray NO-UNDO.
+    DEFINE VARIABLE jo AS JsonObject NO-UNDO.
+    DEFINE VARIABLE jr AS JsonObject NO-UNDO.
+    DEFINE VARIABLE iLimit AS INTEGER NO-UNDO INITIAL 20.
+    DEFINE VARIABLE iCnt AS INTEGER NO-UNDO INITIAL 0.
+    DEFINE VARIABLE cLim AS CHARACTER NO-UNDO.
+    FIND Plot WHERE Plot.PlotId = piId NO-LOCK NO-ERROR.
+    IF NOT AVAILABLE Plot THEN DO:
+        RUN reply-error (404, "PLOT_NOT_FOUND", SUBSTITUTE("No plot with id &1.", piId), ?).
+        RETURN.
+    END.
+    cLim = fQuery("limit").
+    IF cLim <> ? THEN iLimit = INTEGER(cLim) NO-ERROR.
+    IF iLimit < 1 OR iLimit > 500 THEN iLimit = 20.
+    ja = NEW JsonArray().
+    FOR EACH TankReading NO-LOCK WHERE TankReading.PlotId = piId USE-INDEX PlotReadAt:
+        iCnt = iCnt + 1.
+        IF iCnt > iLimit THEN LEAVE.
+        jr = NEW JsonObject().
+        jr:Add("tankReadingId", TankReading.TankReadingId).
+        jr:Add("deviceId", TankReading.DeviceId).
+        jr:Add("readAt", fIso(TankReading.ReadAt)).
+        jr:Add("waterLevelRaw", TankReading.LevelRaw).
+        IF TankReading.LevelPct = ? THEN jr:AddNull("waterLevelPct").
+        ELSE jr:Add("waterLevelPct", TankReading.LevelPct).
+        jr:Add("calibrated", TankReading.Calibrated).
+        ja:Add(jr).
+    END.
+    jo = NEW JsonObject().
+    jo:Add("plotId", piId).
+    jo:Add("readings", ja).
+    RUN reply (200, jo).
+END PROCEDURE.
+
+PROCEDURE h-post-tank:
+    DEFINE VARIABLE cDev AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE cTs  AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE dPlot AS DECIMAL NO-UNDO.
+    DEFINE VARIABLE dRaw AS DECIMAL NO-UNDO.
+    DEFINE VARIABLE dPct AS DECIMAL NO-UNDO.
+    DEFINE VARIABLE lOk   AS LOGICAL NO-UNDO.
+    DEFINE VARIABLE lCal  AS LOGICAL NO-UNDO.
+    DEFINE VARIABLE lPct  AS LOGICAL NO-UNDO.
+    DEFINE VARIABLE tTs   AS DATETIME-TZ NO-UNDO.
+    DEFINE VARIABLE jo    AS JsonObject NO-UNDO.
+
+    RUN get-str (goBody, "deviceId", OUTPUT cDev, OUTPUT lOk).
+    IF NOT lOk OR cDev = "" OR LENGTH(cDev) > 40 THEN DO:
+        RUN reply-error (400, "VALIDATION_ERROR", "deviceId must be a string of 1 to 40 characters.", "deviceId"). RETURN.
+    END.
+    RUN get-num (goBody, "plotId", OUTPUT dPlot, OUTPUT lOk).
+    IF NOT lOk OR dPlot <> TRUNCATE(dPlot, 0) THEN DO:
+        RUN reply-error (400, "VALIDATION_ERROR", "plotId must be an integer.", "plotId"). RETURN.
+    END.
+    RUN get-str (goBody, "timestamp", OUTPUT cTs, OUTPUT lOk).
+    IF lOk THEN tTs = fParseIso(cTs).
+    IF NOT lOk OR tTs = ? THEN DO:
+        RUN reply-error (400, "VALIDATION_ERROR", "timestamp must be ISO 8601 UTC, e.g. 2026-10-24T08:00:00Z.", "timestamp"). RETURN.
+    END.
+    RUN get-num (goBody, "waterLevelRaw", OUTPUT dRaw, OUTPUT lOk).
+    IF NOT lOk OR dRaw <> TRUNCATE(dRaw, 0) OR dRaw < 0 OR dRaw > 4095 THEN DO:
+        RUN reply-error (400, "VALIDATION_ERROR", "waterLevelRaw must be an integer from 0 to 4095.", "waterLevelRaw"). RETURN.
+    END.
+    IF NOT goBody:Has("calibrated") OR goBody:GetType("calibrated") <> JsonDataType:BOOLEAN THEN DO:
+        RUN reply-error (400, "VALIDATION_ERROR", "calibrated must be true or false.", "calibrated"). RETURN.
+    END.
+    lCal = goBody:GetLogical("calibrated").
+    lPct = FALSE.
+    dPct = ?.
+    IF goBody:Has("waterLevelPct") AND goBody:GetType("waterLevelPct") = JsonDataType:NUMBER THEN DO:
+        RUN get-num (goBody, "waterLevelPct", OUTPUT dPct, OUTPUT lOk).
+        IF NOT lOk OR dPct < 0 OR dPct > 100 THEN DO:
+            RUN reply-error (400, "VALIDATION_ERROR", "waterLevelPct must be a number between 0 and 100, or null.", "waterLevelPct"). RETURN.
+        END.
+        lPct = TRUE.
+    END.
+    ELSE IF goBody:Has("waterLevelPct") AND goBody:GetType("waterLevelPct") <> JsonDataType:NULL THEN DO:
+        RUN reply-error (400, "VALIDATION_ERROR", "waterLevelPct must be a number between 0 and 100, or null.", "waterLevelPct"). RETURN.
+    END.
+    IF lCal AND NOT lPct THEN DO:
+        RUN reply-error (400, "VALIDATION_ERROR", "waterLevelPct is required when calibrated is true.", "waterLevelPct"). RETURN.
+    END.
+    IF NOT lCal AND lPct THEN DO:
+        RUN reply-error (400, "VALIDATION_ERROR", "waterLevelPct must be null when calibrated is false.", "waterLevelPct"). RETURN.
+    END.
+    FIND Plot WHERE Plot.PlotId = INTEGER(dPlot) NO-LOCK NO-ERROR.
+    IF NOT AVAILABLE Plot THEN DO:
+        RUN reply-error (404, "PLOT_NOT_FOUND", SUBSTITUTE("No plot with id &1.", INTEGER(dPlot)), "plotId"). RETURN.
+    END.
+    FIND TankReading WHERE TankReading.DeviceId = cDev AND TankReading.ReadAt = tTs NO-LOCK NO-ERROR.
+    IF AVAILABLE TankReading THEN DO:
+        RUN reply-error (409, "DUPLICATE_READING", "A tank reading for this deviceId and timestamp already exists.", "timestamp"). RETURN.
+    END.
+    CREATE TankReading.
+    ASSIGN TankReading.TankReadingId = NEXT-VALUE(TankReadingSeq)
+           TankReading.PlotId        = INTEGER(dPlot)
+           TankReading.DeviceId      = cDev
+           TankReading.ReadAt        = tTs
+           TankReading.LevelRaw      = INTEGER(dRaw)
+           TankReading.Calibrated    = lCal.
+    IF lPct THEN TankReading.LevelPct = dPct.
+    ELSE TankReading.LevelPct = ?.
+    jo = NEW JsonObject().
+    jo:Add("id", TankReading.TankReadingId).
+    RELEASE TankReading.
+    RUN reply (201, jo).
+END PROCEDURE.
+
 PROCEDURE parse-validate-input:
     /* shared by POST /validate and POST /suggestions */
     DEFINE OUTPUT PARAMETER piPlotId AS INTEGER NO-UNDO.
@@ -812,6 +922,8 @@ PROCEDURE dispatch:
             ELSE IF n = 2 AND ENTRY(1, cP, "/") = "plots" THEN RUN h-get-plot (INTEGER(ENTRY(2, cP, "/"))).
             ELSE IF n = 3 AND ENTRY(1, cP, "/") = "plots" AND ENTRY(3, cP, "/") = "readings"
                 THEN RUN h-readings (INTEGER(ENTRY(2, cP, "/"))).
+            ELSE IF n = 3 AND ENTRY(1, cP, "/") = "plots" AND ENTRY(3, cP, "/") = "tank-readings"
+                THEN RUN h-tank-readings (INTEGER(ENTRY(2, cP, "/"))).
             ELSE IF cP = "suggestions" THEN RUN h-list-suggestions.
             ELSE IF n = 2 AND ENTRY(1, cP, "/") = "suggestions" THEN RUN h-get-suggestion (INTEGER(ENTRY(2, cP, "/"))).
             ELSE IF cP = "audit" THEN RUN h-list-audit.
@@ -848,6 +960,7 @@ PROCEDURE dispatch:
         END.
         WHEN "POST" THEN DO:
             IF cP = "readings" THEN RUN h-post-reading.
+            ELSE IF cP = "tank-readings" THEN RUN h-post-tank.
             ELSE IF cP = "validate" THEN RUN h-validate.
             ELSE IF cP = "suggestions" THEN RUN h-create-suggestion.
             ELSE IF n = 3 AND ENTRY(1, cP, "/") = "suggestions" AND ENTRY(3, cP, "/") = "decision"

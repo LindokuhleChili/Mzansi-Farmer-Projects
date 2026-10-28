@@ -10,7 +10,7 @@ import { plotCardD, plotCardM, plotState, lineChart, readingsTable, sugRow, sugT
 import { sensorsPage, sensorsClick, sensorsSubmit, sensorsDashLink } from './sensors.js';
 
 const viewEl = $('#view'), overlay = $('#overlay'), toastRoot = $('#toast-root');
-const state = { plots: [], plotsAt: 0, selPlot: null, sugFilter: 'all', auditFilter: 'decisions', pending: null, live: null, nav: 0, timer: null, sheetTimer: null, readings: {}, cur: null, sugs: { at: 0, list: [] } };
+const state = { plots: [], plotsAt: 0, selPlot: null, sugFilter: 'all', auditFilter: 'decisions', pending: null, live: null, nav: 0, timer: null, sheetTimer: null, readings: {}, tanks: {}, cur: null, sugs: { at: 0, list: [] } };
 const draw = (el, h) => { el.innerHTML = String(h); if (el === viewEl) document.body.classList.toggle('has-actbar', !!$('.actbar', el)); };
 
 // ---------- helpers ----------
@@ -27,6 +27,7 @@ async function getPlots(force = false) {
   return state.plots;
 }
 const getReadings = async (id, limit = 20) => { const r = need(await api('GET', `/plots/${id}/readings?limit=${limit}`)).readings || []; state.readings[id] = r; return r; };
+const getTank = async (id) => { const r = need(await api('GET', `/plots/${id}/tank-readings?limit=1`)).readings || []; state.tanks[id] = r[0] || null; return state.tanks[id]; };
 const plotById = (id) => state.plots.find((p) => p.plotId === Number(id));
 const errText = (e) => (e && e.network ? t('err_offline') : t('e_' + (e.code || '')) !== 'e_' + (e.code || '') ? t('e_' + e.code) : e.message || t('err_load'));
 const cacheKey = (id) => `mf.sug.${id}`;
@@ -92,8 +93,8 @@ const skeleton = () => draw(viewEl, html`<div class="pg" style="display:grid;gap
 async function loadDashboardData() {
   const plots = await getPlots(true);
   const [pend, rej] = await Promise.all([api('GET', '/suggestions?status=pending_approval'), api('GET', '/suggestions?status=rejected')]);
-  const readings = await pool(plots.map((p) => () => getReadings(p.plotId, 20)), 3);
-  return { plots, readings, pend: need(pend).suggestions || [], rej: need(rej).suggestions || [] };
+  const packs = await pool(plots.map((p) => async () => ({ readings: await getReadings(p.plotId, 20), tank: await getTank(p.plotId) })), 3);
+  return { plots, readings: packs.map((p) => p.readings), tanks: packs.map((p) => p.tank), pend: need(pend).suggestions || [], rej: need(rej).suggestions || [] };
 }
 function drawDashboard(d) {
   const now = Date.now();
@@ -122,14 +123,14 @@ function drawDashboard(d) {
     </section>
     <section class="msheet m-only">
       <div class="mh"><h2>${t('your_plots')}</h2><a href="#/plots">${t('all_plots')}${icon('chev', 14)}</a></div>
-      <div class="mcards">${shown.map((i) => plotCardM(d.plots[i], d.readings[i]))}</div>
+      <div class="mcards">${shown.map((i) => plotCardM(d.plots[i], d.readings[i], { tank: d.tanks[i] }))}</div>
       ${more ? html`<div class="viewall"><a class="btn out sm" href="#/plots">${t('all_n_plots', { n: d.plots.length })}</a></div>` : ''}
       <p class="credit">${t('credits')}</p>
       ${sensorsDashLink()}
     </section>
     <div class="d-only">
       <div class="dhead"><div><div class="dh">${title}</div><div class="xs mut" style="margin-top:2px">${zuHello('Nomsa')} · ${fmtDayLong(nowIso)}, ${fmtHM(nowIso)}</div></div>${more ? html`<a class="toall" href="#/plots">${t('all_n_plots', { n: d.plots.length })}${icon('chev', 14)}</a>` : ''}</div>
-      <div class="cards3">${shown.map((i) => plotCardD(d.plots[i], d.readings[i]))}</div>
+      <div class="cards3">${shown.map((i) => plotCardD(d.plots[i], d.readings[i], { tank: d.tanks[i] }))}</div>
       <div class="row2">
         <div class="card chartcard">
           <div class="row sp"><div><a class="dtitle" href="#/plots/${sp?.plotId}">${t('chart_title', { plot: shortName(sp?.plotName) })}</a>
@@ -158,20 +159,22 @@ async function dashboardPage(alive, silent) {
 async function plotsPage(alive) {
   skeleton(); renderChrome('plots');
   const plots = await getPlots(true);
-  const readings = await pool(plots.map((p) => () => getReadings(p.plotId, 20)), 3);
+  const packs = await pool(plots.map((p) => async () => ({ readings: await getReadings(p.plotId, 20), tank: await getTank(p.plotId) })), 3);
   if (!alive()) return;
+  const readings = packs.map((p) => p.readings);
   state.livePlots = Object.fromEntries(plots.map((p, i) => [p.plotId, plotState(p, readings[i]).fresh])); state.live = Object.values(state.livePlots).filter(Boolean).length; renderChrome('plots');
   draw(viewEl, html`<div class="pg"><div class="pagehead"><div><h1>${t('plots_title')}</h1><div class="sub">${t('ai_note_foot')}</div></div></div>
-    <div class="plotsgrid d-only">${plots.map((p, i) => plotCardD(p, readings[i], { limits: true }))}</div>
-    <div class="mcards m-only">${plots.map((p, i) => plotCardM(p, readings[i], { limits: true }))}</div></div>`);
+    <div class="plotsgrid d-only">${plots.map((p, i) => plotCardD(p, readings[i], { limits: true, tank: packs[i].tank }))}</div>
+    <div class="mcards m-only">${plots.map((p, i) => plotCardM(p, readings[i], { limits: true, tank: packs[i].tank }))}</div></div>`);
 }
 
 const PRESETS = { dry: { soil: 18.5, temp: 29.4, hum: 41, rain: false }, wet: { soil: 62, temp: 24.2, hum: 70, rain: false }, rain: { soil: 55, temp: 20.1, hum: 92, rain: true } };
 function drawPlotLive(plot, readings) {
   const s = plotState(plot, readings);
+  const tank = state.tanks[plot.plotId] || null;
   { const lp = (state.livePlots ||= {}); const was = state.live; lp[plot.plotId] = s.fresh; const n = Object.values(lp).filter(Boolean).length; if (was !== null || n) { state.live = Math.max(n, 0); if ((was === 0) !== (n === 0) || was === null) renderChrome('plots'); } }
   draw($('#plot-live'), html`<div class="card"><div class="row sp wrap g8"><div><div class="lbl">${t('chart_title', { plot: shortName(plot.plotName) })}</div><div class="xs mut">${t('chart_sub', { n: readings.length })}</div></div>${s.latest ? html`<span class="chip">${s.fresh ? t('live_every') : t('sensor_offline')}</span>` : ''}</div>
-      <div style="margin:10px 0">${metricsBlock(plot, s)}</div>${lineChart(readings, plot.dryThresholdPct)}</div>
+      <div style="margin:10px 0">${metricsBlock(plot, s, tank)}</div>${lineChart(readings, plot.dryThresholdPct)}</div>
     <div class="card" style="margin-top:12px"><div class="lbl" style="margin-bottom:6px">${t('history')}</div>${readingsTable(readings, 20)}</div>`);
 }
 async function plotPage(id, alive) {
@@ -180,6 +183,7 @@ async function plotPage(id, alive) {
   const plot = plots.find((p) => p.plotId === id);
   if (!plot) { draw(viewEl, html`<div class="errbox">Plot ${id} not found. <a href="#/plots" class="b">${t('nav_plots')}</a></div>`); return; }
   const readings = await getReadings(id, 20);
+  await getTank(id);
   if (!alive()) return;
   const sess = getSession() || {}, dm = sess.demo;
   const canSim = !!dm && dm.simulateReadingPlots.includes(id);
@@ -204,7 +208,7 @@ async function plotPage(id, alive) {
           <p class="xs mut">${t('ai_greedy_hint')}</p></div>` : ''}
       </div></div></div>`);
   drawPlotLive(plot, readings);
-  state.timer = setInterval(async () => { if (document.hidden || !alive()) return; try { const rd = await getReadings(id, 20); if (!alive()) return; drawPlotLive(plot, rd); afterLiveDraw(); } catch { /* keep the old data */ } }, 30000);
+  state.timer = setInterval(async () => { if (document.hidden || !alive()) return; try { const rd = await getReadings(id, 20); await getTank(id); if (!alive()) return; drawPlotLive(plot, rd); afterLiveDraw(); } catch { /* keep the old data */ } }, 30000);
 }
 
 async function suggestionsPage(alive) {
@@ -453,7 +457,7 @@ document.addEventListener('submit', async (ev) => {
     busy(btn, true);
     try {
       const r = await demo('demo/reading', { plotId, soilMoisturePct: val('soil'), temperatureC: val('temp'), humidityPct: val('hum'), raining: f.rain.checked });
-      if (r.status === 201) { toast(t('sim_ok', { id: r.body.id })); const plot = plotById(plotId); drawPlotLive(plot, await getReadings(plotId, 20)); }
+      if (r.status === 201) { toast(t('sim_ok', { id: r.body.id })); const plot = plotById(plotId); await getTank(plotId); drawPlotLive(plot, await getReadings(plotId, 20)); }
       else toast(r.body.message || t('err_load'), true);
     } catch (e) { toast(errText(e), true); }
     finally { busy(btn, false); }
