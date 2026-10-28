@@ -10,8 +10,13 @@
 //   node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
 //   PowerShell: -join ((1..32 | ForEach-Object { '{0:x2}' -f (Get-Random -Max 256) }))
 
-#define WIFI_SSID "PASTE_WIFI_NAME_HERE"             // phone hotspot, 2.4 GHz only
+// Station mode: the sketch reads these two lines and joins this network.
+// It does not start its own hotspot. Find the board at the DHCP address on
+// Serial, or at http://mzansi-farm.local/ . Never commit the real password.
+#define WIFI_SSID "PASTE_WIFI_NAME_HERE"             // farmer Wi-Fi or laptop hotspot, 2.4 GHz only
 #define WIFI_PASSWORD "PASTE_WIFI_PASSWORD_HERE"
+// Optional. 1 posts soil and tank readings to API_BASE_URL. Leave this unset for the local dashboard only.
+// #define ENABLE_CLOUD_UPLOAD 1
 #define API_BASE_URL "http://13.43.92.196"           // no trailing slash. Plain HTTP.
 #define DEVICE_TOKEN "PASTE_DEVICE_TOKEN_HERE"
 #define DEVICE_ID "esp32-01"

@@ -4,25 +4,27 @@ Two ESP32 uses live in this project. They do not share a network path.
 
 | Use | Where | What talks to it |
 |---|---|---|
-| Live field dashboard | The board's own Wi-Fi hotspot `WaterLevel-ESP32`, page at `ESP32_DASHBOARD_URL` (default `http://192.168.4.1`) | The farmer's **browser** only. The Node API never connects to it. |
-| Sensor feed | `firmware/esp32` and `sim/` posting to `/api/v1/readings` | The board (or the simulator) calls the API. That feed is unchanged by the dashboard page. |
+| Live field page | The board joins the farmer's Wi-Fi (station mode). Address `ESP32_DASHBOARD_URL`, also `http://mzansi-farm.local` when mDNS works | The farmer's **browser** only. The Node API never connects to it. |
+| Sensor feed | `firmware/esp32` (PlatformIO) and `sim/` posting to `/api/v1/readings`, plus optional uploads from `firmware/esp32/MzansiFarmSensors/` | The board (or the simulator) calls the API. The live page does not write those rows. |
 
-The live dashboard sketch is not in this repository. Do not replace `firmware/esp32` with it. Water level is GPIO34 and soil moisture is GPIO35 on that sketch. The feed firmware uses a different sensor layout (soil on GPIO34, DHT22 on GPIO4) and posts readings to the API.
+The station-mode sketch is `firmware/esp32/MzansiFarmSensors/MzansiFarmSensors.ino`. Water level is GPIO34 and soil moisture is GPIO35. The separate PlatformIO feed (`firmware/esp32/src`) uses a different sensor layout (soil on GPIO34, DHT22 on GPIO4) and posts readings to the API.
 
-## Live field dashboard (browser only)
+## Live field page (browser only)
 
-The board starts its own access point and serves a page:
+The board joins the Wi-Fi named in `secrets.h`. It does not start a hotspot. Serial (115200) prints the DHCP address. The same board answers `http://mzansi-farm.local/` when mDNS works.
 
 | Item | Value |
 |---|---|
-| Wi-Fi name | `WaterLevel-ESP32` |
-| Default address | `http://192.168.4.1` |
-| Page | `GET /` (HTML). The page polls itself. |
-| JSON | `GET /data` returns `wRaw`, `wPct`, `sRaw`, `sPct`, plus calibration fields `wE`, `wF`, `wEs`, `wFs`, `sD`, `sW`, `sDs`, `sWs`. `wPct` and `sPct` are `-1` until both calibration points for that sensor are saved. |
+| Wi-Fi | The farmer's network (phone or laptop hotspot, 2.4 GHz), from `secrets.h` |
+| Name on the network | `mzansi-farm.local` |
+| Page | `GET /` (HTML dashboard on the device) |
+| JSON | `GET /data` returns `wRaw`, `wPct`, `wE`, `wF`, `wEs`, `wFs`, `sRaw`, `sPct`, `sD`, `sW`, `sDs`, `sWs`, `sta`, `staIp`, `cloud`, `rssi`. `wPct` and `sPct` are `-1` until both calibration points for that sensor are saved. |
+| History | `GET /history` returns `{intervalMs, w:[raw...], s:[raw...]}` |
 | Calibration | `GET /calibrate?mode=` one of `wempty`, `wfull`, `sdry`, `swet` |
+| CORS | `Access-Control-Allow-Origin: *` and `Access-Control-Allow-Private-Network: true` on those JSON responses and on `OPTIONS` |
 | Pins | Water-level signal GPIO34. Soil-moisture AO GPIO35. Both use 3V3 and GND. |
 
-The app shows this on **`/#/sensors`** (Live field sensors), linked from the dashboard, the sidebar, and Settings.
+The app shows this on **`/#/sensors`** (Live sensors), linked from the dashboard, the sidebar, and Settings. The page fetches `/data` about every 1.5 s and `/history` once when a reading loads. It draws water and soil gauges (percent when calibrated, raw ADC with a not-calibrated hint otherwise), line charts, Wi-Fi and RSSI, and the four calibration buttons. **Open dashboard** still opens `GET /` in a new tab.
 
 ### Config key
 
@@ -30,29 +32,22 @@ The app shows this on **`/#/sensors`** (Live field sensors), linked from the das
 |---|---|
 | Environment variable | `ESP32_DASHBOARD_URL` |
 | Default, if unset or blank | `http://192.168.4.1` |
+| What to set for this sketch | The DHCP address printed on Serial, or `http://mzansi-farm.local` |
 | Invalid value (not http/https, or a username/password in the URL) | The API refuses to start |
 | How the page learns it | `GET /ui/session` field `esp32DashboardUrl` (also when `mode` is `token`, because the live site is not on the device) |
 | Per-browser override | `localStorage` key `mf.esp32Url`, edited on the Live sensors page. **Use server default** deletes it. |
 
-The address is not a secret. It is not an app token, a device token, or the AI key. Do not put a password in the URL.
+The address is not a secret. It is not an app token, a device token, or the AI key. Do not put a password in the URL. `http://192.168.4.1` remains the value when the variable is missing, so an old `.env` still starts. This sketch does not use that address.
 
 ### Why the server does not proxy
 
-The live app is served from the cloud (port 80). `192.168.4.1` exists only on the hotspot. The server cannot open it, so there is no server-side fetch, rewrite, or proxy to the device. A browser that has joined `WaterLevel-ESP32` is the only client that can load the page. Joining that hotspot can drop the route back to this website unless mobile data or Ethernet stays up.
+The live app is served from the cloud (plain HTTP, for example `http://13.43.92.196`). The ESP32 address exists only on the farmer's Wi-Fi. The server cannot open it, so there is no server-side fetch, rewrite, or proxy to the device. A browser on that same Wi-Fi reads `GET /data` directly.
 
-The device sends **no CORS headers**. A page on another origin cannot read `GET /data` or `GET /calibrate`. The Live sensors page therefore:
-
-* embeds `GET /` in an iframe (the device page itself polls `/data`)
-* offers **Open dashboard** (a normal link; top-level navigation)
-* checks reachability with a browser `fetch` in `no-cors` mode
-
-That check does not read a body. An opaque response means the browser reached the device. A failure shows a clear offline state (join the hotspot, or allow local-network access if the browser blocks a public site from opening a private address). **Show the embed anyway** is there when the check is blocked but the iframe might still load.
+Chrome can block a public site from calling a private address (Local network access). A failed fetch shows a short message: allow Local network access for this site, or use **Open dashboard**. The device page is embedded in an iframe under that message, so a browser that still allows the frame can show it. The iframe is sandboxed with `allow-scripts`, `allow-same-origin`, and `allow-modals`. It is not allowed to navigate this app.
 
 Content-Security-Policy keeps `script-src 'self'`. `frame-src` and `connect-src` also allow `http:` and `https:`, because the saved address is chosen in the browser and is not one fixed host. The app and the device are both plain HTTP, so the iframe is not mixed content.
 
-The iframe is sandboxed with `allow-scripts`, `allow-same-origin`, and `allow-modals` so the device page can update and calibrate. It is not allowed to navigate this app.
-
-These readings are **not** stored in OpenEdge and do **not** drive irrigation suggestions. That still requires the sensor feed below.
+These readings are **not** stored in OpenEdge by this page and do **not** drive irrigation suggestions. That still requires the sensor feed below, or `ENABLE_CLOUD_UPLOAD` on the sketch.
 
 ### Deploy on the Windows server (port 80)
 
@@ -65,12 +60,12 @@ git pull
 npm install
 ```
 
-There is no build step.
+There is no build step. `npm install` is only needed when `package-lock.json` changed. This page does not.
 
-Add this line to `.env` on the server (do not commit `.env`). If the line is missing, the API still uses `http://192.168.4.1`.
+Add this line to `.env` on the server (do not commit `.env`). Use the address the board prints, or `http://mzansi-farm.local`. If the line is missing, the API still uses `http://192.168.4.1`, which this station-mode board does not serve.
 
 ```
-ESP32_DASHBOARD_URL=http://192.168.4.1
+ESP32_DASHBOARD_URL=http://mzansi-farm.local
 ```
 
 Restart the Node process that listens on port 80. Leave the database and PASOE running.
@@ -90,7 +85,7 @@ Then open `http://<server>/#/sensors`.
 
 ### If the device address changes
 
-The sketch sets the hotspot address to `192.168.4.1`. If that address changes, two places can still point at the old one:
+The board gets its address from DHCP. `mzansi-farm.local` stays the same when mDNS works. If you use a numeric address, two places can still point at the old one:
 
 1. A browser that saved an address (`mf.esp32Url`) keeps it until someone types the new address on Live sensors and presses **Save address**, or presses **Use server default**.
 2. Browsers with no saved address use `ESP32_DASHBOARD_URL`. Change that line in `.env` and restart Node. A restart does not clear a saved browser address.
@@ -103,7 +98,7 @@ The ESP32 feed of **Mzansi Farmer Ops**. It has these parts:
 
 | Part | Path | What it does |
 |---|---|---|
-| Soil + water sketch | `firmware/esp32/MzansiFarmSensors/` | Arduino sketch for the analog board (water GPIO34, soil GPIO35). Keeps the hotspot dashboard and POSTs soil to `POST /api/v1/readings` about every 10 s. |
+| Soil + water sketch | `firmware/esp32/MzansiFarmSensors/` | Arduino sketch for the analog board (water GPIO34, soil GPIO35). Station-mode dashboard at `mzansi-farm.local`. Cloud upload is off unless `ENABLE_CLOUD_UPLOAD` is `1`. |
 | Firmware | `firmware/esp32` | PlatformIO/Arduino. Reads soil moisture, temperature and humidity every 30 s and POSTs JSON over Wi-Fi to the API. |
 | Simulator | `sim/esp32-sim.js` | Pretends to be the ESP32 (`normal`, `drought`, `stale`, `invalid`) for demos and QA. |
 | Mock API | `sim/mock-server.js` | Tiny standalone server that implements only the device contract (201/400/401/409). Not needed when you run the real Node API (`npm start`); use it to test the feed alone. |
@@ -112,11 +107,11 @@ All of them use the same readings contract (`docs/API.md`, section on `POST /api
 
 ## MzansiFarmSensors (soil on the existing readings path)
 
-Sketch folder: `firmware/esp32/MzansiFarmSensors/`. Built-in libraries only (Wi-Fi, WebServer, HTTPClient, Preferences).
+Sketch folder: `firmware/esp32/MzansiFarmSensors/`. Built-in libraries only (Wi-Fi, WebServer, ESPmDNS, HTTPClient, Preferences).
 
-The board measures **soil** on GPIO35 and **water** on GPIO34. Calibration (dry/wet and empty/full) is stored in Preferences under the namespace `cal` and survives restarts. The backup dashboard is unchanged in role: the ESP32 is an access point named `WaterLevel-ESP32` (password `Water1234`) at `http://192.168.4.1`, even when the internet Wi-Fi is down.
+The board measures **soil** on GPIO35 and **water** on GPIO34. Calibration (dry/wet and empty/full) is stored in Preferences under the namespace `cal` and survives restarts. `WiFi.mode(WIFI_STA)` joins the network named in `secrets.h` (2.4 GHz) and serves the dashboard on that address. The board is a Wi-Fi client only.
 
-`WiFi.mode(WIFI_AP_STA)` also joins the phone hotspot named in `secrets.h` (2.4 GHz). About every 10 seconds, once soil is calibrated, the sketch POSTs:
+Cloud upload is off unless `secrets.h` sets `ENABLE_CLOUD_UPLOAD` to `1`. When it is on, about every 10 seconds, once soil is calibrated, the sketch POSTs:
 
 ```
 POST {API_BASE_URL}/api/v1/readings
@@ -240,7 +235,7 @@ arduino-cli compile --fqbn esp32:esp32:esp32 firmware/esp32/MzansiFarmSensors
 arduino-cli upload -p COM10 --fqbn esp32:esp32:esp32 firmware/esp32/MzansiFarmSensors
 ```
 
-School Wi-Fi with a captive portal or WPA2-Enterprise will not work, and 5 GHz will not either. Use the phone's 2.4 GHz hotspot. The ESP32 needs NTP (UDP 123) for the timestamp. In AP+STA mode the hotspot follows the phone's Wi-Fi channel, so a phone joined to `WaterLevel-ESP32` may drop for a moment when the board joins the internet Wi-Fi. Plain HTTP means the device token is not encrypted on the wire. Fine for this demo, not for production.
+School Wi-Fi with a captive portal or WPA2-Enterprise will not work, and 5 GHz will not either. Use the farmer's 2.4 GHz Wi-Fi or a laptop hotspot, and put that name in `secrets.h`. The ESP32 needs NTP (UDP 123) before a cloud upload. The local dashboard does not. Plain HTTP means the device token is not encrypted on the wire. Fine for this demo, not for production.
 
 ### curl (same body the sketch sends)
 
@@ -377,5 +372,5 @@ The mock server (`sim/mock-server.js`) checks `X-Device-Token`, validates the bo
 ## Secrets
 
 - `firmware/esp32/include/config.h` (Wi-Fi password, API URL, token) is gitignored. Only `config.example.h` with placeholders is committed.
-- `firmware/esp32/MzansiFarmSensors/secrets.h` (hotspot SSID and password, API URL, device id, device token, climate numbers) is gitignored. Only `secrets.example.h` is committed.
+- `firmware/esp32/MzansiFarmSensors/secrets.h` (Wi-Fi SSID and password, API URL, device id, device token, climate numbers) is gitignored. Only `secrets.example.h` is committed. The sketch reads `WIFI_SSID` and `WIFI_PASSWORD` from that file.
 - The sim reads the token from the `DEVICE_TOKEN` env var.

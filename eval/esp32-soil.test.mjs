@@ -43,19 +43,31 @@ const sketchBody = {
   waterLevelPct: 46,
 };
 
-test('sketch posts the readings schema: header, path, field names, AP dashboard, 10 s interval', () => {
+test('sketch posts the readings schema and serves a station-mode dashboard', () => {
   assert.match(sketch, /X-Device-Token/);
   assert.match(sketch, /\/api\/v1\/readings/);
   for (const field of ['deviceId', 'plotId', 'timestamp', 'soilMoisturePct', 'temperatureC', 'humidityPct', 'raining']) {
     assert.match(sketch, new RegExp(field));
   }
-  assert.match(sketch, /WIFI_AP_STA/);
-  assert.match(sketch, /WaterLevel-ESP32/);
-  assert.match(sketch, /192, 168, 4, 1/);
+  assert.match(sketch, /WIFI_STA/);
+  assert.doesNotMatch(sketch, /WIFI_AP_STA/);
+  assert.doesNotMatch(sketch, /WaterLevel-ESP32/);
+  assert.doesNotMatch(sketch, /Water1234/);
+  assert.doesNotMatch(sketch, /192,\s*168,\s*4,\s*1/);
+  assert.doesNotMatch(sketch, /DESKTOP-U7LDMSC/);
+  assert.doesNotMatch(sketch, /#define\s+WIFI_SSID/);
+  assert.doesNotMatch(sketch, /#define\s+WIFI_PASSWORD/);
+  assert.match(sketch, /mzansi-farm/);
+  assert.match(sketch, /secrets\.h/);
+  assert.match(sketch, /Access-Control-Allow-Origin/);
+  assert.match(sketch, /Access-Control-Allow-Private-Network/);
+  assert.match(sketch, /\/history/);
+  assert.match(sketch, /rssi/);
   assert.match(sketch, /WATER_PIN = 34/);
   assert.match(sketch, /SOIL_PIN = 35/);
   assert.match(sketch, /SEND_INTERVAL_MS = 10000/);
   assert.match(sketch, /CLIMATE_VALUES_ARE_REAL/);
+  assert.match(sketch, /ENABLE_CLOUD_UPLOAD/);
   assert.match(sketch, /\/api\/v1\/tank-readings/);
   for (const field of ['waterLevelRaw', 'waterLevelPct', 'calibrated']) assert.match(sketch, new RegExp(field));
   assert.doesNotMatch(sketch, /PASTE_DEVICE_TOKEN_HERE/);
@@ -67,6 +79,8 @@ test('secrets.example.h is a placeholder and secrets.h is gitignored', () => {
   assert.match(example, /PASTE_DEVICE_TOKEN_HERE/);
   assert.match(example, /"esp32-01"/);
   assert.match(example, /CLIMATE_VALUES_ARE_REAL 0/);
+  assert.match(example, /mzansi-farm\.local/);
+  assert.match(envExample, /mzansi-farm\.local/);
   assert.doesNotMatch(example, /[0-9a-f]{32,}/i);
   assert.match(gitignore, /firmware\/esp32\/MzansiFarmSensors\/secrets\.h/);
   assert.match(envExample, /DEVICE_REGISTRY=\[\{"deviceId":"esp32-01","plotId":1,"token":"replace-with-random-device-token"\}\]/);

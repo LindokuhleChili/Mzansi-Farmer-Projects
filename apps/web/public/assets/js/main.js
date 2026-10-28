@@ -7,7 +7,7 @@ import { weatherPage, weatherClick, weatherSubmit } from './weather.js';
 import { doctorPage, doctorClick, doctorSubmit, doctorChange } from './doctor.js';
 import { assistantPage, casePage, assistantClick, assistantSubmit } from './assistant.js';
 import { plotCardD, plotCardM, plotState, lineChart, readingsTable, sugRow, sugTitle, reviewView, confirmSheet, fmtSecs, langToggle, auditRow, bg, metricsBlock, lvl } from './views.js';
-import { sensorsPage, sensorsClick, sensorsSubmit, sensorsDashLink } from './sensors.js';
+import { sensorsPage, sensorsClick, sensorsSubmit, sensorsDashLink, stopSensorsLive } from './sensors.js';
 
 const viewEl = $('#view'), overlay = $('#overlay'), toastRoot = $('#toast-root');
 const state = { plots: [], plotsAt: 0, selPlot: null, sugFilter: 'all', auditFilter: 'decisions', pending: null, live: null, nav: 0, timer: null, sheetTimer: null, readings: {}, tanks: {}, cur: null, sugs: { at: 0, list: [] } };
@@ -328,6 +328,7 @@ async function route() {
 function afterLiveDraw() { aiNote(); fillTranslations(); }
 async function routeInner() {
   clearInterval(state.timer);
+  stopSensorsLive();
   const me = ++state.nav, alive = () => me === state.nav;
   const [, a, b, c] = (location.hash.replace(/^#/, '') || '/').split('/');
   closeSheet();

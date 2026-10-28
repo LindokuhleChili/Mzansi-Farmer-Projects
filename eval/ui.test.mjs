@@ -14,8 +14,9 @@ import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from '../apps/api/src/config.js';
 import {
-  ESP32_DASHBOARD_URL_DEFAULT, ESP32_URL_STORAGE_KEY, clearEsp32UrlOverride, esp32DashboardUrlFromEnv,
-  normalizeEsp32DashboardUrl, probeEsp32Dashboard, readEsp32UrlOverride, resolveEsp32DashboardUrl, writeEsp32UrlOverride,
+  ESP32_DASHBOARD_URL_DEFAULT, ESP32_POLL_MS, ESP32_URL_STORAGE_KEY, clearEsp32UrlOverride, displayPct, esp32CalibrateUrl,
+  esp32DashboardUrlFromEnv, esp32ResourceUrl, fetchEsp32Json, normalizeEsp32DashboardUrl, parseEsp32Data, parseEsp32History,
+  readEsp32UrlOverride, resolveEsp32DashboardUrl, toSensorPct, writeEsp32UrlOverride,
 } from '../apps/web/public/assets/js/esp32-url.js';
 import { createOeClient } from '../apps/api/src/oe/client.js';
 import { createMockProvider } from '../apps/api/src/ai/provider.js';
@@ -276,48 +277,130 @@ test('ESP32 dashboard URL: a saved browser address wins until it is cleared; a c
   assert.equal(readEsp32UrlOverride(bad), null);
   assert.equal(bad.getItem(ESP32_URL_STORAGE_KEY), null);
 });
-test('ESP32 dashboard probe: no-cors to the page URL, opaque success is online, a network error is offline, /data is not requested', async () => {
+const sampleData = {
+  wRaw: 6, wPct: -1, wE: 0, wF: 4095, wEs: false, wFs: false,
+  sRaw: 4095, sPct: -1, sD: 0, sW: 4095, sDs: false, sWs: false,
+  sta: true, staIp: '192.168.137.217', cloud: 'upload off (local only)', rssi: -44,
+};
+const calibratedData = {
+  wRaw: 2000, wPct: 46, wE: 100, wF: 4000, wEs: true, wFs: true,
+  sRaw: 1000, sPct: 80, sD: 3200, sW: 1200, sDs: true, sWs: true,
+  sta: true, staIp: '192.168.137.217', cloud: 'upload off (local only)', rssi: -40,
+};
+
+test('ESP32 live read: CORS GET /data, /history and /calibrate; a failed fetch is not a reading', async () => {
+  assert.ok(ESP32_POLL_MS >= 1000 && ESP32_POLL_MS <= 2000);
+  assert.equal(esp32ResourceUrl('http://192.168.137.217/', '/data?t=1'), 'http://192.168.137.217/data?t=1');
+  assert.equal(esp32ResourceUrl('http://mzansi-farm.local', '/history'), 'http://mzansi-farm.local/history');
+  assert.equal(esp32CalibrateUrl('http://192.168.137.217', 'wempty'), 'http://192.168.137.217/calibrate?mode=wempty');
+  assert.equal(esp32CalibrateUrl('http://192.168.137.217', 'drop'), null);
+  assert.equal(esp32ResourceUrl('javascript:alert(1)', '/data'), null);
+  assert.equal(esp32ResourceUrl('http://192.168.137.217', 'http://evil/data'), null);
   let called;
-  const ok = await probeEsp32Dashboard('http://192.168.4.1/', async (url, opts) => { called = { url, opts }; return { type: 'opaque' }; });
-  assert.equal(ok, true);
-  assert.equal(called.url, 'http://192.168.4.1');
-  assert.equal(called.opts.mode, 'no-cors');
+  const data = await fetchEsp32Json('http://192.168.137.217/', '/data', async (url, opts) => {
+    called = { url, opts };
+    return { ok: true, json: async () => sampleData };
+  });
+  assert.equal(data.ok, true);
+  assert.equal(called.url, 'http://192.168.137.217/data');
+  assert.equal(called.opts.mode, 'cors');
   assert.equal(called.opts.cache, 'no-store');
   assert.equal(called.opts.credentials, 'omit');
-  assert.ok(!String(called.url).includes('/data') && !String(called.url).includes('/calibrate'));
-  assert.equal(await probeEsp32Dashboard('http://192.168.4.1', async () => { throw new Error('ECONNREFUSED'); }), false);
-  assert.equal(await probeEsp32Dashboard('javascript:alert(1)', async () => { throw new Error('should not be called'); }), false);
+  const reading = parseEsp32Data(data.json);
+  assert.equal(reading.wRaw, 6);
+  assert.equal(reading.wPct, -1);
+  assert.equal(reading.sRaw, 4095);
+  assert.equal(reading.rssi, -44);
+  assert.equal(reading.staIp, '192.168.137.217');
+  assert.equal(displayPct(reading.wPct, reading.wRaw, reading.wE, reading.wF, reading.wEs, reading.wFs), -1);
+  assert.equal(displayPct(46, 2000, 100, 4000, true, true), 46);
+  assert.equal(toSensorPct(2000, 3000, 1000, true, true), 50);
+  assert.equal(toSensorPct(6, 0, 4095, false, false), -1);
+  const hist = await fetchEsp32Json('http://mzansi-farm.local', '/history', async () => ({ ok: true, json: async () => ({ intervalMs: 1000, w: [1, 2, 3], s: [4, 5] }) }));
+  assert.deepEqual(parseEsp32History(hist.json), { intervalMs: 1000, w: [1, 2, 3], s: [4, 5] });
+  const cal = await fetchEsp32Json('http://192.168.137.217', '/calibrate?mode=sdry', async (url) => {
+    assert.equal(url, 'http://192.168.137.217/calibrate?mode=sdry');
+    return { ok: true, json: async () => ({ ok: true }) };
+  });
+  assert.equal(cal.json.ok, true);
+  const blocked = await fetchEsp32Json('http://192.168.137.217', '/data', async () => { throw new TypeError('Failed to fetch'); });
+  assert.equal(blocked.ok, false);
+  assert.equal(blocked.reason, 'network');
+  assert.equal((await fetchEsp32Json('javascript:alert(1)', '/data', async () => { throw new Error('should not be called'); })).ok, false);
   const slow = (_url, opts) => new Promise((_resolve, reject) => { opts.signal.addEventListener('abort', () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' }))); });
-  assert.equal(await probeEsp32Dashboard('http://192.168.4.1', slow, 20), false);
+  assert.equal((await fetchEsp32Json('http://192.168.137.217', '/data', slow, 20)).reason, 'timeout');
 });
-test('ESP32 dashboard page: iframe and open link when reachable; offline state with no iframe; the API does not proxy the device', async () => {
+test('ESP32 dashboard page: native gauges when /data is readable; iframe fallback when the fetch fails; the API does not proxy the device', async () => {
   const { sensorsView } = await import('../apps/web/public/assets/js/sensors.js');
   const { setLang } = await import('../apps/web/public/assets/js/i18n.js');
   setLang('en');
-  const online = String(sensorsView({ url: 'http://192.168.4.1', serverUrl: 'http://192.168.4.1', phase: 'online', overridden: false }));
-  assert.match(online, /<iframe /);
-  assert.match(online, /src="http:\/\/192\.168\.4\.1"/);
-  assert.match(online, /sandbox="allow-scripts allow-same-origin allow-modals"/);
-  assert.match(online, /href="http:\/\/192\.168\.4\.1"/);
-  assert.match(online, /Open dashboard/);
-  assert.match(online, /GPIO34/);
-  assert.match(online, /GPIO35/);
-  assert.match(online, /no CORS headers/);
-  assert.doesNotMatch(online, /src="[^"]*\/data/);
-  const offline = String(sensorsView({ url: 'http://192.168.4.1', serverUrl: 'http://192.168.4.1', phase: 'offline', overridden: false }));
-  assert.doesNotMatch(offline, /<iframe /);
-  assert.match(offline, /Device not reachable from this browser/);
-  assert.match(offline, /WaterLevel-ESP32/);
-  assert.match(offline, /Open dashboard/);
-  assert.match(offline, /Show the embed anyway/);
+  const bare = parseEsp32Data(sampleData);
+  const live = String(sensorsView({
+    url: 'http://192.168.137.217', serverUrl: 'http://192.168.4.1', phase: 'live', overridden: true,
+    reading: bare, water: [4, 6, 8], soil: [4000, 4090, 4095],
+  }));
+  assert.doesNotMatch(live, /<iframe /);
+  assert.match(live, /href="http:\/\/192\.168\.137\.217"/);
+  assert.match(live, /Open dashboard/);
+  assert.match(live, /Sensors live/);
+  assert.match(live, /192\.168\.137\.217/);
+  assert.match(live, /-44/);
+  assert.match(live, /Not calibrated/);
+  assert.match(live, />6</);
+  assert.match(live, />4095</);
+  assert.match(live, /Set EMPTY/);
+  assert.match(live, /Set FULL/);
+  assert.match(live, /Set DRY/);
+  assert.match(live, /Set WET/);
+  assert.match(live, /data-act="esp-cal"/);
+  assert.match(live, /data-mode="wempty"/);
+  assert.match(live, /data-mode="swet"/);
+  assert.match(live, /Step 1 of 2: set EMPTY/);
+  assert.match(live, /raw ADC 0–4095 \(not calibrated\)/);
+  assert.match(live, /<svg /);
+  assert.match(live, /GPIO34/);
+  assert.match(live, /GPIO35/);
+  assert.match(live, /GET \/data/);
+  assert.doesNotMatch(live, /WaterLevel-ESP32/);
+  assert.doesNotMatch(live, /no CORS headers/);
+  assert.doesNotMatch(live, /src="[^"]*\/data/);
+  const ready = parseEsp32Data(calibratedData);
+  const cal = String(sensorsView({
+    url: 'http://192.168.137.217', serverUrl: 'http://192.168.4.1', phase: 'live', overridden: false,
+    reading: ready, water: [100, 2000, 4000], soil: [3200, 2000, 1200],
+  }));
+  assert.match(cal, /46%/);
+  assert.match(cal, /80%/);
+  assert.match(cal, /Calibrated: showing percentage/);
+  assert.match(cal, /% \(calibrated\)/);
+  assert.match(cal, /Medium level/);
+  assert.match(cal, /Wet: no watering needed/);
+  assert.doesNotMatch(cal, /<iframe /);
+  const blocked = String(sensorsView({ url: 'http://192.168.137.217', serverUrl: 'http://192.168.4.1', phase: 'blocked', overridden: false }));
+  assert.match(blocked, /<iframe /);
+  assert.match(blocked, /src="http:\/\/192\.168\.137\.217"/);
+  assert.match(blocked, /sandbox="allow-scripts allow-same-origin allow-modals"/);
+  assert.match(blocked, /Could not read the device from this page/);
+  assert.match(blocked, /Local network access/);
+  assert.match(blocked, /Open dashboard/);
+  assert.match(blocked, /mzansi-farm\.local/);
+  assert.doesNotMatch(blocked, /WaterLevel-ESP32/);
+  assert.doesNotMatch(blocked, /no CORS headers/);
   const checking = String(sensorsView({ url: 'http://192.168.4.1', serverUrl: 'http://10.0.0.9', phase: 'checking', overridden: true }));
   assert.doesNotMatch(checking, /<iframe /);
   assert.match(checking, /saved address/);
   assert.match(checking, /http:\/\/10\.0\.0\.9/);
+  assert.match(checking, /Reading the device/);
   const sensorsSrc = readFileSync(join(WEB, 'assets/js/sensors.js'), 'utf8');
   const urlSrc = readFileSync(join(WEB, 'assets/js/esp32-url.js'), 'utf8');
-  assert.ok(!sensorsSrc.includes('fetch('), 'the page module does not fetch the device');
-  assert.ok(!/['"`]\/data['"`]|['"`]\/calibrate['"`]/.test(urlSrc + sensorsSrc), 'no request for /data or /calibrate');
+  const i18nSrc = readFileSync(join(WEB, 'assets/js/i18n.js'), 'utf8');
+  assert.match(sensorsSrc, /\/data/);
+  assert.match(sensorsSrc, /\/history/);
+  assert.match(sensorsSrc, /\/calibrate/);
+  assert.match(urlSrc, /mode: 'cors'/);
+  assert.doesNotMatch(sensorsSrc + urlSrc + i18nSrc, /no-cors/);
+  assert.doesNotMatch(sensorsSrc + urlSrc + i18nSrc, /WaterLevel-ESP32/);
+  assert.doesNotMatch(sensorsSrc + urlSrc + i18nSrc, /no CORS headers/);
   const apiDir = fileURLToPath(new URL('../apps/api/src/', import.meta.url));
   const walkApi = (d) => { for (const f of readdirSync(d, { withFileTypes: true })) { const p = join(d, f.name); if (f.isDirectory()) walkApi(p); else if (f.name.endsWith('.js')) assert.ok(!readFileSync(p, 'utf8').includes('192.168.4.1'), p); } };
   walkApi(apiDir);
@@ -328,6 +411,7 @@ test('ESP32 dashboard page: iframe and open link when reachable; offline state w
   assert.equal(session.json().demo, null);
   for (const secret of [APP, DEV1, KEY]) assert.ok(!session.body.includes(secret));
   assert.equal((await app.inject({ method: 'GET', url: '/data' })).statusCode, 404);
+  assert.equal((await app.inject({ method: 'GET', url: '/history' })).statusCode, 404);
   assert.equal((await app.inject({ method: 'GET', url: '/calibrate?mode=wempty' })).statusCode, 404);
   await app.close();
 });
