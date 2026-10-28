@@ -46,6 +46,7 @@ This is a hackathon prototype. It shows one idea: an AI model may propose, OpenE
 - **Temperature limits differ.** The firmware accepts -40 to 80 C. The API accepts -20 to 60 C and returns a 400 error with the field name for values outside that range.
 - **One device per plot in the demo.** The device registry maps a token to one device and one plot. There is no device onboarding.
 - **Wi-Fi and network.** The firmware needs 2.4 GHz Wi-Fi and a network where the laptop is reachable. It also needs the clock to sync before it sends a reading.
+- **The live field dashboard is not a sensor feed.** `/#/sensors` embeds the ESP32's own page (`ESP32_DASHBOARD_URL`, default `http://192.168.4.1` on the WaterLevel-ESP32 hotspot). The API never connects to that address, and those water and soil readings are not written to OpenEdge. The separate `POST /api/v1/readings` feed is unchanged. See `docs/ESP32.md`.
 
 ## Security and privacy
 

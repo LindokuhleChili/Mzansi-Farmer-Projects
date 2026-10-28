@@ -10,8 +10,9 @@ All data is fictional example data. The AI suggests, OpenEdge rules check it, th
 
 | Address | What it shows |
 |---|---|
-| `/#/` Dashboard | Desktop: "N of M plots have dry soil", **three plot cards in one row** (photo, status, soil moisture with the dry-limit tick, temperature, humidity, rain, reading age; the whole card opens the plot), the soil chart with the dry limit and the last readings, and "Waiting for you" (suggestions that wait for a decision plus recent rule rejections), all visible without scrolling at 1440 x 900. Phone: full-bleed photo hero with the big "2 of 3" numeral, location pill, ZU/EN switch, avatar and status chips, then a white sheet with "Your plots". **Ask AI for advice** is on each plot page (and on the dashboard when nothing is waiting). Refreshes every 30 s. |
-| `/#/settings` | Language, what the app talks to (stand-in or real OpenEdge, AI), session. |
+| `/#/` Dashboard | Desktop: "N of M plots have dry soil", **three plot cards in one row** (photo, status, soil moisture with the dry-limit tick, temperature, humidity, rain, reading age; the whole card opens the plot), the soil chart with the dry limit and the last readings, and "Waiting for you" (suggestions that wait for a decision plus recent rule rejections), all visible without scrolling at 1440 x 900. Phone: full-bleed photo hero with the big "2 of 3" numeral, location pill, ZU/EN switch, avatar and status chips, then a white sheet with "Your plots". **Ask AI for advice** is on each plot page (and on the dashboard when nothing is waiting). Refreshes every 30 s. A link at the bottom opens Live field sensors. |
+| `/#/sensors` | **Live field sensors (ESP32).** Embeds the device's own page (iframe) and an **Open dashboard** link. The address comes from `GET /ui/session` (`esp32DashboardUrl`, env `ESP32_DASHBOARD_URL`, default `http://192.168.4.1`). An editable field saves a different address in this browser only (`localStorage` key `mf.esp32Url`). If the browser cannot open the address, the page shows an offline state instead of a blank frame. The server does not proxy the device. See `docs/ESP32.md`. |
+| `/#/settings` | Language, what the app talks to (stand-in or real OpenEdge, AI), session, and a link to Live field sensors. |
 | `/#/plots` | All plots (the dashboard shows three of them) with their limits (dry limit, max litres per irrigation, weekly budget). |
 | `/#/plots/{id}` | One plot: latest readings, soil chart, 20-reading history, **Ask AI for advice**, and the demo tools below. |
 | `/#/suggestions` | Every suggestion, newest first, with filters (waiting, approved, blocked by rules, declined). |
@@ -27,14 +28,15 @@ The browser never holds the app token, a device token or the AI key.
 * **Same computer (normal demo).** The page calls `/ui/api/v1/*`. The API re-issues the call to its own `/api/v1/*` inside the process with its own `APP_TOKEN`, so nothing changes in the rules, the two-step confirmation or the audit log. The proxy only forwards `plots`, `suggestions` and `audit`, never `readings` (that is the device route).
 * The `/ui/*` routes answer **only** when all of these hold: the client is on loopback (127.0.0.1 or ::1), the `Host` header is `localhost`, `127.0.0.1` or `[::1]`, and the request carries `X-Requested-With: mzansi-ui`. The last two stop other web pages in the same browser (and DNS-rebinding tricks) from using the proxy. `UI_ALLOW_REMOTE=1` lifts only the loopback check; it is off by default and is not recommended.
 * **Another device (a phone on the LAN).** The proxy answers 403 `UI_LOCAL_ONLY`, the page shows "Enter the app token", the farmer pastes `APP_TOKEN`, and it is kept in `sessionStorage` (that tab only) and sent to `/api/v1/*`. Windows Firewall must allow TCP 3000 for this (see `docs/NOTES.md`). The demo tools are not available this way.
-* `GET /ui/session` tells the page which mode applies. It returns the OpenEdge mode, the AI provider name and the demo tools that exist. It never returns a token, a key or a device token (a test checks this).
-* The static files are served with a strict Content-Security-Policy (`default-src 'self'`) and `nosniff`; only files under `apps/web/public/` can be read.
+* `GET /ui/session` tells the page which mode applies. It returns the OpenEdge mode, the AI provider name, the ESP32 dashboard address (`esp32DashboardUrl`), and the demo tools that exist. It never returns a token, a key or a device token (a test checks this). The dashboard address is not a secret. Remote browsers (mode `token`) still receive it, because the page embeds the device from the browser.
+* The static files are served with a Content-Security-Policy and `nosniff`; only files under `apps/web/public/` can be read. `default-src` and `script-src` stay `'self'`. `frame-src` and `connect-src` also allow `http:` and `https:` so the browser can embed a device address the farmer types, and can run a no-cors reachability check. That check does not read the body. The device sends no CORS headers, so the page does not fetch `GET /data`.
 * `UI_ENABLED=0` removes the UI and the `/ui/*` routes completely; `/api/v1` is unchanged.
 
 | Variable | Default | Effect |
 |---|---|---|
 | `UI_ENABLED` | `1` | `0`, `false`, `off` or `no` switches the web UI off. |
 | `UI_ALLOW_REMOTE` | `0` | `1` lets non-loopback clients use the `/ui/api` proxy (only the loopback check is lifted). |
+| `ESP32_DASHBOARD_URL` | `http://192.168.4.1` | Address shown on Live field sensors when this browser has not saved its own. The API does not connect to it. |
 
 ## Demo tools (this computer only, not part of the farmer app)
 
@@ -97,4 +99,5 @@ All photos are **Pexels License** (free to use and modify, attribution not requi
 * The UI is tested against the mock OpenEdge and the mock AI here. Against the real PASOE it makes the same API calls; use `OE_MODE=pasoe` (see `docs/NOTES.md` section 4) and look at it once on the laptop before the demo.
 * The "numbers used" and rule rows of a suggestion use the numbers from the moment the AI answered when that browser tab asked for it; for any other suggestion they are the current OpenEdge numbers and the card says so.
 * The page throttles itself to 3 calls at a time and refreshes every 30 s, because the OpenEdge development licence allows 5 concurrent requests. Every call is also written to the audit log, so the audit page hides tool calls by default.
+* Live field sensors (`/#/sensors`) loads the ESP32 from the browser. If this computer is not on the `WaterLevel-ESP32` hotspot, the panel stays on the offline state. The cloud server cannot fill that in. See `docs/ESP32.md`.
 * One made-up user (Nomsa). There is no login for farmers; access control is the loopback rule or the pasted app token.

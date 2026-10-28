@@ -22,6 +22,7 @@ An ESP32 soil sensor sends readings to a Node API. An AI model proposes an actio
 | Similar past cases | Description embeddings on Diagnosis (schema `009-similar.df`, load with `load-similar`). Compares a written description of the photos, not the pixels. No key: crop and condition. See [docs/DOCTOR.md](docs/DOCTOR.md) |
 | MCP server | Same assistant tools over stdio or Streamable HTTP (`APP_TOKEN`). See [docs/MCP.md](docs/MCP.md) |
 | Farm watch | Off unless `FARM_WATCH_INTERVAL_MIN` is set. Manual: `POST /api/v1/assistant/watch/run`. Opens cases only; the farmer still approves. See [docs/ASSISTANT.md](docs/ASSISTANT.md) |
+| Live ESP32 field dashboard | Page `/#/sensors` embeds the device page. The server only publishes `ESP32_DASHBOARD_URL`. It does not proxy the hotspot. See [docs/ESP32.md](docs/ESP32.md) |
 | PASOE security | Basic login (`farmapi`, `farmadmin`), role check in ABL for admin changes, real user in the audit log; see [openedge/pasoe/README.md](openedge/pasoe/README.md) |
 | Planned features 18, 19, 20 (rest), 22 | **Not built yet**; ideas and plans in [docs/OLD-APP-IDEAS-PLAN.md](docs/OLD-APP-IDEAS-PLAN.md) |
 
@@ -94,6 +95,7 @@ By default `OE_MODE=mock` and `AI_PROVIDER=mock`, so the API runs entirely in me
 | `FARM_WATCH_DEDUPE_HOURS` | Do not open another case for the same issue while one is open, or until this many hours after a closed one | `24` |
 | `MCP_HTTP_HOST`, `MCP_HTTP_PORT` | Used only by `npm run mcp:http`. Bearer token is `APP_TOKEN` | `127.0.0.1`, `3001` |
 | `LOG_DIR`, `LOG_LEVEL` | Tool-call log folder (`logs/tool-calls.jsonl`, gitignored) and log level | `logs`, `warn` |
+| `ESP32_DASHBOARD_URL` | Address of the ESP32's own sensor page. The browser embeds it. The API never connects to it. See [docs/ESP32.md](docs/ESP32.md) | `http://192.168.4.1` |
 
 ## Using the real Gemini model
 
