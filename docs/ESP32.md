@@ -1,14 +1,169 @@
 # ESP32 sensor feed (firmware + simulator)
 
-The ESP32 feed of **Mzansi Farmer Ops**. It has three parts:
+The ESP32 feed of **Mzansi Farmer Ops**. It has these parts:
 
 | Part | Path | What it does |
 |---|---|---|
+| Soil + water sketch | `firmware/esp32/MzansiFarmSensors/` | Arduino sketch for the analog board (water GPIO34, soil GPIO35). Keeps the hotspot dashboard and POSTs soil to `POST /api/v1/readings` about every 10 s. |
 | Firmware | `firmware/esp32` | PlatformIO/Arduino. Reads soil moisture, temperature and humidity every 30 s and POSTs JSON over Wi-Fi to the API. |
 | Simulator | `sim/esp32-sim.js` | Pretends to be the ESP32 (`normal`, `drought`, `stale`, `invalid`) for demos and QA. |
 | Mock API | `sim/mock-server.js` | Tiny standalone server that implements only the device contract (201/400/401/409). Not needed when you run the real Node API (`npm start`); use it to test the feed alone. |
 
-Both sides use the same API contract (`docs/API.md`, section on `POST /api/v1/readings`). **Only local: nothing here pushes, publishes or phones home.**
+All of them use the same readings contract (`docs/API.md`, section on `POST /api/v1/readings`). Each sketch posts only to the URL in its gitignored config. Nothing in the repo adds a hidden endpoint.
+
+## MzansiFarmSensors (soil on the existing readings path)
+
+Sketch folder: `firmware/esp32/MzansiFarmSensors/`. Built-in libraries only (Wi-Fi, WebServer, HTTPClient, Preferences).
+
+The board measures **soil** on GPIO35 and **water** on GPIO34. Calibration (dry/wet and empty/full) is stored in Preferences under the namespace `cal` and survives restarts. The backup dashboard is unchanged in role: the ESP32 is an access point named `WaterLevel-ESP32` (password `Water1234`) at `http://192.168.4.1`, even when the internet Wi-Fi is down.
+
+`WiFi.mode(WIFI_AP_STA)` also joins the phone hotspot named in `secrets.h` (2.4 GHz). About every 10 seconds, once soil is calibrated, the sketch POSTs:
+
+```
+POST {API_BASE_URL}/api/v1/readings
+X-Device-Token: <DEVICE_TOKEN>
+Content-Type: application/json
+
+{
+  "deviceId": "esp32-01",
+  "plotId": 1,
+  "timestamp": "2026-10-28T10:00:00Z",
+  "soilMoisturePct": 42,
+  "temperatureC": 22.0,
+  "humidityPct": 55.0,
+  "raining": false
+}
+```
+
+Field names, the integer `plotId`, and the header are the ones `apps/api/src/app.js` checks. `deviceId` and `plotId` must match the `DEVICE_REGISTRY` entry for that token. `201` is stored, `409` (same device and timestamp) is treated as success, `400` is not retried as the same body, `401` stops uploads until reboot. Other HTTP and network errors use a non-blocking backoff (10 s, 20 s, 40 s … capped at 5 min). Wi-Fi reconnects are also scheduled with `millis()` (every 15 s) so the dashboard loop is not stuck in a connect wait. The POST itself uses `HTTPClient`, which blocks for that one request (timeout 8 s). The dashboard shows the last cloud status, and the internet Wi-Fi address, on the same page.
+
+`temperatureC` and `humidityPct` are required by the soil route and by `SensorReading` (both columns are mandatory). This analog board does not measure them. `secrets.h` has `CLIMATE_TEMPERATURE_C` and `CLIMATE_HUMIDITY_PCT`. The soil post stays off until `CLIMATE_VALUES_ARE_REAL` is `1`, so the placeholder numbers in `secrets.example.h` are never stored as a soil reading. Put a real thermometer reading there first. `raining` is `false` (no rain sensor). The water post does not wait for that flag. Irrigation rules use soil moisture, rain, reading age, and the water budget. The temperature and humidity tiles show whatever was stored.
+
+The plot cards show the latest soil percentage beside a water-level tile (`apps/web/public/assets/js/views.js`). The page reloads both about every 30 s. An uncalibrated tank shows "Not calibrated". A calibrated one shows the percent.
+
+### Water level (`POST /api/v1/tank-readings`)
+
+Same header `X-Device-Token`, same `deviceId` and `plotId` as the soil post. The body is:
+
+```
+{
+  "deviceId": "esp32-01",
+  "plotId": 1,
+  "timestamp": "2026-10-28T10:00:10Z",
+  "waterLevelRaw": 1834,
+  "waterLevelPct": 46,
+  "calibrated": true
+}
+```
+
+`waterLevelRaw` is an integer from 0 to 4095. `waterLevelPct` is 0 to 100 when `calibrated` is true, and `null` when `calibrated` is false (the probe has not had both EMPTY and FULL saved). `201` stores a row, `409` is the same device and timestamp, `401` stops both uploads until reboot. The app reads `GET /api/v1/plots/{id}/tank-readings` with the farmer bearer token.
+
+The table is `TankReading` in `openedge/schema/010-tank.df` (`TankReadingId`, `PlotId`, `DeviceId`, `ReadAt`, nullable `LevelPct`, `LevelRaw`, `Calibrated`). `scripts/oe-run.ps1 -Action load-tank` loads that file only, the same way `load-similar` loads `009-similar.df`. `load-schema` and the throw-away scratch database also include it. The mock OpenEdge store (`mock-pasoe`) accepts the route with no database, which is what `npm test` uses.
+
+`npm test` does not stop a database and does not call the public host.
+
+### Windows deploy (backup, stop, load, start)
+
+Run this on the Windows machine that hosts the farm database (OpenEdge 12.8, `DLC` default `C:\Progress\OpenEdge`, database directory default `C:\OpenEdge\WRK\farm`, PASOE instance `farmops`). PowerShell, from the repo root, after this branch is checked out there. These commands were not run from the agent, and nothing was run on the public server.
+
+Do not run `seed` as part of this load. Seed replaces the example readings. The new table starts empty.
+
+```powershell
+$Dlc = if ($env:DLC) { $env:DLC } else { 'C:\Progress\OpenEdge' }
+$DbDir = if ($env:FARM_DB_DIR) { $env:FARM_DB_DIR } else { 'C:\OpenEdge\WRK\farm' }
+$stamp = Get-Date -Format 'yyyyMMdd-HHmmss'
+$backupDir = 'C:\OpenEdge\WRK\backup'
+New-Item -ItemType Directory -Force -Path $backupDir | Out-Null
+$bk = Join-Path $backupDir "farm-before-010-tank-$stamp.bk"
+
+# 1. Online backup WHILE the database server is still running. This is the backup before the stop.
+#    If this command fails, stop here. Do not stop the database.
+& (Join-Path $Dlc 'bin\probkup.bat') online (Join-Path $DbDir 'farm') $bk
+if ($LASTEXITCODE -ne 0) { throw "Backup failed ($bk). The database was not stopped." }
+Write-Output "Backup written: $bk"
+
+# 2. Stop PASOE so its agent disconnects. Use the farmops instance directory
+#    (the folder that contains bin\tcman.bat). Example:
+#    Set-Location C:\OpenEdge\WRK\farmops
+#    .\bin\tcman.bat stop
+
+# 3. Stop the database server (single-user schema load cannot run while it is up).
+#    Run the next commands from the repository root.
+.\scripts\oe-run.ps1 -Action stop-db
+
+# 4. Load 010-tank.df only. A farm.e file next to openedge\src means the load failed.
+.\scripts\oe-run.ps1 -Action load-tank
+
+# 5. Start the database again (port 20000).
+.\scripts\oe-run.ps1 -Action start-db
+
+# 6. Start PASOE again so it compiles farm-api.p, which now uses TankReading.
+#    From the farmops instance directory: .\bin\tcman.bat start
+#    Do not point PASOE at this branch's farm-api.p before step 4. The old
+#    database has no TankReading table, so that compile fails.
+
+# 7. Restart the Node API on that machine (OE_MODE=pasoe) so POST /api/v1/tank-readings is served.
+#    Copy the new DEVICE_REGISTRY token into .env only if the device is not already esp32-01 on plot 1.
+```
+
+Until step 4 has been done on that database, a PASOE process running this branch's `farm-api.p` will not compile. The Node mock (`OE_MODE=mock`) does not need the stop.
+
+### secrets.h
+
+```bash
+cd firmware/esp32/MzansiFarmSensors
+cp secrets.example.h secrets.h
+# edit WIFI_SSID, WIFI_PASSWORD, DEVICE_TOKEN, and the climate lines
+```
+
+`secrets.h` is gitignored. `secrets.example.h` has placeholders only.
+
+Token (same value as that device's `token` inside `DEVICE_REGISTRY` in `.env`, not `APP_TOKEN`):
+
+```bash
+node -e "console.log(require('node:crypto').randomBytes(32).toString('hex'))"
+```
+
+PowerShell:
+
+```powershell
+-join ((1..32 | ForEach-Object { '{0:x2}' -f (Get-Random -Max 256) }))
+```
+
+`npm run setup` writes a random device token into `.env` for `esp32-01` / plot `1`. Copy that token into `secrets.h`. A token that starts with `replace-` is rejected when the API starts.
+
+### Upload
+
+Board: ESP32 Dev Module. Port example: `COM10`. Serial monitor: 115200. Hold BOOT if the upload stays on "Connecting".
+
+```bash
+arduino-cli compile --fqbn esp32:esp32:esp32 firmware/esp32/MzansiFarmSensors
+arduino-cli upload -p COM10 --fqbn esp32:esp32:esp32 firmware/esp32/MzansiFarmSensors
+```
+
+School Wi-Fi with a captive portal or WPA2-Enterprise will not work, and 5 GHz will not either. Use the phone's 2.4 GHz hotspot. The ESP32 needs NTP (UDP 123) for the timestamp. In AP+STA mode the hotspot follows the phone's Wi-Fi channel, so a phone joined to `WaterLevel-ESP32` may drop for a moment when the board joins the internet Wi-Fi. Plain HTTP means the device token is not encrypted on the wire. Fine for this demo, not for production.
+
+### curl (same body the sketch sends)
+
+Use a timestamp that is not already stored, in UTC, with a trailing `Z` and no milliseconds. `$DEVICE_TOKEN` is the registry token.
+
+```bash
+curl -i -X POST http://localhost:3000/api/v1/readings \
+  -H "Content-Type: application/json" -H "X-Device-Token: $DEVICE_TOKEN" \
+  -d '{"deviceId":"esp32-01","plotId":1,"timestamp":"2026-10-28T10:00:10Z","soilMoisturePct":42,"temperatureC":22.0,"humidityPct":55,"raining":false}'
+```
+
+Expect `201` and a JSON `id`. Then open the maize plot in the app (or `GET /api/v1/plots/1/readings` with `Authorization: Bearer <APP_TOKEN>`). The newest row's soil percentage is the value you posted. Soil uses the existing `SensorReading` table, so that post does not need a schema load.
+
+Tank, same token, a new timestamp:
+
+```bash
+curl -i -X POST http://localhost:3000/api/v1/tank-readings \
+  -H "Content-Type: application/json" -H "X-Device-Token: $DEVICE_TOKEN" \
+  -d '{"deviceId":"esp32-01","plotId":1,"timestamp":"2026-10-28T10:00:10Z","waterLevelRaw":1834,"waterLevelPct":46,"calibrated":true}'
+```
+
+`GET /api/v1/plots/1/tank-readings` with the bearer token returns that row, and the plot card shows 46% next to soil. On `OE_MODE=mock` this works with no database stop. On the real farm database, load `010-tank.df` first (the Windows steps above). An uncalibrated probe sends `"waterLevelPct":null,"calibrated":false`.
 
 ## API contract
 
@@ -123,4 +278,5 @@ The mock server (`sim/mock-server.js`) checks `X-Device-Token`, validates the bo
 ## Secrets
 
 - `firmware/esp32/include/config.h` (Wi-Fi password, API URL, token) is gitignored. Only `config.example.h` with placeholders is committed.
+- `firmware/esp32/MzansiFarmSensors/secrets.h` (hotspot SSID and password, API URL, device id, device token, climate numbers) is gitignored. Only `secrets.example.h` is committed.
 - The sim reads the token from the `DEVICE_TOKEN` env var.

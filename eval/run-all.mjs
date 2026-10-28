@@ -133,5 +133,13 @@ for (const m of asTests.stdout.matchAll(/^(not ok|ok) \d+ - (.*)$/gm)) console.l
 console.log(`  farm assistant tests: ${asPass} passed, ${asFail} failed`);
 totals.pass += asPass; totals.fail += asFail + (asTests.status === 0 ? 0 : (asFail ? 0 : 1));
 
+console.log('\n=== 18. ESP32 soil sketch: readings ingest, plot UI value, secrets placeholder (eval/esp32-soil.test.mjs, node:test) ===');
+const soilTests = spawnSync(process.execPath, ['--test', '--test-reporter=tap', fileURLToPath(new URL('./esp32-soil.test.mjs', import.meta.url))], { encoding: 'utf8' });
+const soilPass = Number((/^# pass (\d+)/m.exec(soilTests.stdout) || [])[1] || 0), soilFail = Number((/^# fail (\d+)/m.exec(soilTests.stdout) || [])[1] || 0);
+for (const m of soilTests.stdout.matchAll(/^(not ok|ok) \d+ - (.*)$/gm)) console.log(`  ${m[1] === 'ok' ? 'PASS' : 'FAIL'}  ${m[2]}`);
+if (soilFail) console.log(soilTests.stdout.slice(-2000));
+console.log(`  ESP32 soil tests: ${soilPass} passed, ${soilFail} failed`);
+totals.pass += soilPass; totals.fail += soilFail + (soilTests.status === 0 ? 0 : (soilFail ? 0 : 1));
+
 console.log(`\nTOTAL: ${totals.pass} passed, ${totals.fail} failed, ${totals.intentional} intentional failures confirmed (by design), ${totals.unexpected} unexpected passes of intentional cases`);
 process.exit(totals.fail === 0 && totals.unexpected === 0 ? 0 : 1);

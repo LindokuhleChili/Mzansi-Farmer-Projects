@@ -102,6 +102,32 @@ export function buildApp({ config, oe, provider, clock = () => new Date(), weath
     return reply.code(r.status).send(r.status === 201 ? r.body : { ...r.body, requestId: req.id });
   });
 
+  // Water tank. Same device token as soil. LevelPct is null until the probe is calibrated.
+  // Storage is TankReading (openedge/schema/010-tank.df). Loading that file needs the database stopped.
+  app.post(`${PREFIX}/tank-readings`, async (req, reply) => {
+    const dev = deviceFor(req);
+    if (!dev) return fail(reply, req, 401, 'UNAUTHORIZED', 'Missing or unknown X-Device-Token.');
+    const b = req.body;
+    const bad = (field, message) => fail(reply, req, 400, 'VALIDATION_ERROR', message, { field });
+    if (!b || typeof b !== 'object' || Array.isArray(b)) return bad('body', 'Body must be a JSON object.');
+    if (typeof b.deviceId !== 'string' || !b.deviceId) return bad('deviceId', 'deviceId must be a non-empty string.');
+    if (!Number.isInteger(b.plotId)) return bad('plotId', 'plotId must be an integer.');
+    if (!isValidIsoTimestamp(b.timestamp)) return bad('timestamp', 'timestamp must be ISO 8601 UTC, e.g. 2026-10-24T08:00:00Z.');
+    if (!Number.isInteger(b.waterLevelRaw) || b.waterLevelRaw < 0 || b.waterLevelRaw > 4095) return bad('waterLevelRaw', 'waterLevelRaw must be an integer from 0 to 4095.');
+    const pctAbsent = b.waterLevelPct === undefined || b.waterLevelPct === null;
+    const pctOk = typeof b.waterLevelPct === 'number' && Number.isFinite(b.waterLevelPct) && b.waterLevelPct >= 0 && b.waterLevelPct <= 100;
+    if (!pctAbsent && !pctOk) return bad('waterLevelPct', 'waterLevelPct must be a number between 0 and 100, or null.');
+    if (typeof b.calibrated !== 'boolean') return bad('calibrated', 'calibrated must be true or false.');
+    if (b.calibrated && pctAbsent) return bad('waterLevelPct', 'waterLevelPct is required when calibrated is true.');
+    if (!b.calibrated && !pctAbsent) return bad('waterLevelPct', 'waterLevelPct must be null when calibrated is false.');
+    if (b.deviceId !== dev.deviceId) return fail(reply, req, 400, 'DEVICE_MISMATCH', 'deviceId does not match the device token.', { field: 'deviceId' });
+    if (b.plotId !== dev.plotId) return fail(reply, req, 400, 'DEVICE_MISMATCH', 'plotId does not match the device token.', { field: 'plotId' });
+    if (Date.parse(b.timestamp) > clock().getTime() + FUTURE_SKEW_MINUTES * 60000) return bad('timestamp', `timestamp is more than ${FUTURE_SKEW_MINUTES} minutes in the future.`);
+    const r = await oeCall(req, 'oe.post_tank', 'POST', '/farm/tank-readings',
+      { deviceId: b.deviceId, plotId: b.plotId, timestamp: b.timestamp, waterLevelRaw: b.waterLevelRaw, waterLevelPct: pctAbsent ? null : b.waterLevelPct, calibrated: b.calibrated });
+    return reply.code(r.status).send(r.status === 201 ? r.body : { ...r.body, requestId: req.id });
+  });
+
   // ---- 2. reads (app token)
   const passthrough = (name, buildPath) => async (req, reply) => {
     if (!requireApp(req, reply)) return;
@@ -113,6 +139,7 @@ export function buildApp({ config, oe, provider, clock = () => new Date(), weath
   const intId = (s) => (/^\d+$/.test(s) ? parseInt(s, 10) : null);
   app.get(`${PREFIX}/plots`, passthrough('oe.list_plots', () => '/farm/plots'));
   app.get(`${PREFIX}/plots/:id/readings`, passthrough('oe.get_readings', (req) => { const id = intId(req.params.id); return id === null ? null : `/farm/plots/${id}/readings${req.query.limit ? '?limit=' + encodeURIComponent(req.query.limit) : ''}`; }));
+  app.get(`${PREFIX}/plots/:id/tank-readings`, passthrough('oe.get_tank', (req) => { const id = intId(req.params.id); return id === null ? null : `/farm/plots/${id}/tank-readings${req.query.limit ? '?limit=' + encodeURIComponent(req.query.limit) : ''}`; }));
   app.get(`${PREFIX}/suggestions`, passthrough('oe.list_suggestions', (req) => `/farm/suggestions${req.query.status ? '?status=' + encodeURIComponent(req.query.status) : ''}`));
   app.get(`${PREFIX}/suggestions/:id`, passthrough('oe.get_suggestion', (req) => { const id = intId(req.params.id); return id === null ? null : `/farm/suggestions/${id}`; }));
   app.get(`${PREFIX}/audit`, passthrough('oe.list_audit', (req) => `/farm/audit${req.query.limit ? '?limit=' + encodeURIComponent(req.query.limit) : ''}`));

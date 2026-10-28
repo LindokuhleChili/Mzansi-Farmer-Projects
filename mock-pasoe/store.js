@@ -15,11 +15,12 @@ export function createStore(seedPath = SEED_PATH, coopSeedPath = COOP_SEED_PATH,
     farms: seed.farms.map((f) => ({ ...f })),
     plots: seed.plots.map((p) => ({ ...p })),
     readings: [], suggestions: [], audit: [],
+    tankReadings: [],
     // co-op tables (openedge/schema/003-coop.df); money is kept as integer cents, quantities as whole kg
     members: [], credits: [], lots: [], contracts: [], allocations: [], payouts: [],
     // harvest-day market tables (openedge/schema/004-market.df)
     retailPrices: [], marketEvents: [], marketItems: [], reservations: [],
-    seq: { reading: 1000, suggestion: 0, audit: 0, member: 0, credit: 0, lot: 0, contract: 0, allocation: 0, payout: 0, marketEvent: 0, marketItem: 0, reservation: 0 },
+    seq: { reading: 1000, tank: 1000, suggestion: 0, audit: 0, member: 0, credit: 0, lot: 0, contract: 0, allocation: 0, payout: 0, marketEvent: 0, marketItem: 0, reservation: 0 },
     latestReading(plotId) {
       let best = null;
       for (const r of this.readings) if (r.plotId === plotId && (!best || r.readAt > best.readAt)) best = r;

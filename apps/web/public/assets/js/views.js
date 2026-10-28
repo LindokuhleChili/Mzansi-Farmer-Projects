@@ -18,15 +18,22 @@ export const lvl = (cls, ic, text) => html`<span class="lvl ${cls}">${ic ? icon(
 const statusLvl = (s) => !s.latest ? lvl('z', '', t('no_data')) : !s.fresh ? lvl('z', '', t('sensor_offline')) : s.dry ? lvl('w', 'drop', t('dry_soil')) : lvl('n', 'check', t('moisture_ok'));
 const rainBit = (s) => !s.latest || !s.fresh ? '' : s.latest.raining ? html`<span class="raintxt on">${icon('rain', 14)}${t('rain_detected')}</span>` : html`<span class="raintxt">${icon('sun', 14)}${t('no_rain')}</span>`;
 
-export function metricsBlock(plot, s) {
+export function metricsBlock(plot, s, tank = null) {
   const l = s.latest;
   const soil = l ? l.soilMoisturePct : null;
   const w = soil === null ? 0 : Math.max(0, Math.min(100, soil));
   const dim = s.fresh ? '' : 'opacity:.6';
+  const tankAge = tank?.readAt ? ageMinutes(tank.readAt) : null;
+  const tankFresh = tankAge !== null && tankAge <= FRESH_MINUTES;
+  const water = tank && tank.calibrated && typeof tank.waterLevelPct === 'number' ? tank.waterLevelPct : null;
+  const waterDim = tank && !tankFresh ? 'opacity:.6' : '';
   return html`<div class="metrics">
     <div class="metric"><div class="k">${icon('drop', 12)}${t('soil_moisture')}</div>
       <div class="v" style="${dim}">${num(soil)}<small>%</small></div>
       <div class="limbar" title="${t('dry_limit', { t: plot.dryThresholdPct })}"><i class="${s.dry ? 'dry' : ''}" style="width:${w}%"></i><u style="left:${plot.dryThresholdPct}%"></u></div></div>
+    <div class="metric"><div class="k">${icon('drop', 12)}${t('water_level')}</div>
+      <div class="v" style="${waterDim}">${water === null ? '—' : num(water)}<small>${water === null ? '' : '%'}</small></div>
+      <div class="xs mut">${tank && tank.calibrated === false ? t('water_uncal') : tank ? (tankFresh ? '' : t('sensor_offline')) : ''}</div></div>
     <div class="metric"><div class="k">${icon('temp', 12)}${t('temperature')}</div><div class="v" style="${dim}">${num(l?.temperatureC)}<small>°C</small></div></div>
     <div class="metric"><div class="k">${icon('cloud', 12)}${t('humidity')}</div><div class="v" style="${dim}">${num(l?.humidityPct, 0)}<small>%</small></div></div>
   </div>`;
@@ -35,24 +42,24 @@ const limitsLine = (plot) => html`<div class="lim">${t('plot_limits', { t: plot.
 const agoLine = (s) => html`<div class="ago">${icon('clock', 12)}${s.latest ? t('reading_ago', { ago: agoText(s.age) }) : t('no_readings')}</div>`;
 
 /** Desktop plot card: photo on top with the status badge on it. */
-export function plotCardD(plot, readings, { limits = false } = {}) {
+export function plotCardD(plot, readings, { limits = false, tank = null } = {}) {
   const s = plotState(plot, readings);
   return html`<a class="pc" href="#/plots/${plot.plotId}" data-plot="${plot.plotId}" aria-label="${shortName(plot.plotName)}">
     <div class="ph photo" style="${photoStyle(plot.crop)}" role="img" aria-label="${plot.crop}">${statusLvl(s)}</div>
     <div class="bd">
       <div class="row sp"><div><div class="nm">${shortName(plot.plotName)}</div><div class="xs mut" style="margin-top:2px">${plot.crop} · ${t('plot_area', { ha: plot.areaHa })}${s.latest ? ' · ' + s.latest.deviceId : ''}</div></div>${rainBit(s)}</div>
-      ${metricsBlock(plot, s)}${limits ? limitsLine(plot) : ''}${agoLine(s)}
+      ${metricsBlock(plot, s, tank)}${limits ? limitsLine(plot) : ''}${agoLine(s)}
     </div></a>`;
 }
 /** Phone plot card: thumbnail, name and meta on the left, badges on the right, then the three tiles. */
-export function plotCardM(plot, readings, { limits = false } = {}) {
+export function plotCardM(plot, readings, { limits = false, tank = null } = {}) {
   const s = plotState(plot, readings);
   return html`<a class="mc" href="#/plots/${plot.plotId}" data-plot="${plot.plotId}" aria-label="${shortName(plot.plotName)}">
     <div class="row g12"><div class="th photo" style="${photoStyle(plot.crop)}" role="img" aria-label="${plot.crop}"></div>
       <div class="grow"><div class="nm">${shortName(plot.plotName)}</div><div class="xs mut" style="margin-top:2px">${plot.crop} · ${t('plot_area', { ha: plot.areaHa })}</div>
         <div class="xs mut" style="margin-top:1px">${s.latest ? t('reading_ago_dev', { dev: s.latest.deviceId, ago: agoText(s.age) }) : t('no_readings')}</div></div>
       <div class="st">${statusLvl(s)}${rainBit(s)}</div></div>
-    ${metricsBlock(plot, s)}${limits ? html`<div class="xs mut" style="margin-top:8px">${t('plot_limits', { t: plot.dryThresholdPct, max: plot.maxIrrigationLitres, b: plot.weeklyWaterBudgetL })}</div>` : ''}
+    ${metricsBlock(plot, s, tank)}${limits ? html`<div class="xs mut" style="margin-top:8px">${t('plot_limits', { t: plot.dryThresholdPct, max: plot.maxIrrigationLitres, b: plot.weeklyWaterBudgetL })}</div>` : ''}
   </a>`;
 }
 

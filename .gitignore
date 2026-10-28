@@ -13,6 +13,7 @@ logs/
 # ESP32 firmware (secrets and build output)
 config.h
 firmware/esp32/include/config.h
+firmware/esp32/MzansiFarmSensors/secrets.h
 .pio/
 .vscode/
 .DS_Store

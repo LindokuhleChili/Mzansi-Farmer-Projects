@@ -65,6 +65,16 @@ export function handle(store, method, pathWithQuery, body = {}, clock = () => ne
       const p = store.plots.find((x) => x.plotId === idOf(segs[1]));
       return p ? { status: 200, body: plotJson(p) } : err(404, 'PLOT_NOT_FOUND', `No plot with id ${idOf(segs[1])}.`);
     }
+    if (n === 3 && segs[0] === 'plots' && segs[2] === 'tank-readings') {
+      const id = idOf(segs[1]);
+      if (!store.plots.find((x) => x.plotId === id)) return err(404, 'PLOT_NOT_FOUND', `No plot with id ${id}.`);
+      let limit = parseInt(q.get('limit') ?? '20', 10);
+      if (!(limit >= 1 && limit <= 500)) limit = 20;
+      const rows = (store.tankReadings || []).filter((r) => r.plotId === id).sort((a, b) => b.readAt - a.readAt).slice(0, limit)
+        .map((r) => ({ tankReadingId: r.tankReadingId, deviceId: r.deviceId, readAt: iso(r.readAt), waterLevelRaw: r.waterLevelRaw,
+          waterLevelPct: r.waterLevelPct, calibrated: r.calibrated }));
+      return { status: 200, body: { plotId: id, readings: rows } };
+    }
     if (n === 3 && segs[0] === 'plots' && segs[2] === 'readings') {
       const id = idOf(segs[1]);
       if (!store.plots.find((x) => x.plotId === id)) return err(404, 'PLOT_NOT_FOUND', `No plot with id ${id}.`);
@@ -97,6 +107,7 @@ export function handle(store, method, pathWithQuery, body = {}, clock = () => ne
 
   if (method === 'POST') {
     if (n === 1 && segs[0] === 'readings') return postReading(store, body);
+    if (n === 1 && segs[0] === 'tank-readings') return postTank(store, body);
     if (n === 1 && segs[0] === 'validate') {
       const v = parseValidateInput(body, clock);
       return v.error ?? { status: 200, body: validate(store, v) };
@@ -114,6 +125,28 @@ export function handle(store, method, pathWithQuery, body = {}, clock = () => ne
     return err(404, 'NOT_FOUND', 'Unknown route.');
   }
   return err(405, 'METHOD_NOT_ALLOWED', 'Method not allowed.');
+}
+
+function postTank(store, b) {
+  if (!isStr(b.deviceId) || b.deviceId === '' || b.deviceId.length > 40) return err(400, 'VALIDATION_ERROR', 'deviceId must be a string of 1 to 40 characters.', 'deviceId');
+  if (!isNum(b.plotId) || !Number.isInteger(b.plotId)) return err(400, 'VALIDATION_ERROR', 'plotId must be an integer.', 'plotId');
+  const ts = parseIso(b.timestamp);
+  if (!ts) return err(400, 'VALIDATION_ERROR', 'timestamp must be ISO 8601 UTC, e.g. 2026-10-24T08:00:00Z.', 'timestamp');
+  if (!Number.isInteger(b.waterLevelRaw) || b.waterLevelRaw < 0 || b.waterLevelRaw > 4095) return err(400, 'VALIDATION_ERROR', 'waterLevelRaw must be an integer from 0 to 4095.', 'waterLevelRaw');
+  const pctAbsent = b.waterLevelPct === undefined || b.waterLevelPct === null;
+  if (!pctAbsent && (!isNum(b.waterLevelPct) || b.waterLevelPct < 0 || b.waterLevelPct > 100)) return err(400, 'VALIDATION_ERROR', 'waterLevelPct must be a number between 0 and 100, or null.', 'waterLevelPct');
+  if (typeof b.calibrated !== 'boolean') return err(400, 'VALIDATION_ERROR', 'calibrated must be true or false.', 'calibrated');
+  if (b.calibrated && pctAbsent) return err(400, 'VALIDATION_ERROR', 'waterLevelPct is required when calibrated is true.', 'waterLevelPct');
+  if (!b.calibrated && !pctAbsent) return err(400, 'VALIDATION_ERROR', 'waterLevelPct must be null when calibrated is false.', 'waterLevelPct');
+  if (!store.plots.find((p) => p.plotId === b.plotId)) return err(404, 'PLOT_NOT_FOUND', `No plot with id ${b.plotId}.`, 'plotId');
+  store.tankReadings = store.tankReadings || [];
+  if (store.tankReadings.some((r) => r.deviceId === b.deviceId && r.readAt.getTime() === ts.getTime())) {
+    return err(409, 'DUPLICATE_READING', 'A tank reading for this deviceId and timestamp already exists.', 'timestamp');
+  }
+  const row = { tankReadingId: ++store.seq.tank, plotId: b.plotId, deviceId: b.deviceId, readAt: ts, waterLevelRaw: b.waterLevelRaw,
+    waterLevelPct: pctAbsent ? null : b.waterLevelPct, calibrated: b.calibrated };
+  store.tankReadings.push(row);
+  return { status: 201, body: { id: row.tankReadingId } };
 }
 
 function postReading(store, b) {
