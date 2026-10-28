@@ -1,4 +1,103 @@
-# ESP32 sensor feed (firmware + simulator)
+# ESP32
+
+Two ESP32 uses live in this project. They do not share a network path.
+
+| Use | Where | What talks to it |
+|---|---|---|
+| Live field dashboard | The board's own Wi-Fi hotspot `WaterLevel-ESP32`, page at `ESP32_DASHBOARD_URL` (default `http://192.168.4.1`) | The farmer's **browser** only. The Node API never connects to it. |
+| Sensor feed | `firmware/esp32` and `sim/` posting to `/api/v1/readings` | The board (or the simulator) calls the API. That feed is unchanged by the dashboard page. |
+
+The live dashboard sketch is not in this repository. Do not replace `firmware/esp32` with it. Water level is GPIO34 and soil moisture is GPIO35 on that sketch. The feed firmware uses a different sensor layout (soil on GPIO34, DHT22 on GPIO4) and posts readings to the API.
+
+## Live field dashboard (browser only)
+
+The board starts its own access point and serves a page:
+
+| Item | Value |
+|---|---|
+| Wi-Fi name | `WaterLevel-ESP32` |
+| Default address | `http://192.168.4.1` |
+| Page | `GET /` (HTML). The page polls itself. |
+| JSON | `GET /data` returns `wRaw`, `wPct`, `sRaw`, `sPct`, plus calibration fields `wE`, `wF`, `wEs`, `wFs`, `sD`, `sW`, `sDs`, `sWs`. `wPct` and `sPct` are `-1` until both calibration points for that sensor are saved. |
+| Calibration | `GET /calibrate?mode=` one of `wempty`, `wfull`, `sdry`, `swet` |
+| Pins | Water-level signal GPIO34. Soil-moisture AO GPIO35. Both use 3V3 and GND. |
+
+The app shows this on **`/#/sensors`** (Live field sensors), linked from the dashboard, the sidebar, and Settings.
+
+### Config key
+
+| | |
+|---|---|
+| Environment variable | `ESP32_DASHBOARD_URL` |
+| Default, if unset or blank | `http://192.168.4.1` |
+| Invalid value (not http/https, or a username/password in the URL) | The API refuses to start |
+| How the page learns it | `GET /ui/session` field `esp32DashboardUrl` (also when `mode` is `token`, because the live site is not on the device) |
+| Per-browser override | `localStorage` key `mf.esp32Url`, edited on the Live sensors page. **Use server default** deletes it. |
+
+The address is not a secret. It is not an app token, a device token, or the AI key. Do not put a password in the URL.
+
+### Why the server does not proxy
+
+The live app is served from the cloud (port 80). `192.168.4.1` exists only on the hotspot. The server cannot open it, so there is no server-side fetch, rewrite, or proxy to the device. A browser that has joined `WaterLevel-ESP32` is the only client that can load the page. Joining that hotspot can drop the route back to this website unless mobile data or Ethernet stays up.
+
+The device sends **no CORS headers**. A page on another origin cannot read `GET /data` or `GET /calibrate`. The Live sensors page therefore:
+
+* embeds `GET /` in an iframe (the device page itself polls `/data`)
+* offers **Open dashboard** (a normal link; top-level navigation)
+* checks reachability with a browser `fetch` in `no-cors` mode
+
+That check does not read a body. An opaque response means the browser reached the device. A failure shows a clear offline state (join the hotspot, or allow local-network access if the browser blocks a public site from opening a private address). **Show the embed anyway** is there when the check is blocked but the iframe might still load.
+
+Content-Security-Policy keeps `script-src 'self'`. `frame-src` and `connect-src` also allow `http:` and `https:`, because the saved address is chosen in the browser and is not one fixed host. The app and the device are both plain HTTP, so the iframe is not mixed content.
+
+The iframe is sandboxed with `allow-scripts`, `allow-same-origin`, and `allow-modals` so the device page can update and calibrate. It is not allowed to navigate this app.
+
+These readings are **not** stored in OpenEdge and do **not** drive irrigation suggestions. That still requires the sensor feed below.
+
+### Deploy on the Windows server (port 80)
+
+This change is Node and static files only. It does not change the OpenEdge schema, ABL, or the database. **Do not stop the database** (port 20000) or PASOE.
+
+From the repository root in PowerShell:
+
+```powershell
+git pull
+npm install
+```
+
+There is no build step.
+
+Add this line to `.env` on the server (do not commit `.env`). If the line is missing, the API still uses `http://192.168.4.1`.
+
+```
+ESP32_DASHBOARD_URL=http://192.168.4.1
+```
+
+Restart the Node process that listens on port 80. Leave the database and PASOE running.
+
+```powershell
+Get-NetTCPConnection -LocalPort 80 -State Listen | Select-Object OwningProcess
+```
+
+Stop that process the same way it is supervised, then start it again the same way so it keeps port 80. Real environment variables win over `.env`. If the service already sets `PORT=80`, do not change `PORT` inside `.env` unless that file is what the service reads. A hand start looks like:
+
+```powershell
+$env:PORT = '80'
+npm start
+```
+
+Then open `http://<server>/#/sensors`.
+
+### If the device address changes
+
+The sketch sets the hotspot address to `192.168.4.1`. If that address changes, two places can still point at the old one:
+
+1. A browser that saved an address (`mf.esp32Url`) keeps it until someone types the new address on Live sensors and presses **Save address**, or presses **Use server default**.
+2. Browsers with no saved address use `ESP32_DASHBOARD_URL`. Change that line in `.env` and restart Node. A restart does not clear a saved browser address.
+
+Nothing in the database, the device token, or `POST /api/v1/readings` uses this address. Changing it does not move plots or suggestions.
+
+## Sensor feed (firmware + simulator)
 
 The ESP32 feed of **Mzansi Farmer Ops**. It has three parts:
 

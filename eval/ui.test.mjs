@@ -13,6 +13,10 @@ import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 import { fileURLToPath } from 'node:url';
 import { loadConfig } from '../apps/api/src/config.js';
+import {
+  ESP32_DASHBOARD_URL_DEFAULT, ESP32_URL_STORAGE_KEY, clearEsp32UrlOverride, esp32DashboardUrlFromEnv,
+  normalizeEsp32DashboardUrl, probeEsp32Dashboard, readEsp32UrlOverride, resolveEsp32DashboardUrl, writeEsp32UrlOverride,
+} from '../apps/web/public/assets/js/esp32-url.js';
 import { createOeClient } from '../apps/api/src/oe/client.js';
 import { createMockProvider } from '../apps/api/src/ai/provider.js';
 import { buildApp } from '../apps/api/src/app.js';
@@ -37,6 +41,9 @@ test('UI: / serves the app shell with security headers; assets are served with t
   assert.equal(r.statusCode, 200);
   assert.match(r.headers['content-type'], /text\/html/);
   assert.match(r.headers['content-security-policy'], /default-src 'self'/);
+  assert.match(r.headers['content-security-policy'], /script-src 'self'/);
+  assert.match(r.headers['content-security-policy'], /connect-src 'self' http: https:/);
+  assert.match(r.headers['content-security-policy'], /frame-src http: https:/);
   assert.equal(r.headers['x-content-type-options'], 'nosniff');
   assert.match(r.body, /Mzansi Farmer AI/);
   for (const [url, type] of [['/assets/css/app.css', /text\/css/], ['/assets/js/main.js', /javascript/], ['/assets/photos/plot-maize.jpg', /image\/jpeg/], ['/assets/fonts/Inter.woff2', /font\/woff2/], ['/favicon.svg', /svg/]]) {
@@ -70,6 +77,7 @@ test('UI: /ui/session reports proxy mode locally and NEVER contains a token or k
   assert.equal(r.statusCode, 200);
   const j = r.json();
   assert.equal(j.mode, 'proxy'); assert.equal(j.oeMode, 'mock'); assert.equal(j.aiProvider, 'mock');
+  assert.equal(j.esp32DashboardUrl, 'http://192.168.4.1');
   assert.deepEqual(j.demo.simulateReadingPlots, [1, 2]);
   assert.deepEqual(j.demo.aiBehaviour, { current: 'normal', options: ['normal', 'greedy'] });
   for (const secret of [APP, DEV1, DEV2, KEY]) assert.ok(!r.body.includes(secret), 'session leaked a secret');
@@ -79,6 +87,7 @@ test('UI: without the X-Requested-With header, from a non-loopback address, or w
   const app = make();
   assert.equal((await ui(app, 'GET', '/ui/session', undefined, {})).json().mode, 'token');
   assert.equal((await ui(app, 'GET', '/ui/session', undefined, HDR, { remoteAddress: '192.168.1.50' })).json().mode, 'token');
+  assert.equal((await ui(app, 'GET', '/ui/session', undefined, HDR, { remoteAddress: '203.0.113.10' })).json().esp32DashboardUrl, 'http://192.168.4.1');
   assert.equal((await app.inject({ method: 'GET', url: '/ui/session', headers: { ...HDR, host: 'evil.example.com' } })).json().mode, 'token');
   assert.equal((await ui(app, 'GET', '/ui/session', undefined, {})).json().demo, null);
   const noHdr = await ui(app, 'GET', '/ui/api/v1/plots', undefined, {});
@@ -205,7 +214,7 @@ test('API shapes the UI depends on: plots, readings, suggestions, advise facts, 
 // ---------------- front-end files
 test('UI files: every JS module parses, index.html and CSS only reference files that exist', () => {
   const js = readdirSync(join(WEB, 'assets/js')).filter((f) => f.endsWith('.js'));
-  assert.deepEqual(js.sort(), ['api.js', 'assistant.js', 'doctor.js', 'i18n.js', 'main.js', 'market.js', 'util.js', 'views.js', 'weather.js']);
+  assert.deepEqual(js.sort(), ['api.js', 'assistant.js', 'doctor.js', 'esp32-url.js', 'i18n.js', 'main.js', 'market.js', 'sensors.js', 'util.js', 'views.js', 'weather.js']);
   for (const f of js) { const r = spawnSync(process.execPath, ['--check', join(WEB, 'assets/js', f)], { encoding: 'utf8' }); assert.equal(r.status, 0, `${f}: ${r.stderr}`); }
   const index = readFileSync(join(WEB, 'index.html'), 'utf8');
   for (const m of index.matchAll(/(?:href|src)="(\/[^"]+)"/g)) assert.ok(existsSync(join(WEB, m[1] === '/favicon.svg' ? 'assets/favicon.svg' : m[1])), m[1]);
@@ -228,4 +237,97 @@ test('UI files: only real photos, each with a credit; only the approved isiZulu 
   const walk = (d) => { for (const f of readdirSync(d, { withFileTypes: true })) { const p = join(d, f.name); if (f.isDirectory()) walk(p); else if (/\.(js|html|css|svg)$/.test(f.name)) all.push(readFileSync(p, 'utf8')); } };
   walk(WEB);
   assert.ok(!all.some((s) => /AIza[0-9A-Za-z_-]{20,}|cfm_[0-9a-f]{12,}|Bearer [A-Za-z0-9]{16,}/.test(s)), 'no keys or tokens in the web files');
+});
+
+// ---------------- live ESP32 dashboard (browser embed; the server never dials the device)
+const baseEnv = () => ({ OE_MODE: 'mock', APP_TOKEN: APP, AI_PROVIDER: 'mock', LOG_LEVEL: 'silent', LOG_DIR: mkdtempSync(join(tmpdir(), 'mfo-ui-')), DEVICE_REGISTRY: JSON.stringify([{ deviceId: 'esp32-01', plotId: 1, token: DEV1 }]) });
+function memStore(seed = {}) {
+  const m = new Map(Object.entries(seed));
+  return { getItem: (k) => (m.has(k) ? m.get(k) : null), setItem: (k, v) => m.set(k, String(v)), removeItem: (k) => m.delete(k) };
+}
+test('ESP32 dashboard URL: default, normalisation, and rejection of secrets and non-http schemes', () => {
+  assert.equal(ESP32_DASHBOARD_URL_DEFAULT, 'http://192.168.4.1');
+  assert.equal(ESP32_URL_STORAGE_KEY, 'mf.esp32Url');
+  assert.equal(esp32DashboardUrlFromEnv(undefined), 'http://192.168.4.1');
+  assert.equal(esp32DashboardUrlFromEnv(''), 'http://192.168.4.1');
+  assert.equal(esp32DashboardUrlFromEnv('  http://192.168.4.1/  '), 'http://192.168.4.1');
+  assert.equal(normalizeEsp32DashboardUrl('http://10.0.0.8:8080/panel/'), 'http://10.0.0.8:8080/panel');
+  assert.equal(normalizeEsp32DashboardUrl('http://192.168.4.1/#frag'), 'http://192.168.4.1');
+  for (const bad of ['javascript:alert(1)', 'file:///etc/passwd', 'http://user:secret@192.168.4.1/', 'not a url', 'ftp://192.168.4.1/', 'http://', 'x'.repeat(301)]) {
+    assert.equal(normalizeEsp32DashboardUrl(bad), null, bad);
+    assert.throws(() => esp32DashboardUrlFromEnv(bad), /ESP32_DASHBOARD_URL/, bad);
+  }
+  assert.equal(loadConfig(baseEnv()).esp32DashboardUrl, 'http://192.168.4.1');
+  assert.equal(loadConfig({ ...baseEnv(), ESP32_DASHBOARD_URL: 'http://10.1.2.3:8080/dash' }).esp32DashboardUrl, 'http://10.1.2.3:8080/dash');
+  assert.throws(() => loadConfig({ ...baseEnv(), ESP32_DASHBOARD_URL: 'http://user:pw@192.168.4.1' }), /ESP32_DASHBOARD_URL/);
+});
+test('ESP32 dashboard URL: a saved browser address wins until it is cleared; a corrupt value is dropped', () => {
+  const s = memStore();
+  assert.equal(resolveEsp32DashboardUrl('http://10.0.0.2', s), 'http://10.0.0.2');
+  assert.equal(writeEsp32UrlOverride('http://192.168.4.50/', s), 'http://192.168.4.50');
+  assert.equal(s.getItem(ESP32_URL_STORAGE_KEY), 'http://192.168.4.50');
+  assert.equal(resolveEsp32DashboardUrl('http://10.0.0.2', s), 'http://192.168.4.50');
+  assert.equal(writeEsp32UrlOverride('http://a:b@192.168.4.1', s), null);
+  assert.equal(s.getItem(ESP32_URL_STORAGE_KEY), 'http://192.168.4.50', 'a rejected address does not replace the saved one');
+  clearEsp32UrlOverride(s);
+  assert.equal(readEsp32UrlOverride(s), null);
+  assert.equal(resolveEsp32DashboardUrl('http://10.0.0.2', s), 'http://10.0.0.2');
+  const bad = memStore({ [ESP32_URL_STORAGE_KEY]: 'javascript:alert(1)' });
+  assert.equal(readEsp32UrlOverride(bad), null);
+  assert.equal(bad.getItem(ESP32_URL_STORAGE_KEY), null);
+});
+test('ESP32 dashboard probe: no-cors to the page URL, opaque success is online, a network error is offline, /data is not requested', async () => {
+  let called;
+  const ok = await probeEsp32Dashboard('http://192.168.4.1/', async (url, opts) => { called = { url, opts }; return { type: 'opaque' }; });
+  assert.equal(ok, true);
+  assert.equal(called.url, 'http://192.168.4.1');
+  assert.equal(called.opts.mode, 'no-cors');
+  assert.equal(called.opts.cache, 'no-store');
+  assert.equal(called.opts.credentials, 'omit');
+  assert.ok(!String(called.url).includes('/data') && !String(called.url).includes('/calibrate'));
+  assert.equal(await probeEsp32Dashboard('http://192.168.4.1', async () => { throw new Error('ECONNREFUSED'); }), false);
+  assert.equal(await probeEsp32Dashboard('javascript:alert(1)', async () => { throw new Error('should not be called'); }), false);
+  const slow = (_url, opts) => new Promise((_resolve, reject) => { opts.signal.addEventListener('abort', () => reject(Object.assign(new Error('aborted'), { name: 'AbortError' }))); });
+  assert.equal(await probeEsp32Dashboard('http://192.168.4.1', slow, 20), false);
+});
+test('ESP32 dashboard page: iframe and open link when reachable; offline state with no iframe; the API does not proxy the device', async () => {
+  const { sensorsView } = await import('../apps/web/public/assets/js/sensors.js');
+  const { setLang } = await import('../apps/web/public/assets/js/i18n.js');
+  setLang('en');
+  const online = String(sensorsView({ url: 'http://192.168.4.1', serverUrl: 'http://192.168.4.1', phase: 'online', overridden: false }));
+  assert.match(online, /<iframe /);
+  assert.match(online, /src="http:\/\/192\.168\.4\.1"/);
+  assert.match(online, /sandbox="allow-scripts allow-same-origin allow-modals"/);
+  assert.match(online, /href="http:\/\/192\.168\.4\.1"/);
+  assert.match(online, /Open dashboard/);
+  assert.match(online, /GPIO34/);
+  assert.match(online, /GPIO35/);
+  assert.match(online, /no CORS headers/);
+  assert.doesNotMatch(online, /src="[^"]*\/data/);
+  const offline = String(sensorsView({ url: 'http://192.168.4.1', serverUrl: 'http://192.168.4.1', phase: 'offline', overridden: false }));
+  assert.doesNotMatch(offline, /<iframe /);
+  assert.match(offline, /Device not reachable from this browser/);
+  assert.match(offline, /WaterLevel-ESP32/);
+  assert.match(offline, /Open dashboard/);
+  assert.match(offline, /Show the embed anyway/);
+  const checking = String(sensorsView({ url: 'http://192.168.4.1', serverUrl: 'http://10.0.0.9', phase: 'checking', overridden: true }));
+  assert.doesNotMatch(checking, /<iframe /);
+  assert.match(checking, /saved address/);
+  assert.match(checking, /http:\/\/10\.0\.0\.9/);
+  const sensorsSrc = readFileSync(join(WEB, 'assets/js/sensors.js'), 'utf8');
+  const urlSrc = readFileSync(join(WEB, 'assets/js/esp32-url.js'), 'utf8');
+  assert.ok(!sensorsSrc.includes('fetch('), 'the page module does not fetch the device');
+  assert.ok(!/['"`]\/data['"`]|['"`]\/calibrate['"`]/.test(urlSrc + sensorsSrc), 'no request for /data or /calibrate');
+  const apiDir = fileURLToPath(new URL('../apps/api/src/', import.meta.url));
+  const walkApi = (d) => { for (const f of readdirSync(d, { withFileTypes: true })) { const p = join(d, f.name); if (f.isDirectory()) walkApi(p); else if (f.name.endsWith('.js')) assert.ok(!readFileSync(p, 'utf8').includes('192.168.4.1'), p); } };
+  walkApi(apiDir);
+  const app = make({ ESP32_DASHBOARD_URL: 'http://10.9.8.7' });
+  const session = await ui(app, 'GET', '/ui/session', undefined, HDR, { remoteAddress: '198.51.100.20' });
+  assert.equal(session.json().mode, 'token');
+  assert.equal(session.json().esp32DashboardUrl, 'http://10.9.8.7');
+  assert.equal(session.json().demo, null);
+  for (const secret of [APP, DEV1, KEY]) assert.ok(!session.body.includes(secret));
+  assert.equal((await app.inject({ method: 'GET', url: '/data' })).statusCode, 404);
+  assert.equal((await app.inject({ method: 'GET', url: '/calibrate?mode=wempty' })).statusCode, 404);
+  await app.close();
 });

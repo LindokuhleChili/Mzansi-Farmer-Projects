@@ -1,4 +1,7 @@
+import { esp32DashboardUrlFromEnv } from '../../web/public/assets/js/esp32-url.js';
+
 // All tunables as named constants + environment variables. No secrets in code: tokens and keys come from the environment.
+
 export const AI_TIMEOUT_MS = 8000;          // max wait for the AI provider before the deterministic fallback is used
 export const OE_TIMEOUT_MS = 5000;          // max wait for OpenEdge (PASOE) per call; exceeded => 504 OE_TIMEOUT
 export const AUDIT_TIMEOUT_MS = 1000;       // max wait for the audit write after a tool call (never doubles an OpenEdge outage)
@@ -56,6 +59,7 @@ export function loadConfig(env = process.env) {
     logLevel: env.LOG_LEVEL || 'warn',
     uiEnabled: !['0', 'false', 'off', 'no'].includes(String(env.UI_ENABLED ?? '1').toLowerCase()),   // serve the web UI at / (static files + local-only /ui/api proxy)
     uiAllowRemote: ['1', 'true', 'on', 'yes'].includes(String(env.UI_ALLOW_REMOTE ?? '0').toLowerCase()),   // let non-loopback clients use the /ui/api proxy (OFF by default)
+    esp32DashboardUrl: esp32DashboardUrlFromEnv(env.ESP32_DASHBOARD_URL),   // browser embed only; the server never connects to this address
     problems,
   };
 }

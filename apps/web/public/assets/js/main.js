@@ -7,6 +7,7 @@ import { weatherPage, weatherClick, weatherSubmit } from './weather.js';
 import { doctorPage, doctorClick, doctorSubmit, doctorChange } from './doctor.js';
 import { assistantPage, casePage, assistantClick, assistantSubmit } from './assistant.js';
 import { plotCardD, plotCardM, plotState, lineChart, readingsTable, sugRow, sugTitle, reviewView, confirmSheet, fmtSecs, langToggle, auditRow, bg, metricsBlock, lvl } from './views.js';
+import { sensorsPage, sensorsClick, sensorsSubmit, sensorsDashLink } from './sensors.js';
 
 const viewEl = $('#view'), overlay = $('#overlay'), toastRoot = $('#toast-root');
 const state = { plots: [], plotsAt: 0, selPlot: null, sugFilter: 'all', auditFilter: 'decisions', pending: null, live: null, nav: 0, timer: null, sheetTimer: null, readings: {}, cur: null, sugs: { at: 0, list: [] } };
@@ -43,7 +44,7 @@ function busy(btn, on, label) {
 }
 
 // ---------- chrome ----------
-const NAV = [['dashboard', '/', 'grid', 'nav_dashboard'], ['plots', '/plots', 'plots', 'nav_plots'], ['suggestions', '/suggestions', 'list', 'nav_suggestions'], ['market', '/market', 'basket', 'mk_nav'], ['weather', '/weather', 'drop', 'wx_nav'], ['assistant', '/assistant', 'leaf', 'as_nav'], ['doctor', '/doctor', 'spark', 'dr_nav'], ['audit', '/audit', 'book', 'nav_audit'], ['settings', '/settings', 'gear', 'nav_settings']];
+const NAV = [['dashboard', '/', 'grid', 'nav_dashboard'], ['sensors', '/sensors', 'sensor', 'esp_nav'], ['plots', '/plots', 'plots', 'nav_plots'], ['suggestions', '/suggestions', 'list', 'nav_suggestions'], ['market', '/market', 'basket', 'mk_nav'], ['weather', '/weather', 'drop', 'wx_nav'], ['assistant', '/assistant', 'leaf', 'as_nav'], ['doctor', '/doctor', 'spark', 'dr_nav'], ['audit', '/audit', 'book', 'nav_audit'], ['settings', '/settings', 'gear', 'nav_settings']];
 function renderChrome(active, plain = true) {
   const s = getSession() || {};
   document.body.classList.toggle('plain', plain);
@@ -124,6 +125,7 @@ function drawDashboard(d) {
       <div class="mcards">${shown.map((i) => plotCardM(d.plots[i], d.readings[i]))}</div>
       ${more ? html`<div class="viewall"><a class="btn out sm" href="#/plots">${t('all_n_plots', { n: d.plots.length })}</a></div>` : ''}
       <p class="credit">${t('credits')}</p>
+      ${sensorsDashLink()}
     </section>
     <div class="d-only">
       <div class="dhead"><div><div class="dh">${title}</div><div class="xs mut" style="margin-top:2px">${zuHello('Nomsa')} · ${fmtDayLong(nowIso)}, ${fmtHM(nowIso)}</div></div>${more ? html`<a class="toall" href="#/plots">${t('all_n_plots', { n: d.plots.length })}${icon('chev', 14)}</a>` : ''}</div>
@@ -140,6 +142,7 @@ function drawDashboard(d) {
           <div class="note">${icon('shield', 16)}<span>${t('ai_note_foot')}</span></div></div>
       </div>
       <p class="credit">${t('credits')}</p>
+      ${sensorsDashLink()}
     </div>`);
   dashData = d;
 }
@@ -267,6 +270,7 @@ function settingsPage() {
         <div class="kv"><span>${t('set_oe')}</span><b>${s.oeMode === 'mock' ? t('set_oe_mock') : t('set_oe_real')}</b></div>
         <div class="kv"><span>${t('set_ai')}</span><b>${s.aiProvider === 'mock' ? t('set_ai_mock') : t('set_ai_real')}</b></div>
         <div class="kv"><span>${t('set_session')}</span><b style="text-align:right;max-width:60%">${s.mode === 'token' ? t('set_session_token') : t('set_session_proxy')}</b></div></div>
+      <a class="card pad row sp" href="#/sensors"><span class="row g8">${icon('sensor', 18)}<b>${t('esp_nav')}</b></span>${icon('chev', 18)}</a>
       <a class="card pad row sp" href="#/audit"><span class="row g8">${icon('book', 18)}<b>${t('nav_audit')}</b></span>${icon('chev', 18)}</a>
     </div></div>`);
 }
@@ -337,6 +341,7 @@ async function routeInner() {
     else if (a === 'weather') await weatherPage(alive, renderChrome, draw, viewEl, need);
     else if (a === 'assistant') await (b ? casePage(Number(b), alive, renderChrome, draw, viewEl, need) : assistantPage(alive, renderChrome, draw, viewEl, need));
     else if (a === 'doctor') await doctorPage(alive, renderChrome, draw, viewEl, need);
+    else if (a === 'sensors') await sensorsPage(alive, renderChrome, draw, viewEl);
     else if (a === 'audit') await auditPage(alive);
     else if (a === 'settings') settingsPage();
     else { location.hash = '#/'; }
@@ -418,6 +423,7 @@ document.addEventListener('click', async (ev) => {
   if (a === 'bell') { state.sugFilter = 'waiting'; return; }
   if (a === 'sug-filter') { state.sugFilter = el.dataset.f; return route(); }
   if (a === 'audit-filter') { state.auditFilter = el.dataset.f; return route(); }
+  if (a.startsWith('esp-')) return sensorsClick(a, el, { route, toast });
   if (a.startsWith('as-')) return assistantClick(a, el, { route, toast, busy, errText });
   if (a.startsWith('dr-')) return doctorClick(a, el, { route, toast, busy, errText });
   if (a.startsWith('wx-')) return weatherClick(a, el, { route, toast, busy, errText });
@@ -432,6 +438,7 @@ document.addEventListener('click', async (ev) => {
 document.addEventListener('change', (ev) => { if (ev.target.dataset?.act === 'lang-pick') { setLang(ev.target.value); route(); return; } if (ev.target.dataset?.act === 'dr-photos') { doctorChange(ev, { toast }); return; } marketChange(ev); });
 document.addEventListener('submit', async (ev) => {
   ev.preventDefault();
+  if (await sensorsSubmit(ev, { route, toast })) return;
   if (await assistantSubmit(ev, { route, toast, busy, errText })) return;
   if (await doctorSubmit(ev, { route, toast, busy, errText })) return;
   if (await weatherSubmit(ev, { route, toast, busy, errText })) return;

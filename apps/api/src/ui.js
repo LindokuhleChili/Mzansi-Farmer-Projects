@@ -21,7 +21,10 @@ const TYPES = {
 const SECURITY_HEADERS = {
   'X-Content-Type-Options': 'nosniff',
   'Referrer-Policy': 'no-referrer',
-  'Content-Security-Policy': "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self'; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
+  // frame-src / connect-src allow any http(s) host because the farmer can type a different device address in the browser.
+  // The ESP32 sends no CORS headers. connect-src is only for a no-cors reachability check (opaque response, body not read).
+  // The server still never fetches the device. script-src stays 'self'.
+  'Content-Security-Policy': "default-src 'self'; img-src 'self' data: blob:; style-src 'self' 'unsafe-inline'; script-src 'self'; connect-src 'self' http: https:; frame-src http: https:; base-uri 'none'; form-action 'none'; frame-ancestors 'none'",
 };
 const PROXY_PATH = /^(plots|suggestions|audit|market|translate|farms|forecast|alerts|alert-thresholds|doctor|assistant|guide)(\/[A-Za-z0-9_-]+)*$/;   // never /readings (device ingestion) and never /health
 const LOCAL_HOST = /^(localhost|127\.0\.0\.1|\[::1\])(:\d+)?$/i;
@@ -66,12 +69,14 @@ export function registerUi(app, { config, oe, provider, clock, oeCall, fail }) {
   };
 
   // Tells the UI how to authenticate and which demo tools exist. Never returns a token.
+  // esp32DashboardUrl is a public device address (not a secret). Remote browsers need it too: the server does not proxy the device.
   app.get('/ui/session', async (req, reply) => {
     reply.header('Cache-Control', 'no-store');
     const ok = allowed(req);
     return {
       mode: ok ? 'proxy' : 'token',
       oeMode: oe.mode, aiProvider: provider.name,
+      esp32DashboardUrl: config.esp32DashboardUrl,
       demo: ok ? {
         simulateReadingPlots: config.registry.map((d) => d.plotId),
         devices: config.registry.map((d) => ({ deviceId: d.deviceId, plotId: d.plotId })),

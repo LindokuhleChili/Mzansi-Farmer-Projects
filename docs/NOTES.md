@@ -66,6 +66,7 @@ Safety behaviour the tests cover: unknown/invalid input is a clear error (not an
 | `AI_MOCK_BEHAVIOUR` | mock only: `normal`, `timeout`, `bad-json`, `injection`, `extra-field`, `greedy`, `invented-number`, `hold-with-litres`, `notify-no-litres` |
 | `OE_TIMEOUT_MS` | optional, default 5000; only meant for tests (minimum 50) |
 | `LOG_DIR`, `LOG_LEVEL` | tool-call log (`logs/tool-calls.jsonl`, gitignored) and Fastify log level |
+| `ESP32_DASHBOARD_URL` | browser-only address of the ESP32 dashboard (default `http://192.168.4.1`). The API does not connect to it. See `docs/ESP32.md` |
 
 Real environment variables win over `.env`.
 
