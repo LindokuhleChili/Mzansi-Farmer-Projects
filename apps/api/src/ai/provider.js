@@ -4,6 +4,7 @@
 import { AI_TIMEOUT_MS, AI_TRANSLATE_TIMEOUT_MS, LITRES_PER_PCT_DEFICIT } from '../config.js';
 import { TRANSLATE_SYSTEM_PROMPT, buildTranslatePrompt } from './translate.js';
 import { DOCTOR_SYSTEM_PROMPT, buildDoctorText, mockDoctorAnswer } from './doctor.js';
+import { VISUAL_SYSTEM_PROMPT, visualLineFromModel } from './similar.js';
 
 export class AiError extends Error {
   constructor(kind, message) { super(message); this.kind = kind; } // kind: timeout | http | network
@@ -89,6 +90,40 @@ export function createHttpProvider(config) {
     // Plant doctor: photos go as OpenAI-compatible image_url data URIs. Never logged.
     diagnose: (meta, photos) => chat(DOCTOR_SYSTEM_PROMPT, [{ type: 'text', text: buildDoctorText(meta) },
       ...photos.map((ph) => ({ type: 'image_url', image_url: { url: `data:${ph.mimeType};base64,${ph.dataBase64}` } }))], config.aiDoctorTimeoutMs || 30000),
+    // Written description of the photos, using the SAME chat model (AI_MODEL, not the embedding model).
+    // The OpenAI-compatible embeddings API takes text, so this description is what later gets embedded.
+    async describePhotos(meta, photos) {
+      const raw = await chat(VISUAL_SYSTEM_PROMPT, [{ type: 'text', text: buildDoctorText(meta) },
+        ...photos.map((ph) => ({ type: 'image_url', image_url: { url: `data:${ph.mimeType};base64,${ph.dataBase64}` } }))], config.aiEmbedTimeoutMs || 8000);
+      const line = visualLineFromModel(raw);
+      if (!line) throw new AiError('http', 'visual description was not usable');
+      return line;
+    },
+    // Text embedding of that description. Model is AI_EMBED_MODEL (default gemini-embedding-001), never AI_MODEL.
+    // `dimensions` asks the OpenAI-compatible endpoint for a short vector that fits an OpenEdge character field.
+    // If the endpoint returns a longer Matryoshka vector, the leading AI_EMBED_DIM values are kept.
+    async embedText(text) {
+      const ctl = new AbortController();
+      const ms = config.aiEmbedTimeoutMs || 8000;
+      const dim = config.aiEmbedDim || 256;
+      const timer = setTimeout(() => ctl.abort(), ms);
+      try {
+        const res = await fetch(config.aiBaseUrl.replace(/\/+$/, '') + '/embeddings', {
+          method: 'POST', signal: ctl.signal,
+          headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${config.aiApiKey}` },
+          body: JSON.stringify({ model: config.aiEmbedModel || 'gemini-embedding-001', input: String(text).slice(0, 2000), dimensions: dim }),
+        });
+        if (!res.ok) throw new AiError('http', `AI embeddings returned HTTP ${res.status}`);
+        const data = await res.json();
+        const vec = data?.data?.[0]?.embedding;
+        if (!Array.isArray(vec) || vec.length < dim) throw new AiError('http', 'AI embeddings returned no vector');
+        return { model: config.aiEmbedModel || 'gemini-embedding-001', vector: vec.slice(0, dim).map(Number) };
+      } catch (e) {
+        if (e instanceof AiError) throw e;
+        if (e.name === 'AbortError') throw new AiError('timeout', `AI embeddings did not answer within ${ms} ms`);
+        throw new AiError('network', `AI embeddings not reachable: ${e.cause?.code || e.message}`);
+      } finally { clearTimeout(timer); }
+    },
     // Farm Assistant tool loop (OpenAI-compatible function calling; Gemini's OpenAI endpoint supports it). Returns { content, toolCalls }.
     async agentStep(messages, tools) {
       const ctl = new AbortController();

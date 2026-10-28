@@ -4,7 +4,9 @@
   "private": true,
   "description": "Mzansi Farmer Ops: OpenEdge-backed farm advisor. AI proposes, ABL rules validate, the farmer approves. Example data only.",
   "type": "module",
-  "engines": { "node": ">=20" },
+  "engines": {
+    "node": ">=20"
+  },
   "scripts": {
     "setup": "node scripts/setup-env.mjs",
     "start": "node apps/api/src/index.js",
@@ -15,10 +17,14 @@
     "test:oe-http": "node eval/run-oe-http.mjs",
     "test:api-real-oe": "node eval/run-api.mjs --oe=pasoe-real",
     "test:gemini": "node eval/run-gemini.mjs",
-    "demo": "node scripts/demo.mjs"
+    "demo": "node scripts/demo.mjs",
+    "mcp": "node apps/mcp/src/index.js",
+    "mcp:http": "node apps/mcp/src/index.js --http"
   },
   "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.32.2",
     "ajv": "^8.17.1",
-    "fastify": "^5.2.0"
+    "fastify": "^5.2.0",
+    "zod": "^3.25.76"
   }
 }

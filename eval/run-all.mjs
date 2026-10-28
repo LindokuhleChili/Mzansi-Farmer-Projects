@@ -102,6 +102,30 @@ for (const m of drTests.stdout.matchAll(/^(not ok|ok) \d+ - (.*)$/gm)) console.l
 console.log(`  plant doctor tests: ${drPass} passed, ${drFail} failed`);
 totals.pass += drPass; totals.fail += drFail + (drTests.status === 0 ? 0 : (drFail ? 0 : 1));
 
+console.log('\n=== 15. Similar past cases: description embeddings, cosine rank, crop+condition fallback (eval/similar.test.mjs, node:test) ===');
+const simTests = spawnSync(process.execPath, ['--test', '--test-reporter=tap', fileURLToPath(new URL('./similar.test.mjs', import.meta.url))], { encoding: 'utf8' });
+const scPass = Number((/^# pass (\d+)/m.exec(simTests.stdout) || [])[1] || 0), scFail = Number((/^# fail (\d+)/m.exec(simTests.stdout) || [])[1] || 0);
+for (const m of simTests.stdout.matchAll(/^(not ok|ok) \d+ - (.*)$/gm)) console.log(`  ${m[1] === 'ok' ? 'PASS' : 'FAIL'}  ${m[2]}`);
+if (scFail) console.log(simTests.stdout.slice(-2000));
+console.log(`  similar-case tests: ${scPass} passed, ${scFail} failed`);
+totals.pass += scPass; totals.fail += scFail + (simTests.status === 0 ? 0 : (scFail ? 0 : 1));
+
+console.log('\n=== 16. MCP server: assistant tools over stdio-compatible in-memory transport and Streamable HTTP auth (eval/mcp.test.mjs, node:test) ===');
+const mcpTests = spawnSync(process.execPath, ['--test', '--test-reporter=tap', fileURLToPath(new URL('./mcp.test.mjs', import.meta.url))], { encoding: 'utf8' });
+const mcpPass = Number((/^# pass (\d+)/m.exec(mcpTests.stdout) || [])[1] || 0), mcpFail = Number((/^# fail (\d+)/m.exec(mcpTests.stdout) || [])[1] || 0);
+for (const m of mcpTests.stdout.matchAll(/^(not ok|ok) \d+ - (.*)$/gm)) console.log(`  ${m[1] === 'ok' ? 'PASS' : 'FAIL'}  ${m[2]}`);
+if (mcpFail) console.log(mcpTests.stdout.slice(-2000));
+console.log(`  MCP tests: ${mcpPass} passed, ${mcpFail} failed`);
+totals.pass += mcpPass; totals.fail += mcpFail + (mcpTests.status === 0 ? 0 : (mcpFail ? 0 : 1));
+
+console.log('\n=== 17. Farm watch: manual run, dedupe, OpenEdge-gated proposals, tool-call log (eval/watch.test.mjs, node:test) ===');
+const fwTests = spawnSync(process.execPath, ['--test', '--test-reporter=tap', fileURLToPath(new URL('./watch.test.mjs', import.meta.url))], { encoding: 'utf8' });
+const fwPass = Number((/^# pass (\d+)/m.exec(fwTests.stdout) || [])[1] || 0), fwFail = Number((/^# fail (\d+)/m.exec(fwTests.stdout) || [])[1] || 0);
+for (const m of fwTests.stdout.matchAll(/^(not ok|ok) \d+ - (.*)$/gm)) console.log(`  ${m[1] === 'ok' ? 'PASS' : 'FAIL'}  ${m[2]}`);
+if (fwFail) console.log(fwTests.stdout.slice(-2000));
+console.log(`  farm watch tests: ${fwPass} passed, ${fwFail} failed`);
+totals.pass += fwPass; totals.fail += fwFail + (fwTests.status === 0 ? 0 : (fwFail ? 0 : 1));
+
 console.log('\n=== 14. Farm Assistant: chat, tool loop, citations, approval cards, case files, memory, check-ins (eval/assistant.test.mjs, node:test) ===');
 const asTests = spawnSync(process.execPath, ['--test', '--test-reporter=tap', fileURLToPath(new URL('./assistant.test.mjs', import.meta.url))], { encoding: 'utf8' });
 const asPass = Number((/^# pass (\d+)/m.exec(asTests.stdout) || [])[1] || 0), asFail = Number((/^# fail (\d+)/m.exec(asTests.stdout) || [])[1] || 0);

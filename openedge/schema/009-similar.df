@@ -1,0 +1,41 @@
+ADD FIELD "VisualText" OF "Diagnosis" AS character
+  DESCRIPTION "Written description of the photos (text). Similar-case search embeds THIS text. It is not an image embedding. Empty when no description was stored."
+  FORMAT "x(500)"
+  INITIAL ""
+  LABEL "Visual description"
+  POSITION 22
+  MAX-WIDTH 1000
+  ORDER 210
+
+ADD FIELD "EmbedModel" OF "Diagnosis" AS character
+  DESCRIPTION "Text-embedding model used on VisualText (for example gemini-embedding-001). Empty when no description embedding was stored."
+  FORMAT "x(40)"
+  INITIAL ""
+  LABEL "Embed model"
+  POSITION 23
+  MAX-WIDTH 80
+  ORDER 220
+
+ADD FIELD "EmbedDim" OF "Diagnosis" AS integer
+  DESCRIPTION "Length of EmbedVector. 0 when no description embedding was stored."
+  FORMAT ">>>>9"
+  INITIAL "0"
+  LABEL "Embed dim"
+  POSITION 24
+  MAX-WIDTH 4
+  ORDER 230
+
+ADD FIELD "EmbedVector" OF "Diagnosis" AS character
+  DESCRIPTION "JSON array of numbers: a text embedding of VisualText, compared by cosine similarity. Not a vector of the photo pixels."
+  FORMAT "x(4000)"
+  INITIAL ""
+  LABEL "Description embedding"
+  POSITION 25
+  MAX-WIDTH 8000
+  ORDER 240
+
+.
+PSC
+cpstream=ISO8859-1
+.
+0000000000

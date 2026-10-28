@@ -73,13 +73,36 @@ const termJson = (t) => ({ termId: t.termId, term: t.term, kind: t.kind, active:
 const diagJson = (d) => ({ diagnosisId: d.diagnosisId, createdAt: iso(d.createdAt), crop: d.crop, plantPart: d.plantPart, growthStage: d.growthStage,
   province: d.province, photoCount: d.photoCount, condition: d.condition, confidence: d.confidence, observations: d.observations,
   steps: d.steps.map((s) => ({ text: s.text, cost: s.cost })), monitor: [...d.monitor], neighbourRisk: { level: d.neighbourRisk.level, reason: d.neighbourRisk.reason },
-  callExpert: d.callExpert, usedFallback: d.usedFallback, fallbackReason: d.fallbackReason, verdict: 'passed', status: d.status, decidedAt: iso(d.decidedAt) });
+  callExpert: d.callExpert, usedFallback: d.usedFallback, fallbackReason: d.fallbackReason, verdict: 'passed', status: d.status, decidedAt: iso(d.decidedAt),
+  visualText: d.visualText || '', embedModel: d.embedModel || '', hasDescriptionEmbedding: Boolean(d.embedVector) });
+// Same rules as dr-take-visual / dr-vec-ok in openedge/src/doctor.i. A bad or dose-blocked description is dropped;
+// the diagnosis itself is still stored. The vector is a text embedding of visualText, not of the photo.
+const MODEL_RE = /^[A-Za-z0-9._-]{1,40}$/;
+function takeVisual(body, terms) {
+  let visualText = typeof body.visualText === 'string' ? body.visualText.trim() : '';
+  if (visualText.length > 500) visualText = '';
+  if (visualText && doseCheck([{ field: 'visualText', text: visualText }], terms).length) visualText = '';
+  if (!visualText) return { visualText: '', embedModel: '', embedDim: 0, embedVector: '' };
+  const embedModel = typeof body.embedModel === 'string' ? body.embedModel.trim() : '';
+  const raw = typeof body.embedVector === 'string' ? body.embedVector.trim() : '';
+  if (!MODEL_RE.test(embedModel) || raw.length > 4000 || !raw.startsWith('[')) return { visualText, embedModel: '', embedDim: 0, embedVector: '' };
+  let arr;
+  try { arr = JSON.parse(raw); } catch { return { visualText, embedModel: '', embedDim: 0, embedVector: '' }; }
+  if (!Array.isArray(arr) || arr.length < 8 || arr.length > 256) return { visualText, embedModel: '', embedDim: 0, embedVector: '' };
+  if (!arr.every((n) => typeof n === 'number' && Number.isFinite(n) && n >= -1.5 && n <= 1.5)) return { visualText, embedModel: '', embedDim: 0, embedVector: '' };
+  return { visualText, embedModel, embedDim: arr.length, embedVector: raw };
+}
+const candidateJson = (d) => ({ ...diagJson(d), embedDim: d.embedDim || 0, embedVector: d.embedVector || '' });
 
 export function handleDoctor(s, method, segs, q, body, clock) {
   if (segs[0] !== 'doctor' || !s.blockedTerms) return null;
   const n = segs.length, idOf = (x) => (/^\d+$/.test(x) ? parseInt(x, 10) : NaN);
   const req = typeof body.requestId === 'string' ? body.requestId : '';
   if (method === 'GET' && n === 2 && segs[1] === 'blocked-terms') return { status: 200, body: { terms: [...s.blockedTerms].sort((a, b) => a.termId - b.termId).map(termJson) } };
+  if (method === 'GET' && n === 2 && segs[1] === 'similar-candidates') {
+    const lim = Math.min(Math.max(parseInt(q.get('limit') || '100', 10) || 100, 1), 100);
+    return { status: 200, body: { cases: [...s.diagnoses].sort((a, b) => b.diagnosisId - a.diagnosisId).slice(0, lim).map(candidateJson) } };
+  }
   if (method === 'GET' && n === 2 && segs[1] === 'diagnoses') {
     const lim = Math.min(Math.max(parseInt(q.get('limit') || '20', 10) || 20, 1), 100);
     return { status: 200, body: { diagnoses: [...s.diagnoses].sort((a, b) => b.diagnosisId - a.diagnosisId).slice(0, lim).map(diagJson) } };
@@ -115,7 +138,8 @@ export function handleDoctor(s, method, segs, q, body, clock) {
     const d = { diagnosisId: ++s.seq.diagnosis, createdAt: clock(), crop: b.crop.trim(), plantPart: b.plantPart, growthStage: b.growthStage, province: b.province,
       photoCount: b.photoCount, condition: r.condition, confidence: r.confidence, observations: r.observations, steps: r.steps.map((x) => ({ text: x.text, cost: x.cost })),
       monitor: [...r.monitor], neighbourRisk: { level: r.neighbourRisk.level, reason: r.neighbourRisk.reason }, callExpert: r.callExpert,
-      usedFallback: b.usedFallback === true, fallbackReason: typeof b.fallbackReason === 'string' ? b.fallbackReason.slice(0, 40) : '', status: 'pending_review', decidedAt: null, requestId: req };
+      usedFallback: b.usedFallback === true, fallbackReason: typeof b.fallbackReason === 'string' ? b.fallbackReason.slice(0, 40) : '', status: 'pending_review', decidedAt: null, requestId: req,
+      ...takeVisual(b, s.blockedTerms) };
     s.diagnoses.push(d);
     appendAudit(s, req, 'abl-rules', 'doctor_diagnosis_created', JSON.stringify({ diagnosisId: d.diagnosisId, crop: d.crop, condition: d.condition, usedFallback: d.usedFallback }), d.createdAt);
     return { status: 201, body: diagJson(d) };

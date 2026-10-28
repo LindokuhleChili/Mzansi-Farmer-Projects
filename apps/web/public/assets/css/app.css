@@ -425,6 +425,7 @@ table.t td.n{font-variant-numeric:tabular-nums;color:var(--mut)}
 .dr-cost.medium{background:#FBEBD0;color:#7a4b00}.dr-cost.high{background:#F9DCD6;color:#8a2a17}
 .dr-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px}.dr-ul{margin:6px 0 0;padding-left:18px;font-size:13px}
 .dr-expert{background:#F6F8F1;border-radius:12px;padding:10px 12px;margin:12px 0 8px}
+.dr-similar{margin:8px 0 12px}
 .dr-chips{display:flex;flex-wrap:wrap;gap:6px}.dr-chip{border:1px solid #d9e0d5;background:#fff;border-radius:99px;padding:3px 9px;font-size:12px;cursor:pointer}
 .dr-chip.chemical{background:#F6F8F1}.dr-chip.off{opacity:.45;text-decoration:line-through}
 .dr-words summary{cursor:pointer}
@@ -445,4 +446,5 @@ table.t td.n{font-variant-numeric:tabular-nums;color:var(--mut)}
 .as-quick{display:flex;flex-wrap:wrap;gap:6px;margin-bottom:8px}
 .as-in{display:flex;flex-direction:column;gap:3px;padding:8px 0;border-bottom:1px solid #e3e8df}.as-in:last-child{border-bottom:0}
 .as-caserow{text-decoration:none;color:inherit}
+.as-watch{display:block;text-decoration:none;color:inherit;margin-top:8px}
 @media (max-width:760px){.as-layout{grid-template-columns:1fr}.as-msg{max-width:100%}}

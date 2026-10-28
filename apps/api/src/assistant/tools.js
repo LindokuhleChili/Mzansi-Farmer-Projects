@@ -1,7 +1,10 @@
+import { loadAndRank } from '../ai/similar.js';
+
 // Farm Assistant tool registry (docs/ASSISTANT.md). Every tool wraps an existing OpenEdge endpoint. The same registry is used
 // by the Gemini function-calling loop and by the offline rule-based planner, and every call is written into the case file as a
 // "what I checked" step. Tools that would change something (propose_action) never execute anything: OpenEdge checks the proposal
 // first and the farmer gets an approval card. Nothing runs until the farmer taps approve; a rules rejection is final.
+
 export const FARM_ID = 1;
 export const STEP_LIMIT = 6;
 export const PROPOSAL_KINDS = ['irrigate', 'hold', 'notify', 'step', 'contact_expert', 'list_harvest_day'];
@@ -21,6 +24,7 @@ export const TOOL_DEFS = [
   { name: 'propose_action', description: 'Propose ONE action for the farmer to approve. irrigate/hold/notify are checked by the OpenEdge irrigation rules first. step = a free or cheap cultural step. contact_expert = suggest calling the extension officer. list_harvest_day = suggest listing produce. Never chemicals or doses. Cite guide passage ids.',
     parameters: S({ plotId: int, kind: { type: 'string', enum: PROPOSAL_KINDS }, litres: int, text: str('one short sentence for the farmer'), cost: { type: 'string', enum: ['free', 'low', 'medium', 'high'] }, citations: { type: 'array', items: int } }, ['plotId', 'kind', 'text', 'citations']) },
   { name: 'remember', description: 'Save a farmer preference or fact the farmer told you (e.g. water_source, preferred_call_time).', parameters: S({ key: str('lower_case_key'), value: str('short value') }, ['key', 'value']) },
+  { name: 'find_similar_cases', description: 'Find past plant-doctor cases that look similar. Compares a written description of the photos (a text embedding) when one is stored. Otherwise matches the same crop and condition. It does not compare the photo pixels.', parameters: S({ diagnosisId: int, crop: str('crop name, e.g. Tomato'), condition: str('likely condition, e.g. early blight'), limit: int }) },
 ];
 
 /** ctx: { call(name, method, path, body) -> {status, body}, clock, state } ; state collects passages, proposals, steps */
@@ -86,12 +90,45 @@ export function createTools(ctx) {
       const ev = (r.body.events || []).map((e) => ({ eventId: e.eventId, name: e.eventName, startsAt: e.startsAt }));
       return { result: { events: ev }, summary: `${ev.length} published harvest day(s)` };
     },
+    async find_similar_cases({ diagnosisId, crop, condition, plantPart, limit } = {}) {
+      try {
+        const q = {
+          diagnosisId: Number.isInteger(diagnosisId) ? diagnosisId : undefined,
+          crop: typeof crop === 'string' ? crop : '',
+          condition: typeof condition === 'string' ? condition : '',
+          plantPart: typeof plantPart === 'string' ? plantPart : '',
+          excludeDiagnosisId: Number.isInteger(diagnosisId) ? diagnosisId : undefined,
+        };
+        if (q.diagnosisId && !q.crop) {
+          const got = await ctx.call('oe.doctor_get', 'GET', `/farm/doctor/diagnoses/${q.diagnosisId}`);
+          if (got.status === 200) {
+            q.crop = got.body.crop || '';
+            q.condition = q.condition || got.body.condition || '';
+            q.plantPart = q.plantPart || got.body.plantPart || '';
+          }
+        }
+        const now = ctx.clock();
+        const ranked = await loadAndRank((method, path, body) => ctx.call('oe.similar_candidates', method, path, body), q, { now: now instanceof Date ? now : new Date(now), limit });
+        const cases = ranked.cases || [];
+        const how = ranked.method === 'description_embedding' ? 'description embedding' : ranked.method === 'crop_condition' ? 'crop and condition' : 'unavailable';
+        return { result: { method: ranked.method, compared: ranked.compared, cases }, summary: cases.length ? `similar past cases (${how}): ${cases.map((c) => c.label).join('; ')}` : `no similar past cases (${how})` };
+      } catch {
+        return { result: { method: 'none', compared: 'none', cases: [] }, summary: 'similar-case search unavailable' };
+      }
+    },
     // never executes: irrigation kinds become an OpenEdge-checked suggestion (pending the farmer's two-step approval or rejected, final);
     // other kinds become case actions the farmer accepts or declines.
+    // DOSE_BLOCKED and CITATION_UNKNOWN are checked here, before anything is stored, for every caller (chat and MCP).
     async propose_action(a) {
       const kind = PROPOSAL_KINDS.includes(a.kind) ? a.kind : 'step';
       const cites = (Array.isArray(a.citations) ? a.citations : []).filter(Number.isInteger).slice(0, 3);
       const text = String(a.text || '').slice(0, 300);
+      const chk = await ctx.call('oe.dose_check', 'POST', '/farm/doctor/check', { texts: [text || 'x'] });
+      if (chk.body?.verdict === 'blocked') return { result: { error: 'DOSE_BLOCKED' }, summary: 'OpenEdge blocked a step that gave a chemical dose' };
+      for (const id of cites) {
+        const g = await ctx.call('oe.guide_passage', 'GET', `/farm/guide/passages/${id}`);
+        if (g.status !== 200) return { result: { error: 'CITATION_UNKNOWN', passageId: id }, summary: `OpenEdge does not have guide passage ${id}` };
+      }
       if (['irrigate', 'hold', 'notify'].includes(kind)) {
         const litres = kind === 'irrigate' && Number.isInteger(a.litres) ? a.litres : 0;
         const r = await ctx.call('oe.create_suggestion', 'POST', '/farm/suggestions', { plotId: a.plotId, action: kind, litres, reason: text, provider: `assistant:${ctx.providerName}`, requestId: ctx.requestId, asOf: ctx.clock().toISOString() });
@@ -101,8 +138,6 @@ export function createTools(ctx) {
         return { result: { suggestionId: s.suggestionId, verdict: s.verdict, rejectReasons: (s.rejectReasons || []).map((x) => x.code) }, summary: `OpenEdge rules: ${kind}${litres ? ` ${litres} L` : ''} => ${s.verdict === 'approved_by_rules' ? 'passed, waiting for your approval' : 'rejected (' + (s.rejectReasons || []).map((x) => x.code).join(', ') + ')'}` };
       }
       const cost = ['free', 'low', 'medium', 'high'].includes(a.cost) ? a.cost : 'free';
-      const chk = await ctx.call('oe.dose_check', 'POST', '/farm/doctor/check', { texts: [text || 'x'] });
-      if (chk.body.verdict === 'blocked') return { result: { error: 'DOSE_BLOCKED' }, summary: 'OpenEdge blocked a step that gave a chemical dose' };
       st.proposals.push({ kind: 'step', subKind: kind, text, cost, citations: cites });
       return { result: { ok: true, needsFarmerApproval: true }, summary: `proposed (${kind === 'step' ? cost : kind.replace(/_/g, ' ')}): ${text}` };
     },

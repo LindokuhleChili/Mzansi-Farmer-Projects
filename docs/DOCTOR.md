@@ -17,6 +17,24 @@ The farmer takes 1 to 3 photos of a sick plant and picks the crop, plant part, g
 
 **Privacy.** Photos go only to the AI provider. They are never sent to OpenEdge, stored, or logged; the logs keep only the photo count and byte sizes.
 
+## Similar past cases
+
+After a diagnosis is stored, the API looks for older ones and adds `similarCases` to the response. The page shows lines such as `Early blight, KwaZulu-Natal, 3 days ago`. The place is the **province** on that diagnosis.
+
+What is compared:
+
+| Situation | What is compared | `similarMethod` |
+|---|---|---|
+| `AI_PROVIDER=http`, `SIMILAR_CASES` on (the default), and both calls succeed | A short **written description** of the photos, embedded as text. Cosine similarity of those vectors. | `description_embedding` (`similarCompared`: `visual_description_text`) |
+| No API key, mock AI, embedding call failed, or no stored vector is close enough | Same crop, then overlapping words in the condition name | `crop_condition` |
+| `SIMILAR_CASES=off` | Nothing. The diagnosis is unchanged. | `disabled` |
+
+This is **not** an image embedding. Gemini's OpenAI-compatible embeddings endpoint takes text (`input` is a string). The chat model (`AI_MODEL`, left as `gemini-3.5-flash-lite`) writes the description. A different model, `AI_EMBED_MODEL` (default `gemini-embedding-001`), embeds that text. `AI_EMBED_DIM` (default 256, max 256) keeps the JSON array inside an OpenEdge character field. If the endpoint returns a longer vector, only the first 256 numbers are stored (the model is trained so a prefix is still a usable embedding).
+
+The vector is stored on the Diagnosis row by schema `009-similar.df` (`VisualText`, `EmbedModel`, `EmbedDim`, `EmbedVector`). Photos are still not stored. A description that fails `DOSE_BLOCKED` is dropped and the diagnosis itself is kept. `GET /farm/doctor/similar-candidates` returns the vectors. Ranking runs in the Node API. The assistant tool `find_similar_cases` uses the same ranking.
+
+Load the schema on a database that already has `008-assistant.df` **before** restarting PASOE with this code: `.\scripts\oe-run.ps1 -Action load-similar` (database server stopped).
+
 ## OpenEdge
 
 - Schema `openedge/schema/007-doctor.df`: tables BlockedTerm and Diagnosis.

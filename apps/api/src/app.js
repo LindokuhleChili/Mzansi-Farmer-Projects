@@ -1,7 +1,8 @@
 // Fastify app: /api/v1. AI proposes -> OpenEdge (ABL) rules validate -> farmer approves with an explicit confirmation step.
 import { fetchOpenMeteo, PROVINCE_COORDS } from './weather/open-meteo.js';
 import Fastify from 'fastify';
-import { checkDoctorAnswer, fallbackAnswer, checkPhotos, checkMeta } from './ai/doctor.js';
+import { checkDoctorAnswer, fallbackAnswer, checkPhotos, checkMeta, DOSE_QUANTITY } from './ai/doctor.js';
+import { formatVector, loadAndRank, similarPayload } from './ai/similar.js';
 import crypto from 'node:crypto';
 import { mkdirSync, appendFileSync } from 'node:fs';
 import { join } from 'node:path';
@@ -13,6 +14,7 @@ import { registerUi } from './ui.js';
 import { createTranslator, validateTranslateBody } from './ai/translate.js';
 import { runTurn } from './assistant/agent.js';
 import { createCheckIns } from './assistant/checkins.js';
+import { createFarmWatch } from './assistant/watch.js';
 
 const PREFIX = '/api/v1';
 const safeEqual = (a, b) => {
@@ -344,17 +346,58 @@ export function buildApp({ config, oe, provider, clock = () => new Date(), weath
       const c = checkDoctorAnswer(raw);
       if (c.ok) { result = c.result; removedSteps = c.removedSteps; } else { fallbackReason = c.reason; removedSteps = c.removedSteps || 0; }
     } catch (e) { fallbackReason = e.kind === 'timeout' ? 'ai_timeout' : 'ai_unavailable'; }
+    // Description embedding is optional and must not change the diagnosis if it fails. The chat model (AI_MODEL) writes
+    // a short visual description; a separate text-embedding model turns that description into a vector. No photo pixels are embedded.
+    let visual = null;
+    if (config.similarCases && typeof provider.describePhotos === 'function' && typeof provider.embedText === 'function') {
+      try {
+        const line = await tool(req, 'ai.describe_photos', { ...meta, provider: provider.name }, () => provider.describePhotos(meta, ph.photos), (txt) => ({ chars: String(txt || '').length }));
+        if (typeof line === 'string' && line.trim() && !DOSE_QUANTITY.test(line)) {
+          const emb = await tool(req, 'ai.embed_description', { provider: provider.name, model: config.aiEmbedModel, dim: config.aiEmbedDim }, () => provider.embedText(line), (e) => ({ model: e?.model, dim: e?.vector?.length }));
+          const embedVector = formatVector(emb?.vector);
+          if (embedVector) visual = { visualText: line.trim().slice(0, 500), embedModel: String(emb.model || config.aiEmbedModel).slice(0, 40), embedVector };
+        }
+      } catch { visual = null; }
+    }
     const send = (res, fb, why) => oeCall(req, 'oe.doctor_create', 'POST', '/farm/doctor/diagnoses',
-      { ...meta, result: res, usedFallback: fb, fallbackReason: why, requestId: req.id }, (x) => ({ status: x.status, diagnosisId: x.body?.diagnosisId, error: x.body?.error }));
+      { ...meta, result: res, usedFallback: fb, fallbackReason: why, requestId: req.id, ...(visual || {}) }, (x) => ({ status: x.status, diagnosisId: x.body?.diagnosisId, error: x.body?.error }));
     let r = result ? await send(result, false, '') : null;
     if (r && r.status === 422 && r.body?.error === 'DOSE_BLOCKED') fallbackReason = 'dose_blocked';
     else if (r && r.status >= 400) fallbackReason = fallbackReason || 'rejected_by_openedge';
     const blocked = r && r.status === 422 ? r.body.blocked : undefined;
     if (!r || r.status >= 400) r = await send(fallbackAnswer(), true, fallbackReason);
     if (r.status >= 400) return reply.code(r.status).send({ ...r.body, requestId: req.id });
-    return reply.code(201).send({ diagnosis: r.body, usedFallback: r.body.usedFallback, fallbackReason: r.body.fallbackReason || null, removedSteps, ...(blocked ? { blocked } : {}) });
+    let similar = { method: 'disabled', compared: 'none', cases: [] };
+    if (config.similarCases) {
+      try {
+        similar = await loadAndRank((method, path, body) => oeCall(req, 'oe.similar_candidates', method, path, body), {
+          diagnosisId: r.body.diagnosisId, crop: r.body.crop, condition: r.body.condition, plantPart: r.body.plantPart,
+          embedModel: visual?.embedModel || r.body.embedModel || '', embedVector: visual?.embedVector || '', excludeDiagnosisId: r.body.diagnosisId,
+        }, { now: clock(), limit: 3 });
+      } catch { similar = { method: 'none', compared: 'none', cases: [] }; }
+    }
+    return reply.code(201).send({ diagnosis: r.body, usedFallback: r.body.usedFallback, fallbackReason: r.body.fallbackReason || null, removedSteps, ...similarPayload(similar), ...(blocked ? { blocked } : {}) });
   });
   app.get(`${PREFIX}/doctor/diagnoses`, passthrough('oe.doctor_list', (req) => `/farm/doctor/diagnoses${qsOf(req, ['limit'])}`));
+  app.post(`${PREFIX}/doctor/similar`, async (req, reply) => {
+    if (!requireApp(req, reply)) return;
+    if (!config.similarCases) return { ...similarPayload({ method: 'disabled', compared: 'none', cases: [] }), requestId: req.id };
+    const b = req.body;
+    if (b !== undefined && b !== null && (typeof b !== 'object' || Array.isArray(b))) return fail(reply, req, 400, 'VALIDATION_ERROR', 'Body must be a JSON object.', { field: 'body' });
+    const body = b || {};
+    if (body.diagnosisId !== undefined && !Number.isInteger(body.diagnosisId)) return fail(reply, req, 400, 'VALIDATION_ERROR', 'diagnosisId must be an integer.', { field: 'diagnosisId' });
+    if (body.crop !== undefined && typeof body.crop !== 'string') return fail(reply, req, 400, 'VALIDATION_ERROR', 'crop must be a string.', { field: 'crop' });
+    if (body.condition !== undefined && typeof body.condition !== 'string') return fail(reply, req, 400, 'VALIDATION_ERROR', 'condition must be a string.', { field: 'condition' });
+    try {
+      const similar = await loadAndRank((method, path, pBody) => oeCall(req, 'oe.similar_candidates', method, path, pBody), {
+        diagnosisId: body.diagnosisId, crop: body.crop || '', condition: body.condition || '', plantPart: typeof body.plantPart === 'string' ? body.plantPart : '',
+        excludeDiagnosisId: body.diagnosisId,
+      }, { now: clock(), limit: body.limit });
+      return { ...similarPayload(similar), requestId: req.id };
+    } catch {
+      return { ...similarPayload({ method: 'none', compared: 'none', cases: [] }), requestId: req.id };
+    }
+  });
   app.get(`${PREFIX}/doctor/diagnoses/:id`, passthrough('oe.doctor_get', (req) => { const id = intId(req.params.id); return id === null ? null : `/farm/doctor/diagnoses/${id}`; }));
   for (const [act, decision] of [['save', 'save'], ['dismiss', 'dismiss']]) {
     app.post(`${PREFIX}/doctor/diagnoses/:id/${act}`, async (req, reply) => {
@@ -447,6 +490,18 @@ export function buildApp({ config, oe, provider, clock = () => new Date(), weath
   // proactive check-ins: the job itself is started by index.js (ASSISTANT_CHECKIN_MS); tests call app.checkIns.run()
   const checkInReq = { id: 'checkin' };
   app.checkIns = createCheckIns({ call: (name, method, path, body) => oeCall(checkInReq, name, method, path, body), clock });
+  // Farm watch: off on a schedule unless FARM_WATCH_INTERVAL_MIN is set. This route is the on-demand demo trigger.
+  // It always uses the offline planner (see assistant/watch.js) so a missing key does not change the result.
+  app.farmWatch = createFarmWatch({
+    callFor: (requestId) => (name, method, path, body) => oeCall({ id: requestId }, name, method, path, body),
+    provider, clock, dedupeHours: config.farmWatchDedupeHours,
+  });
+  app.post(`${PREFIX}/assistant/watch/run`, async (req, reply) => {
+    if (!requireApp(req, reply)) return;
+    const out = await tool(req, 'assistant.watch', { trigger: 'manual' }, () => app.farmWatch.run(req.id),
+      (o) => ({ ok: o.ok, opened: o.opened?.length || 0, skipped: o.skipped?.length || 0, issues: o.issues?.length || 0 }));
+    return { ...out, requestId: req.id };
+  });
   app.get(`${PREFIX}/assistant/check-ins`, async (req, reply) => {
     if (!requireApp(req, reply)) return;
     const after = intId(String(req.query.after ?? '0')) ?? 0;

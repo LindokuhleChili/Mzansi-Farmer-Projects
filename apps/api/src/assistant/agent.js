@@ -8,7 +8,7 @@ import { DOSE_QUANTITY } from '../ai/doctor.js';
 
 export const ASSISTANT_SYSTEM_PROMPT = [
   'You are Farm Assistant, a personal helper for a small-scale South African farmer. Talk like a kind, practical neighbour: short, plain sentences.',
-  'Use tools to check before you answer: the farm profile, sensor readings, the forecast, plant doctor results, nearby plots, and ALWAYS search_guides before giving advice.',
+  'Use tools to check before you answer: the farm profile, sensor readings, the forecast, plant doctor results, nearby plots, find_similar_cases for a sick plant, and ALWAYS search_guides before giving advice.',
   'Only give advice that the returned guide passages support, and cite their ids. If the passages do not cover it, say you are not sure and suggest the extension officer.',
   'You only PROPOSE. Use propose_action for each thing the farmer could do; OpenEdge rules check it and the farmer approves it. Never say something has been done.',
   'NEVER name a chemical, pesticide, fungicide or herbicide with a dose, rate, dilution or mixing instruction. For chemical treatment say: ask your extension officer.',
@@ -39,7 +39,7 @@ export function firstSentence(t) {
 }
 
 /** Deterministic planner: same tools, same order every time. Used offline and as the fallback. */
-async function planOffline(T, st, { message, plotId, problemHint }) {
+async function planOffline(T, st, { message, plotId, problemHint, titleOverride, watchStale }) {
   const steps = [];
   const run = async (name, args = {}) => { const r = await T[name](args); steps.push({ tool: name, args, summary: r.summary }); return r.result; };
   await run('get_farm_profile');
@@ -49,8 +49,12 @@ async function planOffline(T, st, { message, plotId, problemHint }) {
   const fc = await run('get_forecast');
   if (problem === 'none' && sensor?.latest && sensor.latest.soilMoisturePct < sensor.dryThresholdPct && /\b(how|check|status|plot|farm|today)\b/i.test(message)) problem = 'dry_soil';
   if (problem === 'none') return { steps, problem, plotId: pid };
-  if (problem === 'sick_plant') await run('run_plant_doctor');
-  else await run('get_nearby_reports', { plotId: pid });
+  let similarLine = '';
+  if (problem === 'sick_plant') {
+    await run('run_plant_doctor');
+    const sim = await run('find_similar_cases', st.diagnosis?.diagnosisId ? { diagnosisId: st.diagnosis.diagnosisId } : { crop: sensor?.crop || '' });
+    if (sim?.cases?.length) similarLine = sim.cases.map((c) => c.label).slice(0, 3).join('; ');
+  } else await run('get_nearby_reports', { plotId: pid });
   const crop = sensor?.crop ? sensor.crop.toLowerCase() + ' ' : '';
   const g = await run('search_guides', { query: problem === 'sick_plant' && st.diagnosis ? `${st.diagnosis.crop} ${st.diagnosis.condition}` : crop + QUERIES[problem] });
   const ids = g.passages.map((p) => p.id);
@@ -58,7 +62,10 @@ async function planOffline(T, st, { message, plotId, problemHint }) {
   const rm = (await run('search_guides', { query: REMEDY[problem] })).passages.map((p) => p.id);
   const fix = rm.length ? [rm[0]] : cite, fix2 = rm.length > 1 ? [rm[1]] : fix;
   const lat = sensor?.latest;
-  if (problem === 'dry_soil' && lat) {
+  if (problem === 'dry_soil' && lat && watchStale) {
+    await run('propose_action', { plotId: pid, kind: 'notify', text: `The last reading for ${sensor.plotName} is ${lat.ageMinutes} minutes old. Check the sensor before watering.`, citations: cite });
+    await run('propose_action', { plotId: pid, kind: 'step', cost: 'free', text: 'Look at the plants and the sensor, then send a new reading.', citations: fix });
+  } else if (problem === 'dry_soil' && lat) {
     const dry = lat.soilMoisturePct < sensor.dryThresholdPct;
     if (dry && !lat.raining) await run('propose_action', { plotId: pid, kind: 'irrigate', litres: Math.min(500, Math.max(50, Math.round((sensor.dryThresholdPct - lat.soilMoisturePct) * 15 / 10) * 10)), text: `Water ${sensor.plotName} at the base, early in the morning.`, citations: cite });
     else await run('propose_action', { plotId: pid, kind: 'hold', text: lat.raining ? 'Hold watering: it is raining.' : 'Hold watering: the soil is not dry yet.', citations: cite });
@@ -76,12 +83,14 @@ async function planOffline(T, st, { message, plotId, problemHint }) {
   }
   const top = st.passages.find((p) => p.passageId === cite[0]);
   const alert = (fc.alerts || []).find((a) => a.type === problem);
-  const cause = problem === 'sick_plant' && st.diagnosis ? `The plant doctor suggested ${st.diagnosis.condition} (${st.diagnosis.confidence} confidence). The guide passage below describes similar signs.`
+  const similarNote = problem === 'sick_plant' && similarLine ? ` Similar past cases: ${similarLine}.` : '';
+  const cause = watchStale && lat ? `The last reading for ${sensor.plotName} is ${lat.ageMinutes} minutes old (the limit is 15 minutes). Check the sensor before watering.`
+    : problem === 'sick_plant' && st.diagnosis ? `The plant doctor suggested ${st.diagnosis.condition} (${st.diagnosis.confidence} confidence). The guide passage below describes similar signs.`
     : problem === 'dry_soil' && lat ? `Soil moisture on ${sensor.plotName} is ${lat.soilMoisturePct}% against a dry limit of ${sensor.dryThresholdPct}%.`
     : alert ? `The forecast shows a ${problem} alert for ${alert.date} (${alert.value} ${alert.unit}).` : `You told me about ${problem === 'sick_plant' ? 'a sick plant' : TITLES[problem].toLowerCase()}. I could not confirm it from the sensors or the forecast, so I am not sure yet.`;
   return { steps, problem, plotId: pid, final: {
-    reply: top ? `${cause} The guide says: "${firstSentence(top.text)}" [${top.passageId}]. I have put my suggestions below for you to approve.` : `${cause} I found no guide passage on this, so I am not sure. Please ask your extension officer.`,
-    title: `${TITLES[problem]} · ${sensor?.plotName || 'farm'}`.slice(0, 80), likelyCause: cause.slice(0, 400), confidence: top ? (problem === 'sick_plant' ? 'low' : 'medium') : 'low', causeCitations: cite,
+    reply: (top ? `${cause} The guide says: "${firstSentence(top.text)}" [${top.passageId}]. I have put my suggestions below for you to approve.` : `${cause} I found no guide passage on this, so I am not sure. Please ask your extension officer.`) + similarNote,
+    title: String(titleOverride || `${TITLES[problem]} · ${sensor?.plotName || 'farm'}`).slice(0, 80), likelyCause: (cause + similarNote).slice(0, 400), confidence: top ? (problem === 'sick_plant' ? 'low' : 'medium') : 'low', causeCitations: cite,
     followUpQuestion: problem === 'sick_plant' ? 'Have the spots spread to new leaves?' : problem === 'dry_soil' ? 'Is the soil still dry after watering?' : problem === 'frost' ? 'Did the plants get frost damage?' : 'Are the plants wilting in the afternoon?' } };
 }
 
@@ -119,12 +128,12 @@ async function planWithAi(provider, T, st, { message, lang, plotId, history }) {
 }
 
 /** One chat turn. deps: { call, provider, clock, requestId }. Returns { reply, steps, case, cards, citations, usedFallback, fallbackReason }. */
-export async function runTurn(deps, { message, lang = 'en', plotId, history = [] }) {
+export async function runTurn(deps, { message, lang = 'en', plotId, history = [], problemHint, plannerOnly = false, titleOverride, watchStale = false }) {
   const st = { passages: [], proposals: [], sensor: {}, plots: [], alerts: [] };
   const fresh = () => { st.passages = []; st.proposals = []; st.diagnosis = null; };
   const T = createTools({ call: deps.call, clock: deps.clock, state: st, requestId: deps.requestId, providerName: deps.provider.name });
   let plan, usedFallback = false, fallbackReason = '';
-  if (typeof deps.provider.agentStep === 'function') {
+  if (!plannerOnly && typeof deps.provider.agentStep === 'function') {
     try {
       plan = await planWithAi(deps.provider, T, st, { message, lang, plotId, history });
       const known = new Set(st.passages.map((p) => p.passageId));
@@ -133,7 +142,7 @@ export async function runTurn(deps, { message, lang = 'en', plotId, history = []
       if (hasDose(plan.final, plan.steps)) throw Object.assign(new Error('dose'), { reason: 'dose_removed' });
     } catch (e) { usedFallback = true; fallbackReason = e.reason || (e.kind === 'timeout' ? 'ai_timeout' : 'ai_unavailable'); fresh(); plan = null; }
   }
-  if (!plan) plan = await planOffline(T, st, { message, plotId });
+  if (!plan) plan = await planOffline(T, st, { message, plotId, problemHint, titleOverride, watchStale });
   const out = { reply: '', steps: plan.steps, case: null, cards: [], citations: [], usedFallback, fallbackReason, problemType: plan.problem };
   if (plan.problem === 'none') {
     out.reply = plan.final?.reply || 'Hello! Tell me what you see on the farm (dry soil, spots on leaves, frost or heat), or ask about a plot. I check the sensors, the forecast and the farming guides, and I always ask before anything is done.';
@@ -148,9 +157,9 @@ export async function runTurn(deps, { message, lang = 'en', plotId, history = []
     confidence: ['low', 'medium', 'high'].includes(f.confidence) ? f.confidence : 'low', causeCitations: (f.causeCitations || []).filter(Number.isInteger).slice(0, 5),
     evidence: [{ kind: 'farmer', text: message.slice(0, 300) }, ...plan.steps.map((s) => ({ kind: s.tool, text: String(s.summary).slice(0, 300) }))].slice(0, 12),
     actions, followUpDays: 3, followUpQuestion: String(f.followUpQuestion || 'How are the plants now?').slice(0, 200), diagnosisId: st.diagnosis?.diagnosisId ?? null,
-    usedFallback, provider: usedFallback ? `${deps.provider.name}+planner` : deps.provider.name, requestId: deps.requestId };
+    usedFallback, provider: providerLabel(deps, usedFallback), requestId: deps.requestId };
   let r = await deps.call('oe.assistant_case_create', 'POST', '/farm/assistant/cases', body);
-  if (r.status === 422 && !usedFallback) {   // ABL said no (CITATION_UNKNOWN or DOSE_BLOCKED): never show it; redo offline with the same tools
+  if (r.status === 422 && !usedFallback && !plannerOnly) {   // ABL said no (CITATION_UNKNOWN or DOSE_BLOCKED): never show it; redo offline with the same tools
     out.usedFallback = true; out.fallbackReason = r.body.error === 'DOSE_BLOCKED' ? 'dose_blocked' : 'citation_unknown';
     fresh();
     const p2 = await planOffline(T, st, { message, plotId, problemHint: plan.problem });
@@ -164,9 +173,13 @@ async function runCase(deps, out, plan, st, message) {
   const r = await deps.call('oe.assistant_case_create', 'POST', '/farm/assistant/cases', { plotId: plan.plotId, problemType: plan.problem, title: f.title, likelyCause: f.likelyCause, confidence: f.confidence,
     causeCitations: f.causeCitations, evidence: [{ kind: 'farmer', text: message.slice(0, 300) }, ...plan.steps.map((s) => ({ kind: s.tool, text: String(s.summary).slice(0, 300) }))].slice(0, 12),
     actions: actions.length ? actions : [{ kind: 'step', text: 'Ask your extension officer to look at the plants.', cost: 'free', citations: f.causeCitations }], followUpDays: 3, followUpQuestion: f.followUpQuestion,
-    diagnosisId: st.diagnosis?.diagnosisId ?? null, usedFallback: true, provider: `${deps.provider.name}+planner`, requestId: deps.requestId });
+    diagnosisId: st.diagnosis?.diagnosisId ?? null, usedFallback: true, provider: providerLabel(deps, true), requestId: deps.requestId });
   out.steps = plan.steps;
   return finish(out, r, f.reply, st);
+}
+function providerLabel(deps, usedFallback) {
+  if (deps.source) return `${deps.source}+planner`.slice(0, 40);
+  return usedFallback ? `${deps.provider.name}+planner` : deps.provider.name;
 }
 function finish(out, r, reply, st) {
   if (r.status !== 201) {

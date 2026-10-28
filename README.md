@@ -19,10 +19,13 @@ An ESP32 soil sensor sends readings to a Node API. An AI model proposes an actio
 | AI translation into all 11 official languages | Merged; picker in the UI, hand-written isiZulu first, AI for the rest (mock offline, Gemini via `AI_PROVIDER=http`); see [docs/TRANSLATION.md](docs/TRANSLATION.md) |
 | Weather alerts (17) with the real 7-day Open-Meteo forecast, and tamper-evident audit hash chain (21) | Merged; 005 and 006 loaded in the live DB, tested on real OpenEdge; see [docs/AUDIT.md](docs/AUDIT.md) and [docs/WEATHER.md](docs/WEATHER.md) |
 | Plant doctor | Merged; 007-doctor.df loaded in the live DB, tested on real OpenEdge; see [docs/DOCTOR.md](docs/DOCTOR.md) |
+| Similar past cases | Description embeddings on Diagnosis (schema `009-similar.df`, load with `load-similar`). Compares a written description of the photos, not the pixels. No key: crop and condition. See [docs/DOCTOR.md](docs/DOCTOR.md) |
+| MCP server | Same assistant tools over stdio or Streamable HTTP (`APP_TOKEN`). See [docs/MCP.md](docs/MCP.md) |
+| Farm watch | Off unless `FARM_WATCH_INTERVAL_MIN` is set. Manual: `POST /api/v1/assistant/watch/run`. Opens cases only; the farmer still approves. See [docs/ASSISTANT.md](docs/ASSISTANT.md) |
 | PASOE security | Basic login (`farmapi`, `farmadmin`), role check in ABL for admin changes, real user in the audit log; see [openedge/pasoe/README.md](openedge/pasoe/README.md) |
 | Planned features 18, 19, 20 (rest), 22 | **Not built yet**; ideas and plans in [docs/OLD-APP-IDEAS-PLAN.md](docs/OLD-APP-IDEAS-PLAN.md) |
 
-Tests (26 Oct 2026): `npm test` 480 passed, 0 failed, 3 intentional failures (by design). Real OpenEdge 12.8 on the laptop: 259 contract cases passed plus the intentional FAIL01, in batch mode on the live database, on a scratch database and over HTTP through PASOE with basic login (co-op CO01-CO76: 76 passed, market MK01-MK51: 51 passed); audit tamper test 0 failed; PASOE security checks 10 of 10; API suites against real PASOE 21 + 17 passed.
+Tests (28 Oct 2026, this branch, mock OpenEdge only): `npm test` 553 passed, 0 failed, 3 intentional failures (by design). Schema `009-similar.df` and the new ABL have not been executed on real OpenEdge here. The 26 Oct 2026 real OpenEdge run was: 259 contract cases passed plus the intentional FAIL01, in batch mode on the live database, on a scratch database and over HTTP through PASOE with basic login (co-op CO01-CO76: 76 passed, market MK01-MK51: 51 passed); audit tamper test 0 failed; PASOE security checks 10 of 10; API suites against real PASOE 21 + 17 passed. `npm test` that day was 480 passed.
 
 ```
 ESP32 or simulator --POST /api/v1/readings--> Node API (Fastify, port 3000)
@@ -85,6 +88,11 @@ By default `OE_MODE=mock` and `AI_PROVIDER=mock`, so the API runs entirely in me
 | `AI_PROVIDER` | `mock` or `http` | `mock` |
 | `AI_BASE_URL`, `AI_API_KEY`, `AI_MODEL` | Used when `AI_PROVIDER=http`. The key is read only from the environment or `.env` and is never logged. | empty |
 | `AI_MOCK_BEHAVIOUR` | Mock only: `normal`, `timeout`, `bad-json`, `injection`, `extra-field`, `greedy`, `invented-number`, `hold-with-litres`, `notify-no-litres` | `normal` |
+| `SIMILAR_CASES` | `on` (default) looks for similar plant-doctor cases. `off` skips that and does not call the embedding model | `on` |
+| `AI_EMBED_MODEL`, `AI_EMBED_DIM`, `AI_EMBED_TIMEOUT_MS` | Text embedding of the photo **description**. Does not change `AI_MODEL`. Default model `gemini-embedding-001`, 256 numbers, 8 s | see `.env.example` |
+| `FARM_WATCH_INTERVAL_MIN` | How often the farm watch opens cases. **0 = off** (the demo default). It does not run at process start | `0` |
+| `FARM_WATCH_DEDUPE_HOURS` | Do not open another case for the same issue while one is open, or until this many hours after a closed one | `24` |
+| `MCP_HTTP_HOST`, `MCP_HTTP_PORT` | Used only by `npm run mcp:http`. Bearer token is `APP_TOKEN` | `127.0.0.1`, `3001` |
 | `LOG_DIR`, `LOG_LEVEL` | Tool-call log folder (`logs/tool-calls.jsonl`, gitignored) and log level | `logs`, `warn` |
 
 ## Using the real Gemini model
@@ -147,7 +155,11 @@ The **community harvest-day market** (farmers list a market day with produce pri
 
 **Weather alerts** (no AI): OpenEdge checks the real 7-day Open-Meteo forecast (or the synthetic example forecast offline) against the farmer's alert levels for heavy rain, heat and frost, writes the alerts and the audit, and the farmer acknowledges them. See `docs/WEATHER.md`.
 
-**Plant doctor** (`#/doctor`): 1 to 3 photos plus crop, plant part, growth stage and province go to the AI. The API strips dose steps, OpenEdge enforces DOSE_BLOCKED from the BlockedTerm word list, a safe fallback answer replaces anything unsafe, and the farmer saves or dismisses. See `docs/DOCTOR.md`.
+**Plant doctor** (`#/doctor`): 1 to 3 photos plus crop, plant part, growth stage and province go to the AI. The API strips dose steps, OpenEdge enforces DOSE_BLOCKED from the BlockedTerm word list, a safe fallback answer replaces anything unsafe, and the farmer saves or dismisses. When similar past cases exist they are listed under the answer (a written description of the photos when a key is set, otherwise crop and condition). See `docs/DOCTOR.md`.
+
+**Farm watch** (`POST /api/v1/assistant/watch/run`): looks at sensors, the forecast, nearby reports, similar cases and the guides, then opens an assistant case if something needs the farmer. The schedule is off unless `FARM_WATCH_INTERVAL_MIN` is set. Cards still wait for approval. See `docs/ASSISTANT.md`.
+
+**MCP**: `npm run mcp` (stdio) or `npm run mcp:http` exposes the assistant tools, including `find_similar_cases`. `propose_action` still does not do the action. See `docs/MCP.md`.
 
 ## Demo script
 
@@ -190,7 +202,7 @@ Edit `config.h` with your Wi-Fi name and password, the laptop's address, the dev
 
 | Command | What it does |
 |---|---|
-| `npm test` | Everything that works offline. At the last run (26 Oct 2026): 480 passed, 0 failed, 3 intentional failures confirmed. |
+| `npm test` | Everything that works offline. 28 Oct 2026 on this branch: 553 passed, 0 failed, 3 intentional failures confirmed. |
 | `npm run test:oe-http` | Every OpenEdge contract case, including `CO01` to `CO76`, over HTTP against a running PASOE. Reseed first. |
 | `npm run test:api-real-oe` | The API test suites against real PASOE. |
 | `npm run test:gemini` | One live call to the real model. Skipped without the AI variables. |

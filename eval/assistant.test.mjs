@@ -42,9 +42,9 @@ test('firstSentence keeps "A. solani" together and quotes the passage exactly', 
   assert.equal(firstSentence(t), 'On tomato, foliar symptoms of A. solani generally occur on the oldest leaves.');
 });
 
-test('tool registry: the 9 named tools plus memory; step limit 6', () => {
+test('tool registry: the named tools plus memory and similar cases; step limit 6', () => {
   const names = TOOL_DEFS.map((t) => t.name);
-  for (const n of ['get_sensor_readings', 'get_forecast', 'run_plant_doctor', 'search_guides', 'get_nearby_reports', 'get_case', 'propose_action', 'list_harvest_days', 'remember']) assert.ok(names.includes(n), n);
+  for (const n of ['get_sensor_readings', 'get_forecast', 'run_plant_doctor', 'search_guides', 'get_nearby_reports', 'get_case', 'propose_action', 'list_harvest_days', 'remember', 'find_similar_cases']) assert.ok(names.includes(n), n);
   assert.equal(STEP_LIMIT, 6);
 });
 
