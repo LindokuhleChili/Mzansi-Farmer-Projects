@@ -49,6 +49,14 @@ function bubble(m) {
     <p class="xs mut">${t('as_honest')}</p></div>`;
 }
 
+function watchCards(list) {
+  const open = list.filter((c) => String(c.provider || '').startsWith('farm-watch') && c.status === 'open');
+  if (!open.length) return '';
+  const kind = (a) => (t('as_kind_' + a.kind) !== 'as_kind_' + a.kind ? t('as_kind_' + a.kind) : a.kind);
+  const st = (a) => (t('as_st_' + (a.status || 'proposed')) !== 'as_st_' + (a.status || 'proposed') ? t('as_st_' + (a.status || 'proposed')) : (a.status || 'proposed'));
+  return html`<div class="card pad"><div class="lbl" style="margin-bottom:6px">${t('as_watch')}</div><p class="xs mut">${t('as_watch_wait')}</p>
+    ${open.map((c) => html`<a class="as-card as-watch" href="#/assistant/${c.caseId}"><b>${tx(c.title)}</b><p class="sm">${tx(c.likelyCause)}</p><span class="xs mut">${(c.actions || []).slice(0, 2).map((a) => `${kind(a)} · ${st(a)}`).join(' · ')}</span></a>`)}</div>`;
+}
 export async function assistantPage(alive, renderChrome, draw, viewEl, need) {
   renderChrome('assistant');
   const [cases, ins] = await Promise.all([api('GET', '/assistant/cases?limit=8'), api('GET', `/assistant/check-ins?after=0`)]);
@@ -73,6 +81,7 @@ export async function assistantPage(alive, renderChrome, draw, viewEl, need) {
           ${cstate.inbox.length ? cstate.inbox.slice().reverse().map((m) => html`<div class="as-in"><span class="sm">${tx(m.text)}</span><span class="xs mut">${fmtDateTime(m.at)}</span>
             ${m.caseId ? html`<a class="xs" href="#/assistant/${m.caseId}">${t('as_open_case', { id: m.caseId })}</a>` : html`<button class="btn out sm" data-act="as-quick" data-q="${m.text}">${t('as_ask_this')}</button>`}</div>`)
             : html`<p class="sm mut">${t('as_inbox_none')}</p>`}</div>
+        ${watchCards(list)}
         <div class="card pad"><div class="lbl" style="margin-bottom:6px">${t('as_cases')}</div>
           ${list.length ? list.map((c) => html`<a class="kv as-caserow" href="#/assistant/${c.caseId}"><span><b>${tx(c.title)}</b><span class="xs mut"> · ${fmtDayNoYear(c.createdAt)}</span></span><span class="xs mut">${t('as_case_' + c.status)}</span></a>`)
             : html`<p class="sm mut">${t('as_cases_none')}</p>`}</div>

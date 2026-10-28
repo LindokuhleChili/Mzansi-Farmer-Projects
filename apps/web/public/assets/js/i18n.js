@@ -149,6 +149,8 @@ const en = {
   dr_kind_chemical: 'Chemical', dr_kind_dose: 'Dose', dr_word_add: 'Add', dr_word_added: 'Word added.', dr_word_off: 'Turn off', dr_word_on: 'Turn on',
   dr_word_turned_on: 'Word turned on.', dr_word_turned_off: 'Word turned off.', dr_need_photo: 'Add at least one photo.', dr_too_many: 'Only the first {n} photos are used.',
   dr_bad_type: 'Use JPEG, PNG or WebP photos.',
+  dr_similar: 'Similar past cases', dr_similar_desc: 'Matched on a written description of the photos (a text embedding), not on the photos themselves.', dr_similar_crop: 'Matched on crop and condition. No description embedding was available.',
+  as_watch: 'Farm watch', as_watch_wait: 'OpenEdge checked these proposals. Nothing happens until you approve.',
   e_PHOTO_TOO_LARGE: 'A photo is too large.', e_PHOTO_TYPE_NOT_ALLOWED: 'Use JPEG, PNG or WebP photos.', e_TERM_EXISTS: 'That word is already in the list.',
   e_BLOCKED_TERM_INVALID: 'Use 1 to 40 letters, digits or spaces.', e_DIAGNOSIS_NOT_FOUND: 'That check was not found.',
   // ---- weather alerts (docs/WEATHER.md)

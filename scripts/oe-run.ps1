@@ -8,6 +8,7 @@
 .\scripts\oe-run.ps1 -Action load-weather      # existing farm db that already has 004: load 006-weather.df only (server STOPPED), then seed
 .\scripts\oe-run.ps1 -Action load-doctor       # existing farm db that already has 006: load 007-doctor.df only (server STOPPED), then seed
 .\scripts\oe-run.ps1 -Action load-assistant    # existing farm db that already has 007: load 008-assistant.df only (server STOPPED), then seed
+.\scripts\oe-run.ps1 -Action load-similar     # existing farm db that already has 008: load 009-similar.df only (server STOPPED). Adds description-embedding fields on Diagnosis. Then restart PASOE.
    .\scripts\oe-run.ps1 -Action seed             # db server running on port 20000; loads seed.json, coop-seed.json and market-seed.json
    .\scripts\oe-run.ps1 -Action test             # reseed, then every contract case (including CO01-CO76) in batch mode
    .\scripts\oe-run.ps1 -Action test-coop        # reseed, then only CO01-CO76 in batch mode
@@ -22,7 +23,7 @@
                                                   # Never touches the farm database or PASOE; safe while they run.
 #>
 param(
-  [ValidateSet('load-schema','load-coop','load-market','load-audit-chain','load-weather','load-doctor','load-assistant','scratch-schema','scratch-test','seed','test','test-coop','test-market','test-http','test-http-coop','test-http-market','test-security','start-db','stop-db')][string]$Action = 'test',
+  [ValidateSet('load-schema','load-coop','load-market','load-audit-chain','load-weather','load-doctor','load-assistant','load-similar','scratch-schema','scratch-test','seed','test','test-coop','test-market','test-http','test-http-coop','test-http-market','test-security','start-db','stop-db')][string]$Action = 'test',
   [string]$Dlc = $(if ($env:DLC) { $env:DLC } else { 'C:\Progress\OpenEdge' }),
   [string]$DbDir = $(if ($env:FARM_DB_DIR) { $env:FARM_DB_DIR } else { 'C:\OpenEdge\WRK\farm' }),
   [int]$Port = 20000
@@ -57,7 +58,7 @@ function New-ScratchDb {
   Remove-Item $scratchDir -Recurse -Force -ErrorAction SilentlyContinue; New-Item -ItemType Directory $scratchDir | Out-Null
   Push-Location $scratchDir; & (Join-Path $Dlc 'bin\prodb.exe') scratch empty | Out-Null; Pop-Location
   Remove-Item (Join-Path $src 'scratch.e') -ErrorAction SilentlyContinue
-  foreach ($df in '001-farm.df','002-farm-ops.df','003-coop.df','004-market.df','005-audit-chain.df','006-weather.df','007-doctor.df','008-assistant.df') {
+  foreach ($df in '001-farm.df','002-farm-ops.df','003-coop.df','004-market.df','005-audit-chain.df','006-weather.df','007-doctor.df','008-assistant.df','009-similar.df') {
     Invoke-Abl 'load-schema.p' (Join-Path $repo "openedge\schema\$df") @('-b','-db',(Join-Path $scratchDir 'scratch'),'-1')
     Assert-SchemaLoaded 'scratch'
   }
@@ -86,7 +87,7 @@ switch ($Action) {
   }
   'stop-db'  { & (Join-Path $Dlc 'bin\proshut.bat') (Join-Path $DbDir 'farm') -by }
   'load-schema' {
-    foreach ($df in 'openedge\schema\002-farm-ops.df','openedge\schema\003-coop.df','openedge\schema\004-market.df','openedge\schema\005-audit-chain.df','openedge\schema\006-weather.df','openedge\schema\007-doctor.df','openedge\schema\008-assistant.df') {
+    foreach ($df in 'openedge\schema\002-farm-ops.df','openedge\schema\003-coop.df','openedge\schema\004-market.df','openedge\schema\005-audit-chain.df','openedge\schema\006-weather.df','openedge\schema\007-doctor.df','openedge\schema\008-assistant.df','openedge\schema\009-similar.df') {
       Invoke-Abl 'load-schema.p' (Join-Path $repo $df) @('-b','-db',(Join-Path $DbDir 'farm'),'-1')
       Assert-SchemaLoaded 'farm'
     }
@@ -118,6 +119,11 @@ switch ($Action) {
   'load-assistant' {
     Remove-Item (Join-Path $src 'farm.e') -ErrorAction SilentlyContinue
     Invoke-Abl 'load-schema.p' (Join-Path $repo 'openedge\schema\008-assistant.df') @('-b','-db',(Join-Path $DbDir 'farm'),'-1')
+    Assert-SchemaLoaded 'farm'
+  }
+  'load-similar' {
+    Remove-Item (Join-Path $src 'farm.e') -ErrorAction SilentlyContinue
+    Invoke-Abl 'load-schema.p' (Join-Path $repo 'openedge\schema\009-similar.df') @('-b','-db',(Join-Path $DbDir 'farm'),'-1')
     Assert-SchemaLoaded 'farm'
   }
   'seed' { Invoke-Abl 'seed.p' $seedFiles $client }

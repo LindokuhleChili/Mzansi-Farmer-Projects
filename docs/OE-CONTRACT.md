@@ -30,6 +30,10 @@ Time values are ISO 8601 UTC with `Z` (`2026-10-23T08:06:00.000Z`). `asOf` (opti
 Only `irrigate` uses water: the litres checks and the 7-day budget sum apply to `irrigate` only, so a `hold` or `notify` that carries litres never counts against the budget. Timestamps (`timestamp`, `asOf`) must be real calendar dates.
 Every failing rule is reported (not only the first), in that order, so the farmer sees all reasons.
 
+## Plant-doctor description embeddings (schema 009)
+
+`009-similar.df` adds `VisualText`, `EmbedModel`, `EmbedDim` and `EmbedVector` to `Diagnosis`. They are optional on `POST /farm/doctor/diagnoses`. A missing or invalid vector is stored as empty and the diagnosis is still created. A description that fails `DOSE_BLOCKED` is dropped with its vector; the diagnosis text is still checked on its own. `GET /farm/doctor/similar-candidates?limit=` returns recent diagnoses plus `embedVector` (a JSON array). The vector is a text embedding of `VisualText`, not of a photo. Cosine ranking is done by the Node API. See `docs/DOCTOR.md`.
+
 ## Database (openedge/schema)
 
 `001-farm.df` (existing `Farm` table), `002-farm-ops.df`: `Plot`, `SensorReading`, `AiSuggestion`, `AuditLog` and sequences `ReadingSeq`, `SuggestionSeq`, `AuditSeq`.

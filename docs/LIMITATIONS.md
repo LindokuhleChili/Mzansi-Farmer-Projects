@@ -19,7 +19,7 @@ This is a hackathon prototype. It shows one idea: an AI model may propose, OpenE
 
 ## The AI layer
 
-- **No RAG.** There is no vector database, no embeddings and no document store. Facts are fetched from OpenEdge for each request (plot limits, latest readings, approved water use over 7 days, a computed trend) and given to the model as the only allowed source of numbers. Retrieving farming guidance with citations is a sensible next step but is not built.
+- **Guide text is not a vector database.** Farming guides are still the OpenEdge WORD index (`search_guides`, schema 008). Facts for irrigation (plot limits, readings, 7-day water use) still come from OpenEdge on each request. The only vectors in this repo are **description embeddings** on plant-doctor rows (schema 009): a short written description of the photos, not the photo itself, ranked in the Node API by cosine. See docs/DOCTOR.md. There is no separate vector database.
 - **Model choice.** `gemini-3.8-flash` and `3.7-flash` were overloaded during development, so `gemini-3.5-flash` is used. Free-tier limits and availability can change. If the model fails or takes longer than 8 seconds, the API uses a fixed, rule-based proposal that OpenEdge still validates (`ai.usedFallback: true`).
 - **The model can pick a poor amount that the rules still allow.** In one live run the model proposed the maximum 500 litres where the fixed sizing would give 260 litres. The rules accepted it because it was inside the plot limit and the weekly budget, and the farmer still has to approve. The project does not tune the amount beyond the rules.
 - **The checks cover known failures only.** Tests cover invalid output, extra fields, a forbidden action (prompt injection) and invented numbers. They do not prove the model is safe against every input.
@@ -73,7 +73,7 @@ This is a hackathon prototype. It shows one idea: an AI model may propose, OpenE
 
 - A co-op screen (the rules are HTTP only; see `docs/COOP.md`)
 - A native mobile app (the web interface works in a phone browser)
-- Retrieval from farming documents (RAG)
+- A vector database for the farming guides (guide search is the OpenEdge WORD index; plant-doctor similar cases are description embeddings on the Diagnosis row, docs/DOCTOR.md)
 - Real-time actuation (the system records an approval; it does not open a valve)
 - Multi-farm or multi-user support
 - Production deployment, monitoring and backups
@@ -87,9 +87,12 @@ This is a hackathon prototype. It shows one idea: an AI model may propose, OpenE
 - The diagnosis is a guess from photos, not a lab test. The confidence is the AI's own guess.
 - The word lists catch the dose wording they contain. New phrasings need words added by an admin, so the server check and the prompt stay as extra layers.
 - No chemical advice is given at all, on purpose. Farmers who need a spray programme are sent to an extension officer.
-- Photos are not stored, so a saved diagnosis cannot show the photos later.
+- Photos are not stored, so a saved diagnosis cannot show the photos later. Similar-case search does not keep the photos either. It stores a written description and, when an API key is set, a text embedding of that description (`gemini-embedding-001` by default, 256 numbers). The chat model stays `AI_MODEL`. With no key, or if the embedding call fails, matching is crop plus condition words and the diagnosis still saves.
+- The place in "Similar past cases" is the province saved on the diagnosis, not a farm GPS pin.
 
 ## Farm Assistant
 - Guide passages are quoted from English Wikipedia (CC BY-SA 4.0). They are general text, not local extension advice.
 - "Ask an expert" and "notify" cards send nothing. Voice input is not built. The isiZulu synonyms need review by a first-language speaker.
 - Chat history is kept only in the browser tab. Case files, follow-ups and memory are kept in OpenEdge. See docs/ASSISTANT.md.
+- **Farm watch does not run on a timer unless `FARM_WATCH_INTERVAL_MIN` is set** (default 0). The manual route opens cases; it does not approve them. It always uses the offline planner, even when a key is configured, so the background job does not call the chat model. Dry-soil cases need a fresh reading and a forecast with under 1 mm of rain; the example forecast has more rain than that, so a demo on seed data opens a stale-sensor case instead.
+- The MCP server is another door to the same tools. Streamable HTTP checks `APP_TOKEN`. stdio trusts the process environment (the same `.env` as the API). It does not add a second rules engine. See docs/MCP.md.

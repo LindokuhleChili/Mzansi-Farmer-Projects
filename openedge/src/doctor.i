@@ -159,8 +159,98 @@ FUNCTION fDrDiagJson RETURNS JsonObject (INPUT piId AS INTEGER):
     jo:Add("verdict", "passed").
     jo:Add("status", bD.DiagStatus).
     IF bD.DecidedAt = ? THEN jo:AddNull("decidedAt"). ELSE jo:Add("decidedAt", fIso(bD.DecidedAt)).
+    /* schema 009: written description of the photos, and whether a text embedding of that description is stored.
+       The vector itself is not on this object (it is large). GET /farm/doctor/similar-candidates returns it. */
+    jo:Add("visualText", bD.VisualText).
+    jo:Add("embedModel", bD.EmbedModel).
+    jo:Add("hasDescriptionEmbedding", bD.EmbedVector <> "").
     RETURN jo.
 END FUNCTION.
+
+/* embedModel: 1 to 40 of A-Z a-z 0-9 . _ - */
+FUNCTION fDrModelOk RETURNS LOGICAL (INPUT pc AS CHARACTER):
+    DEFINE VARIABLE i AS INTEGER NO-UNDO.
+    DEFINE VARIABLE iA AS INTEGER NO-UNDO.
+    IF pc = ? OR LENGTH(pc) < 1 OR LENGTH(pc) > 40 THEN RETURN FALSE.
+    DO i = 1 TO LENGTH(pc):
+        iA = ASC(SUBSTRING(pc, i, 1)).
+        IF NOT ((iA >= 65 AND iA <= 90) OR (iA >= 97 AND iA <= 122) OR (iA >= 48 AND iA <= 57) OR iA = 45 OR iA = 46 OR iA = 95) THEN RETURN FALSE.
+    END.
+    RETURN TRUE.
+END FUNCTION.
+
+/* embedVector: a JSON array of 8 to 256 numbers, each between -1.5 and 1.5, at most 4000 characters.
+   This is a text embedding of VisualText, not an embedding of the photo. */
+PROCEDURE dr-vec-ok:
+    DEFINE INPUT  PARAMETER pc    AS CHARACTER NO-UNDO.
+    DEFINE OUTPUT PARAMETER plOk  AS LOGICAL NO-UNDO.
+    DEFINE OUTPUT PARAMETER piDim AS INTEGER NO-UNDO.
+    DEFINE VARIABLE oP AS ObjectModelParser NO-UNDO.
+    DEFINE VARIABLE ja AS JsonArray NO-UNDO.
+    DEFINE VARIABLE i AS INTEGER NO-UNDO.
+    DEFINE VARIABLE d AS DECIMAL NO-UNDO.
+    ASSIGN plOk = FALSE piDim = 0.
+    IF pc = ? OR pc = "" OR LENGTH(pc) > 4000 THEN RETURN.
+    IF SUBSTRING(pc, 1, 1) <> "[" THEN RETURN.
+    oP = NEW ObjectModelParser().
+    ja = CAST(oP:Parse(pc), JsonArray) NO-ERROR.
+    IF ERROR-STATUS:ERROR OR NOT VALID-OBJECT(ja) THEN DO:
+        IF VALID-OBJECT(oP) THEN DELETE OBJECT oP NO-ERROR.
+        RETURN.
+    END.
+    IF ja:Length < 8 OR ja:Length > 256 THEN DO:
+        DELETE OBJECT ja NO-ERROR. DELETE OBJECT oP NO-ERROR. RETURN.
+    END.
+    DO i = 1 TO ja:Length:
+        IF ja:GetType(i) <> JsonDataType:NUMBER THEN DO:
+            DELETE OBJECT ja NO-ERROR. DELETE OBJECT oP NO-ERROR. RETURN.
+        END.
+        d = ja:GetDecimal(i).
+        IF d = ? OR d < -1.5 OR d > 1.5 THEN DO:
+            DELETE OBJECT ja NO-ERROR. DELETE OBJECT oP NO-ERROR. RETURN.
+        END.
+    END.
+    ASSIGN plOk = TRUE piDim = ja:Length.
+    DELETE OBJECT ja NO-ERROR. DELETE OBJECT oP NO-ERROR.
+END PROCEDURE.
+
+/* Optional visualText / embedModel / embedVector on POST /farm/doctor/diagnoses.
+   A dose in the description drops the description and the vector. It does not reject the diagnosis. */
+PROCEDURE dr-take-visual:
+    DEFINE OUTPUT PARAMETER pcVis AS CHARACTER NO-UNDO.
+    DEFINE OUTPUT PARAMETER pcEm  AS CHARACTER NO-UNDO.
+    DEFINE OUTPUT PARAMETER pcVec AS CHARACTER NO-UNDO.
+    DEFINE OUTPUT PARAMETER piDim AS INTEGER NO-UNDO.
+    DEFINE VARIABLE cVis AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE cEm AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE cVec AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE lOk AS LOGICAL NO-UNDO.
+    DEFINE VARIABLE lVec AS LOGICAL NO-UNDO.
+    DEFINE VARIABLE iDim AS INTEGER NO-UNDO.
+    ASSIGN pcVis = "" pcEm = "" pcVec = "" piDim = 0 cVis = "" cEm = "" cVec = "".
+    RUN get-str (goBody, "visualText", OUTPUT cVis, OUTPUT lOk).
+    IF NOT lOk OR cVis = ? THEN cVis = "".
+    cVis = TRIM(cVis).
+    IF LENGTH(cVis) > 500 THEN cVis = "".
+    IF cVis <> "" THEN DO:
+        EMPTY TEMP-TABLE ttDrBlk. giDrSeq = 0.
+        RUN dr-check-text ("visualText", cVis).
+        IF CAN-FIND(FIRST ttDrBlk) THEN cVis = "".
+        EMPTY TEMP-TABLE ttDrBlk. giDrSeq = 0.
+    END.
+    IF cVis = "" THEN RETURN.
+    pcVis = cVis.
+    RUN get-str (goBody, "embedModel", OUTPUT cEm, OUTPUT lOk).
+    IF NOT lOk OR cEm = ? THEN RETURN.
+    cEm = TRIM(cEm).
+    IF NOT fDrModelOk(cEm) THEN RETURN.
+    RUN get-str (goBody, "embedVector", OUTPUT cVec, OUTPUT lOk).
+    IF NOT lOk OR cVec = ? THEN RETURN.
+    cVec = TRIM(cVec).
+    RUN dr-vec-ok (cVec, OUTPUT lVec, OUTPUT iDim).
+    IF NOT lVec THEN RETURN.
+    ASSIGN pcEm = cEm pcVec = cVec piDim = iDim.
+END PROCEDURE.
 
 /* GET /farm/doctor/blocked-terms */
 PROCEDURE h-dr-terms:
@@ -171,6 +261,32 @@ PROCEDURE h-dr-terms:
     FOR EACH bT NO-LOCK BY bT.TermId: ja:Add(fDrTermJson(bT.TermId)). END.
     jo = NEW JsonObject().
     jo:Add("terms", ja).
+    RUN reply (200, jo).
+END PROCEDURE.
+
+/* GET /farm/doctor/similar-candidates?limit=  — diagnoses plus the description embedding, newest first.
+   Rows written before schema 009 have an empty vector. Ranking is done by the Node API, not here. */
+PROCEDURE h-dr-similar:
+    DEFINE VARIABLE jo AS JsonObject NO-UNDO.
+    DEFINE VARIABLE ja AS JsonArray NO-UNDO.
+    DEFINE VARIABLE jr AS JsonObject NO-UNDO.
+    DEFINE VARIABLE iLim AS INTEGER NO-UNDO.
+    DEFINE VARIABLE iDrCount AS INTEGER NO-UNDO.
+    DEFINE BUFFER bD FOR Diagnosis.
+    iLim = INTEGER(fQuery("limit")) NO-ERROR.
+    IF ERROR-STATUS:ERROR OR iLim = ? OR iLim < 1 THEN iLim = 100.
+    IF iLim > 100 THEN iLim = 100.
+    ja = NEW JsonArray().
+    FOR EACH bD NO-LOCK BY bD.DiagnosisId DESCENDING:
+        iDrCount = iDrCount + 1.
+        IF iDrCount > iLim THEN LEAVE.
+        jr = fDrDiagJson(bD.DiagnosisId).
+        jr:Add("embedDim", bD.EmbedDim).
+        jr:Add("embedVector", bD.EmbedVector).
+        ja:Add(jr).
+    END.
+    jo = NEW JsonObject().
+    jo:Add("cases", ja).
     RUN reply (200, jo).
 END PROCEDURE.
 
@@ -255,6 +371,10 @@ PROCEDURE h-dr-create:
     DEFINE VARIABLE tNow AS DATETIME-TZ NO-UNDO.
     DEFINE VARIABLE cCosts AS CHARACTER NO-UNDO INITIAL "free,low,medium,high".
     DEFINE VARIABLE cProv AS CHARACTER NO-UNDO INITIAL "Eastern Cape,Free State,Gauteng,KwaZulu-Natal,Limpopo,Mpumalanga,North West,Northern Cape,Western Cape".
+    DEFINE VARIABLE cVis AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE cEm AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE cVec AS CHARACTER NO-UNDO.
+    DEFINE VARIABLE iDim AS INTEGER NO-UNDO.
 
     IF NOT fDrStr(goBody, "crop", 1, 40) THEN DO: RUN reply-error (400, "VALIDATION_ERROR", "crop is required (at most 40 characters).", "crop"). RETURN. END.
     IF NOT fDrStr(goBody, "plantPart", 1, 20) OR NOT fDrIn(goBody:GetCharacter("plantPart"), "leaf,stem,fruit,root,flower,whole_plant") THEN DO:
@@ -342,6 +462,7 @@ PROCEDURE h-dr-create:
         RETURN.
     END.
 
+    RUN dr-take-visual (OUTPUT cVis, OUTPUT cEm, OUTPUT cVec, OUTPUT iDim).
     lFb = goBody:Has("usedFallback") AND goBody:GetType("usedFallback") = JsonDataType:BOOLEAN AND goBody:GetLogical("usedFallback") = TRUE.
     RUN get-str (goBody, "fallbackReason", OUTPUT cFbr, OUTPUT lOk). IF NOT lOk THEN cFbr = "".
     jSteps = NEW JsonArray().
@@ -375,7 +496,11 @@ PROCEDURE h-dr-create:
                Diagnosis.FallbackReason = SUBSTRING(cFbr, 1, 40)
                Diagnosis.DiagStatus = "pending_review"
                Diagnosis.DecidedAt = ?
-               Diagnosis.RequestId = SUBSTRING(cReq, 1, 40).
+               Diagnosis.RequestId = SUBSTRING(cReq, 1, 40)
+               Diagnosis.VisualText = cVis
+               Diagnosis.EmbedModel = cEm
+               Diagnosis.EmbedDim = iDim
+               Diagnosis.EmbedVector = cVec.
         iId = Diagnosis.DiagnosisId.
         RELEASE Diagnosis.
     END.

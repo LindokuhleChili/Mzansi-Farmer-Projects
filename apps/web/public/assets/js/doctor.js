@@ -22,6 +22,7 @@ function resultCard(d, extra = {}) {
     ${d.usedFallback ? html`<div class="dr-note">${icon('x', 14)}<span>${t('dr_fb_' + (d.fallbackReason || 'ai_unavailable')) !== 'dr_fb_' + (d.fallbackReason || 'ai_unavailable') ? t('dr_fb_' + d.fallbackReason) : t('dr_fb_ai_unavailable')}</span></div>` : ''}
     ${extra.removedSteps ? html`<p class="xs mut">${t('dr_removed', { n: extra.removedSteps })}</p>` : ''}
     <p class="sm" style="margin:8px 0 12px">${tx(d.observations)}</p>
+    ${(extra.similarCases || []).length ? html`<div class="dr-similar"><div class="lbl">${t('dr_similar')}</div><ul class="dr-ul">${extra.similarCases.map((c) => html`<li>${tx(c.label)}</li>`)}</ul><p class="xs mut">${extra.similarCompared === 'visual_description_text' ? t('dr_similar_desc') : t('dr_similar_crop')}</p></div>` : ''}
     <div class="lbl">${t('dr_steps')}</div>
     <ol class="dr-steps">${d.steps.map((s) => html`<li><span>${tx(s.text)}</span><span class="dr-cost ${s.cost}">${t('dr_cost_' + s.cost)}</span></li>`)}</ol>
     <div class="dr-grid">

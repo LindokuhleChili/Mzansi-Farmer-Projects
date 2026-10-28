@@ -8,6 +8,12 @@ export const READINGS_FOR_AI = 12;          // how many recent readings are load
 export const LITRES_PER_PCT_DEFICIT = 15;   // deterministic sizing: litres per percentage point below the dry threshold
 export const MAX_REASON_LENGTH = 400;
 
+function embedDim(env) {
+  const n = parseInt(env.AI_EMBED_DIM ?? '256', 10);
+  if (!Number.isInteger(n) || n < 32 || n > 256) return 256;
+  return n;
+}
+
 export function loadConfig(env = process.env) {
   const oeMode = (env.OE_MODE || 'mock').toLowerCase();
   if (!['mock', 'pasoe'].includes(oeMode)) throw new Error(`OE_MODE must be mock or pasoe (got "${env.OE_MODE}")`);
@@ -38,6 +44,12 @@ export function loadConfig(env = process.env) {
     aiDoctorTimeoutMs: Number.isInteger(+env.AI_DOCTOR_TIMEOUT_MS) && +env.AI_DOCTOR_TIMEOUT_MS >= 100 ? +env.AI_DOCTOR_TIMEOUT_MS : 30000,   // plant doctor (photos take longer)
     aiAgentTimeoutMs: Number.isInteger(+env.AI_AGENT_TIMEOUT_MS) && +env.AI_AGENT_TIMEOUT_MS >= 100 ? +env.AI_AGENT_TIMEOUT_MS : 20000,   // Farm Assistant: one tool-loop step
     assistantCheckInMs: Number.isInteger(+env.ASSISTANT_CHECKIN_MS) && +env.ASSISTANT_CHECKIN_MS >= 0 ? +env.ASSISTANT_CHECKIN_MS : 15 * 60000,   // proactive check-ins; 0 = off
+    similarCases: !['0', 'false', 'off', 'no'].includes(String(env.SIMILAR_CASES ?? 'on').toLowerCase()),   // plant-doctor similar cases; off skips the extra AI calls
+    aiEmbedModel: env.AI_EMBED_MODEL || 'gemini-embedding-001',   // text embedding of the photo description; does not change AI_MODEL
+    aiEmbedDim: embedDim(env),
+    aiEmbedTimeoutMs: Number.isInteger(+env.AI_EMBED_TIMEOUT_MS) && +env.AI_EMBED_TIMEOUT_MS >= 100 ? +env.AI_EMBED_TIMEOUT_MS : 8000,
+    farmWatchIntervalMin: Number.isInteger(+env.FARM_WATCH_INTERVAL_MIN) && +env.FARM_WATCH_INTERVAL_MIN > 0 ? +env.FARM_WATCH_INTERVAL_MIN : 0,   // 0 = scheduled watch off
+    farmWatchDedupeHours: Number.isInteger(+env.FARM_WATCH_DEDUPE_HOURS) && +env.FARM_WATCH_DEDUPE_HOURS >= 1 ? +env.FARM_WATCH_DEDUPE_HOURS : 24,
     aiTranslateTimeoutMs: Number.isInteger(+env.AI_TRANSLATE_TIMEOUT_MS) && +env.AI_TRANSLATE_TIMEOUT_MS >= 100 ? +env.AI_TRANSLATE_TIMEOUT_MS : AI_TRANSLATE_TIMEOUT_MS,   // translation only; advice keeps AI_TIMEOUT_MS
     appToken, registry,
     logDir: env.LOG_DIR || 'logs',

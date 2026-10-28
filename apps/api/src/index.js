@@ -19,4 +19,9 @@ if (config.assistantCheckInMs > 0) {   // Farm Assistant proactive check-ins: qu
   const tick = () => app.checkIns.run().catch(() => { /* OpenEdge down: try again next time */ });
   tick(); setInterval(tick, config.assistantCheckInMs).unref();
 }
+if (config.farmWatchIntervalMin > 0) {   // off unless FARM_WATCH_INTERVAL_MIN is set; the demo uses POST /api/v1/assistant/watch/run
+  const ms = config.farmWatchIntervalMin * 60000;
+  setInterval(() => app.farmWatch.run('watch').catch(() => { /* try again next time */ }), ms).unref();
+  console.log(`farm watch every ${config.farmWatchIntervalMin} min (nothing runs until a case card is approved)`);
+}
 if (oe.mode === 'mock') console.log('NOTE: OE_MODE=mock uses the Node port of the ABL rules (mock-pasoe), not a real OpenEdge database.');

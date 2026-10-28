@@ -7825,6 +7825,144 @@
      ]
     }
    }
+  },
+  {
+   "id": "SC01",
+   "title": "Store a description embedding with a diagnosis (text embedding, not the photo)",
+   "request": {
+    "method": "POST",
+    "path": "/farm/doctor/diagnoses",
+    "body": {
+     "crop": "Tomato",
+     "plantPart": "leaf",
+     "growthStage": "fruiting",
+     "province": "KwaZulu-Natal",
+     "photoCount": 1,
+     "visualText": "crop: tomato; part: leaf; colours: brown; pattern: rings; symptoms: spots on older leaves",
+     "embedModel": "gemini-embedding-001",
+     "embedVector": "[1.000000,0.000000,0.000000,0.000000,0.000000,0.000000,0.000000,0.000000]",
+     "result": {
+      "condition": "Early blight (likely)",
+      "confidence": "medium",
+      "observations": "Brown spots with rings on older leaves.",
+      "steps": [
+       { "text": "Remove the spotted lower leaves and throw them away.", "cost": "free" },
+       { "text": "Water at the base in the morning.", "cost": "free" },
+       { "text": "Add mulch so soil does not splash onto leaves.", "cost": "low" }
+      ],
+      "monitor": ["New spots on upper leaves"],
+      "neighbourRisk": { "level": "medium", "reason": "Spores spread with wind and water splash." },
+      "callExpert": "Call your extension officer if it spreads within a week."
+     }
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "condition": "Early blight (likely)",
+     "visualText": "crop: tomato; part: leaf; colours: brown; pattern: rings; symptoms: spots on older leaves",
+     "embedModel": "gemini-embedding-001",
+     "hasDescriptionEmbedding": true,
+     "status": "pending_review"
+    }
+   }
+  },
+  {
+   "id": "SC02",
+   "title": "Similar-case candidates include the stored description embedding",
+   "request": { "method": "GET", "path": "/farm/doctor/similar-candidates?limit=100" },
+   "expect": {
+    "status": 200,
+    "body": {
+     "cases": {
+      "$contains": {
+       "visualText": "crop: tomato; part: leaf; colours: brown; pattern: rings; symptoms: spots on older leaves",
+       "embedModel": "gemini-embedding-001",
+       "embedVector": "[1.000000,0.000000,0.000000,0.000000,0.000000,0.000000,0.000000,0.000000]",
+       "hasDescriptionEmbedding": true
+      }
+     }
+    }
+   }
+  },
+  {
+   "id": "SC03",
+   "title": "A bad embedding is dropped; the diagnosis is still stored",
+   "request": {
+    "method": "POST",
+    "path": "/farm/doctor/diagnoses",
+    "body": {
+     "crop": "Tomato",
+     "plantPart": "leaf",
+     "growthStage": "fruiting",
+     "province": "Limpopo",
+     "photoCount": 1,
+     "visualText": "Brown rings on older leaves.",
+     "embedModel": "gemini-embedding-001",
+     "embedVector": "not-a-vector",
+     "result": {
+      "condition": "Leaf spot (likely)",
+      "confidence": "low",
+      "observations": "A few pale spots.",
+      "steps": [
+       { "text": "Remove the spotted lower leaves and throw them away.", "cost": "free" },
+       { "text": "Water at the base in the morning.", "cost": "free" },
+       { "text": "Add mulch so soil does not splash onto leaves.", "cost": "low" }
+      ],
+      "monitor": ["New spots on upper leaves"],
+      "neighbourRisk": { "level": "low", "reason": "Only a few leaves are marked." },
+      "callExpert": "Call your extension officer if it spreads within a week."
+     }
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "condition": "Leaf spot (likely)",
+     "visualText": "Brown rings on older leaves.",
+     "hasDescriptionEmbedding": false,
+     "embedModel": ""
+    }
+   }
+  },
+  {
+   "id": "SC04",
+   "title": "A dose in the visual description is dropped; the diagnosis itself is kept",
+   "request": {
+    "method": "POST",
+    "path": "/farm/doctor/diagnoses",
+    "body": {
+     "crop": "Maize",
+     "plantPart": "leaf",
+     "growthStage": "vegetative",
+     "province": "Gauteng",
+     "photoCount": 1,
+     "visualText": "Spray copper fungicide at 20 ml per litre.",
+     "embedModel": "gemini-embedding-001",
+     "embedVector": "[1.000000,0.000000,0.000000,0.000000,0.000000,0.000000,0.000000,0.000000]",
+     "result": {
+      "condition": "Leaf streak (likely)",
+      "confidence": "low",
+      "observations": "Long pale streaks.",
+      "steps": [
+       { "text": "Remove the worst leaves and throw them away.", "cost": "free" },
+       { "text": "Water at the base in the morning.", "cost": "free" },
+       { "text": "Leave space between plants so air can move.", "cost": "free" }
+      ],
+      "monitor": ["Streaks on new leaves"],
+      "neighbourRisk": { "level": "low", "reason": "It may spread on tools." },
+      "callExpert": "Call your extension officer if it spreads within a week."
+     }
+    }
+   },
+   "expect": {
+    "status": 201,
+    "body": {
+     "condition": "Leaf streak (likely)",
+     "visualText": "",
+     "hasDescriptionEmbedding": false
+    }
+   }
   }
  ]
 }

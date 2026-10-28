@@ -837,6 +837,7 @@ PROCEDURE dispatch:
             ELSE IF cP = "alerts" THEN RUN h-wx-alerts.
             ELSE IF cP = "alert-thresholds" THEN RUN h-wx-thresholds.
             ELSE IF cP = "doctor/blocked-terms" THEN RUN h-dr-terms.
+            ELSE IF cP = "doctor/similar-candidates" THEN RUN h-dr-similar.
             ELSE IF cP = "doctor/diagnoses" THEN RUN h-dr-list.
             ELSE IF n = 3 AND ENTRY(1, cP, "/") = "doctor" AND ENTRY(2, cP, "/") = "diagnoses" THEN RUN h-dr-get (fPathId(ENTRY(3, cP, "/"))).
             ELSE IF n = 3 AND ENTRY(1, cP, "/") = "guide" AND ENTRY(2, cP, "/") = "passages" THEN RUN h-gd-passage (fPathId(ENTRY(3, cP, "/"))).
