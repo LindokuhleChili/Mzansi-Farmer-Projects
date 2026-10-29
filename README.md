@@ -9,6 +9,10 @@ An ESP32 soil sensor sends readings to a Node API. An AI model proposes an actio
 
 **All data in this repository is fictional example data.** Nothing here is a real farm, a real person or advice to act on.
 
+## Hosting status
+
+The public demo (previously at http://13.43.92.196/ on an AWS EC2 Windows server) has been shut down after the AIGS hackathon (29 Oct 2026). Keeping that VM running is costly. Run the app on your own machine with the [Quick start](#quick-start-no-openedge-no-key-no-hardware), or bring the demo back with [docs/REHOSTING.md](docs/REHOSTING.md).
+
 ## Status (26 Oct 2026)
 
 | Area | State |
@@ -223,7 +227,7 @@ Three cases are designed to fail (`FAIL01` and `E20`, the last in two modes). Th
 | `eval/` | Test cases (`*.json`) and runners |
 | `firmware/esp32/`, `sim/` | ESP32 firmware and the simulator |
 | `scripts/` | `setup-env.mjs`, `demo.mjs`, `oe-run.ps1`, `gen-seed.mjs` |
-| `docs/` | API contract, OpenEdge contract, ESP32 guide, engineering notes, demo screens |
+| `docs/` | API contract, OpenEdge contract, ESP32 guide, re-hosting guide, engineering notes, demo screens |
 
 ## Languages
 
@@ -238,6 +242,7 @@ For real translation with Gemini, set in your local `.env` only: `AI_PROVIDER=ht
 | [`docs/ASSISTANT.md`](docs/ASSISTANT.md) | Farm Assistant: chat, tool loop, guide search (RAG) in OpenEdge, approval cards, case files, check-ins; guide sources and licence. |
 | [`docs/LIMITATIONS.md`](docs/LIMITATIONS.md) | What is real, what is mocked, and what this project does not do. Read this before relying on it. |
 | [`docs/NOTES.md`](docs/NOTES.md) | Stack versions, rules, environment variables, test results |
+| [`docs/REHOSTING.md`](docs/REHOSTING.md) | Bring the Windows demo back on a Windows Server 2022 VM after the public host was shut down |
 | [`docs/API.md`](docs/API.md) | HTTP API |
 | [`docs/OE-CONTRACT.md`](docs/OE-CONTRACT.md) | Contract between the API and OpenEdge |
 | [`docs/COOP.md`](docs/COOP.md) | Co-op rules, endpoints, and how to run them on OpenEdge 12.8 |
